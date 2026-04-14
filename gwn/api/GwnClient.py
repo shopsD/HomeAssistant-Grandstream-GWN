@@ -5,8 +5,8 @@ from typing import Any
 
 import aiohttp
 
-from authentication.GwnAuthConfig import GwnAuthConfig
-from authentication.GwnToken import GwnToken
+from gwn.authentication.GwnAuthConfig import GwnAuthConfig
+from gwn.authentication.GwnToken import GwnToken
 
 
 class GwnAuthenticationError(Exception):
