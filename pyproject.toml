@@ -4,4 +4,6 @@ version = "0.1.0"
 description = "Integration for the Grandstream GWN Manager for Home Assistant"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "ruff>=0.15.10",
+]
