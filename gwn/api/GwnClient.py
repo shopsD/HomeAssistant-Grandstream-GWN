@@ -73,6 +73,37 @@ class GwnClient:
 
             return data
 
+    async def _post_paginated(self, path: str, body: dict[str, Any]) -> list[dict[str, Any]]:
+        page_num = 1
+        results: list[dict[str, Any]] = []
+        page_count = 0
+        while self._config.max_pages < 1 or page_count < self._config.max_pages:
+            page_body = dict(body)
+            page_body["pageNum"] = page_num
+            page_body["pageSize"] = self._config.page_size
+
+            response = await self._post(path, page_body)
+
+            data = response.get("data", {})
+            page_results = data.get("result", [])
+
+            if not isinstance(page_results, list):
+                raise GwnRequestError(f"Unexpected paginated response shape: {response}")
+            
+            results.extend(page_results)
+
+            if len(page_results) != page_size:
+                break
+
+            page_num += 1
+            page_count += 1
+            
+        return results
+
+    @property
+    def refresh_period(self) -> str:
+        return self._config.refresh_period_s
+
     async def authenticate(self) -> GwnToken:
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
         params = {
@@ -93,7 +124,6 @@ class GwnClient:
             self._token = GwnToken.from_response(data)
             return self._token
 
-    
 
     async def get_device_list(self,network_id: str, page_num: int = 1, page_size: int = 50,search: str = "") -> dict[str, Any]:
         return await self._post(
@@ -109,13 +139,10 @@ class GwnClient:
             }
         )
 
-    async def get_network_list(self, page_num: int = 1, page_size: int = 50) -> dict[str, Any]:
-        return await self._post(
-            "oapi/v1.0.0/network/list",
-            {
-                "pageNum": page_num,
-                "pageSize": page_size,
-            }
-        )
+    async def get_all_networks(self) -> list[dict[str, Any]]:
+        return await self._post_paginated("oapi/v1.0.0/network/list",{})
+
+    async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]]:
+        return await self._post_paginated("oapi/v1.0.0/ssid/list",{})
 
     

@@ -42,7 +42,25 @@ class ConfigParser:
         gwn_url = gwn_section.get("url")
         if gwn_url:
             gwnConfig.base_url = str(gwn_url)
-        _LOGGER.debug(f"GWN Config|URL: '{gwnConfig.base_url}'")
+        gwn_page_size = gwn_section.get("page_size")
+        if gwn_page_size:
+            gwn_page_size = int(gwn_page_size)
+            if gwn_page_size < 0:
+                raise ConfigParserError("gwn.page_size must be >= 1")
+            gwnConfig.page_size = gwn_page_size
+        gwn_max_pages = gwn_section.get("max_pages")
+        if gwn_max_pages:
+            gwn_max_pages = int(gwn_max_pages)
+            if gwn_max_pages < 0:
+                raise ConfigParserError("gwn.max_pages must be >= 0")
+            gwnConfig.max_pages = gwn_max_pages
+        gwn_refresh_period_s = gwn_section.get("refresh_period_s")
+        if gwn_refresh_period_s:
+            gwn_refresh_period_s = int(gwn_refresh_period_s)
+            if gwn_refresh_period_s < 0:
+                raise ConfigParserError("gwn.refresh_period_s must be >= 0")
+            gwnConfig.refresh_period_s = gwn_refresh_period_s
+        _LOGGER.debug(f"GWN Config|URL: '{gwnConfig.base_url}'|Page Size: '{gwnConfig.page_size}'|Max Pages: '{gwnConfig.max_pages}'|Refresh Period: '{gwnConfig.refresh_period_s}'")
 
         mqttConfig = MqttConfig()
         mqtt_section = raw.get("mqtt")

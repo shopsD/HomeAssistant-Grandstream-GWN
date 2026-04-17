@@ -16,6 +16,19 @@ class MqttGwnManager:
         self._access_token: GwnToken | None = None
         self._expiry: int = -1
 
+
+    async def _poll_gwn_manager(self) -> None:
+        _LOGGER.debug("Polling GWN")
+        networks = await self._gwnClient.get_all_networks()
+        _LOGGER.debug(f"Found: {networks.length} networks")
+        for network in networks:
+            network_id = str(network["id"])
+            network_name = str(network["networkName"])
+            devices = await self._gwnClient.get_all_devices(network_id)
+            _LOGGER.debug(f"Found: {devices.length} Devices for Network: {network_name}")
+            ssids = await self._gwnClient.get_all_ssids(network_id)
+            _LOGGER.debug(f"Found: {ssids.length} SSIDs for Network: {network_name}")
+
     async def connect(self) -> bool:
         try:
             _LOGGER.info("Connecting to MQTT")
@@ -25,7 +38,7 @@ class MqttGwnManager:
             _LOGGER.debug("Connecting to GWN Manager")
             self._access_token = await self._gwnClient.authenticate()
             _LOGGER.debug("Connected to GWN Manager")
-            await self._mqttClient.publish(f"{self._mqttClient.topic}/status", "online", retain=True)
+            await self._mqttClient.publish(f"{self._mqttClient.topic}/status", "hello world", retain=True)
             _LOGGER.debug("Published Application status")
             _LOGGER.info("Successfully connected to MQTT and GWN Manager")
             return True
@@ -35,6 +48,11 @@ class MqttGwnManager:
         return False
 
     async def run(self):
-        _LOGGER.info("Listening for Events")
-        await asyncio.Event().wait()
+        _LOGGER.info("Starting Poll of GWN Manager and MQTT")
+        while True:
+            self._poll_gwn_manager()
+            
+            await asyncio.sleep(self._gwnClient.refresh_period)
+
+
         

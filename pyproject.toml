@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-gwn_mqtt = "mqtt.main:main"
+gwn_mqtt = "mqtt.__main__:main"
 
 [dependency-groups]
 dev = [
