@@ -1,6 +1,6 @@
 mqtt:
   port: 1883 # default 1883
-  host: mqtt://HOST_OR_IP # default mqtt://127.0.0.1
+  host: HOST_OR_IP # default 127.0.0.1
   password: CHANGE_ME # default None
   username: CHANGE_ME # default None
   keepalive: 60 # default 60

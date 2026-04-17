@@ -33,7 +33,7 @@ def main() -> None:
         ,default=Path(__file__).resolve().parent / "data" / "config.yml"
         ,help="Path to config YAML file. Defaults to ./data/config.yml relative to mqtt/main.py"
     )
-    logging.log(logging.INFO,"Starting GWN Manager")
+    logging.info("Starting GWN Manager")
     args = parser.parse_args()
 
     asyncio.run(async_main(args.config_path))

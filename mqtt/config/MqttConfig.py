@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class MqttConfig:
-    host: str = "mqtt://127.0.0.1"
+    host: str = "127.0.0.1"
     port: int = 1883
     username: str | None = None
     password: str | None = None

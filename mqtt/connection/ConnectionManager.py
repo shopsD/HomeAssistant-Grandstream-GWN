@@ -24,7 +24,9 @@ class ConnectionManager:
         return self._client
 
     async def connect(self) -> None:
+        _LOGGER.info("Connecting to MQTT")
         if self._client is not None:
+            _LOGGER.error("Client is already connected")
             return
 
         client = Client(

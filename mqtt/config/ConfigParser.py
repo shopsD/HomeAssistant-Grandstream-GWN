@@ -8,13 +8,15 @@ from mqtt.config.AppConfig import AppConfig
 from mqtt.config.MqttConfig import MqttConfig
 from mqtt.config.LoggingConfig import LogLocation, LoggingConfig
 
+_LOGGER = logging.getLogger(__name__)
+
 class ConfigParserError(Exception):
     pass
 
 class ConfigParser:
     @staticmethod
     def load(path: str | Path) -> AppConfig:
-        logging.log(logging.DEBUG, f"Loading Config from {path}")
+        _LOGGER.debug(f"Loading Config from {path}")
         config_path = Path(path)
 
         if not config_path.exists():
@@ -25,9 +27,10 @@ class ConfigParser:
 
         mqttConfig = MqttConfig()
         mqtt_section = raw.get("mqtt")
-        if isinstance(mqtt_section, dict):
-            logging.log(logging.DEBUG,"Parsing MQTT Config")
-
+        if not isinstance(mqtt_section, dict):
+            _LOGGER.debug("No MQTT section found in config")
+        else:
+            _LOGGER.debug("Parsing MQTT Config")
             host = mqtt_section.get("host")
             if host:
                 mqttConfig.host = host
@@ -50,11 +53,14 @@ class ConfigParser:
             if topic:
                 mqttConfig.topic = topic
 
-        logging.log(logging.DEBUG, f"MQTT Config|Host: '{host}'|Port: '{port}'|Keepalive: '{keepalive}'|Topic: '{topic}'")
+        _LOGGER.debug(f"MQTT Config|Host: '{mqttConfig.host}'|Port: '{mqttConfig.port}'|Keepalive: '{mqttConfig.keepalive}'|Topic: '{mqttConfig.topic}'")
 
         logging_section = raw.get("logging", {})
         logConfig = LoggingConfig()
-        if isinstance(logging_section, dict):
+        if not isinstance(logging_section, dict):
+            _LOGGER.debug("No Logging section found in config")
+        else:
+            _LOGGER.debug(f"Parsing Logging Config")
             log_level = logging_section.get("level")
             if log_level:
                 log_level = str(log_level)
@@ -66,13 +72,12 @@ class ConfigParser:
                 logging_location = str(logging_location)
                 if logging_location not in {"syslog", "file", "console"}:
                     raise ConfigParserError( "logging.location must be one of: syslog, file, console")
-                logging_location = cast(LogLocation, logging_location)
-                if logging_location == "file":
-                    output_path = logging_section.get("output_path")
-                    if not output_path:
-                        raise ConfigParserError("logging.output_path is required when logging.location is 'file'")
-                    logConfig.output_path = Path(output_path).resolve()
-                logConfig.location=logging_location
+                logConfig.location = cast(LogLocation, logging_location)
+            if logConfig.location == "file":
+                output_path = logging_section.get("output_path")
+                if not output_path:
+                    raise ConfigParserError("logging.output_path is required when logging.location is 'file'")
+                logConfig.output_path = Path(output_path).resolve()
             size = logging_section.get("size")
             if size:
                 size = int(size)
@@ -87,8 +92,9 @@ class ConfigParser:
                     raise ConfigParserError("logging.files must be >= 1")
                 logConfig.files = files
 
-            
-            if (not isinstance(logging_section, dict)) and (not isinstance(logging_section, dict)):
-                raise ConfigParserError("Invalid Config File")
+        _LOGGER.debug(f"Logging Config|Level: '{logConfig.level}'|Location: '{logConfig.location}'|Path: '{logConfig.output_path}")
 
+        if (not isinstance(logging_section, dict)) and (not isinstance(logging_section, dict)):
+            raise ConfigParserError("Invalid Config File")
+        _LOGGER.info("Successfully loaded the config")
         return AppConfig(mqttConfig, logConfig)
