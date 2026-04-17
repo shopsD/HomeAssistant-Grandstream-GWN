@@ -17,11 +17,11 @@ class GwnClient:
         self._config = config
         self._token: GwnToken | None = None
 
-    def _build_signature(self, body: dict[str, Any], access_token: str, timestamp_ms: int) -> str:
+    def _build_signature(self, body: str, access_token: str, timestamp_ms: int) -> str:
         """
         This is used to build the signature that is required for GWN Manager requests
         """
-        body_hash = self._body_hash(body)
+        body_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
         params = (
             f"access_token={access_token}"
             f"&appID={self._config.app_id}"
@@ -30,11 +30,6 @@ class GwnClient:
         )
         final = f"&{params}&{body_hash}&"
         return hashlib.sha256(final.encode("utf-8")).hexdigest()
-
-    def _body_hash(self, body: dict[str, Any]) -> str:
-        # Use stable JSON encoding so hashing is deterministic.
-        encoded = json.dumps(body, separators=(",", ":"))
-        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
     async def _ensure_token_valid(self) -> None:
         if self._token is None or self._token.is_expired():
@@ -48,8 +43,9 @@ class GwnClient:
             return None
 
         timestamp_ms = int(time.time() * 1000)
+        body_json = json.dumps(body, separators=(",", ":"))
         signature = self._build_signature(
-            body=body,
+            body=body_json,
             access_token=self._token.access_token,
             timestamp_ms=timestamp_ms,
         )
@@ -62,7 +58,7 @@ class GwnClient:
             "signature": signature,
         }
 
-        async with self._session.post(url, params=params, json=body) as response:
+        async with self._session.post(url, params=params, json=body_json,headers={"Content-Type": "application/json"} ) as response:
             data = await response.json(content_type=None)
 
             if response.status != 200:
@@ -70,7 +66,8 @@ class GwnClient:
                 return None
             retCode = data.get("retCode")
             if retCode and int(retCode) != 0:
-                _LOGGER.warning(f"Request failed with code {retCode}: {data.get("msg")}")
+                _LOGGER.warning(f"Request failed with code {retCode}: {data.get('msg')}")
+                return None
             return data
 
     async def _post_paginated(self, path: str, body: dict[str, Any]) -> list[dict[str, Any]] | None:
@@ -130,7 +127,7 @@ class GwnClient:
             return self._token
 
     async def get_all_networks(self) -> list[dict[str, Any]] | None:
-        return await self._post_paginated("oapi/v1.0.0/network/list",{})
+        return await self._post_paginated("oapi/v1.0.0/network/list",{"type": "asc","order": "id", "search":""})
 
     async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ssid/list",{ "networkId": network_id})
