@@ -216,4 +216,3 @@ class GwnClient:
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
-    
