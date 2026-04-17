@@ -8,6 +8,11 @@ from mqtt.connection import ConnectionManager
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
+class AuthenticationError(Exception):
+    pass
+
+class RequestError(Exception):
+    pass
 
 class MqttGwnManager:
     def __init__(self, mqttClient: ConnectionManager, gwnClient: GwnClient) -> None:
@@ -47,12 +52,17 @@ class MqttGwnManager:
         try:
             _LOGGER.info("Connecting to MQTT")
             _LOGGER.debug("Connecting to MQTT")
-            await self._mqttClient.connect()
+            if not await self._mqttClient.connect():
+                raise AuthenticationError("Failed to connect to MQTT Broker")
+
             _LOGGER.debug("Connected to MQTT Server")
             _LOGGER.debug("Connecting to GWN Manager")
             self._access_token = await self._gwnClient.authenticate()
+            if self._access_token is None:
+                raise AuthenticationError("Failed to acquire access token from GWN Manager")
+
             _LOGGER.debug("Connected to GWN Manager")
-            await self._mqttClient.publish(f"{self._mqttClient.topic}/status", "hello world", retain=True)
+            await self._mqttClient.publish(f"{self._mqttClient.topic}/status", "online", retain=True)
             _LOGGER.debug("Published Application status")
             _LOGGER.info("Successfully connected to MQTT and GWN Manager")
             return True

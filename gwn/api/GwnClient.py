@@ -11,14 +11,6 @@ from gwn.constants import Constants
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
-class GwnAuthenticationError(Exception):
-    pass
-
-
-class GwnRequestError(Exception):
-    pass
-
-
 class GwnClient:
     def __init__(self, session: aiohttp.ClientSession, config: GwnAuthConfig) -> None:
         self._session = session
@@ -48,11 +40,12 @@ class GwnClient:
         if self._token is None or self._token.is_expired():
             await self.authenticate()
 
-    async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+    async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any] | None:
         await self._ensure_token_valid()
 
         if self._token is None:
-            raise GwnAuthenticationError("No access token available")
+            _LOGGER.error("No access token available")
+            return None
 
         timestamp_ms = int(time.time() * 1000)
         signature = self._build_signature(
@@ -73,7 +66,8 @@ class GwnClient:
             data = await response.json(content_type=None)
 
             if response.status != 200:
-                raise GwnRequestError( f"Request failed with status {response.status}: {data}" )
+                _LOGGER.warning(f"Request failed with status {response.status}: {data}")
+                return None
 
             return data
 
@@ -88,7 +82,8 @@ class GwnClient:
             page_body["pageSize"] = page_size
 
             response = await self._post(path, page_body)
-
+            if response is None:
+                return None
             data = response.get("data", {})
             page_results = data.get("result", [])
 
@@ -131,21 +126,6 @@ class GwnClient:
 
             self._token = GwnToken.from_response(data)
             return self._token
-
-
-    async def get_device_list(self,network_id: str, page_num: int = 1, page_size: int = 50,search: str = "") -> dict[str, Any]:
-        return await self._post(
-            "oapi/v1.0.0/ap/list",
-            {
-                "search": search,
-                "pageNum": page_num,
-                "pageSize": page_size,
-                "networkId": network_id,
-                "filter": {
-                    "showType": "all",
-                }
-            }
-        )
 
     async def get_all_networks(self) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})
