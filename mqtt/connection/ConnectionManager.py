@@ -3,11 +3,10 @@ import ssl
 
 from aiomqtt import Client
 
-import constants
-
+from gwn.constants import Constants
 from mqtt.config import MqttConfig
 
-_LOGGER = logging.getLogger(constants.Constants.LOG)
+_LOGGER = logging.getLogger(Constants.LOG)
 
 class ConnectionManager:
     def __init__(self, config: MqttConfig) -> None:

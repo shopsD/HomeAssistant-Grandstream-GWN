@@ -1,13 +1,12 @@
 import asyncio
 import logging
 
-import constants
-
-from mqtt.connection import ConnectionManager
 from gwn.api import GwnClient
 from gwn.authentication import GwnToken
+from gwn.constants import Constants
+from mqtt.connection import ConnectionManager
 
-_LOGGER = logging.getLogger(constants.Constants.LOG)
+_LOGGER = logging.getLogger(Constants.LOG)
 
 
 class MqttGwnManager:
@@ -31,7 +30,7 @@ class MqttGwnManager:
             _LOGGER.info("Successfully connected to MQTT and GWN Manager")
             return True
         except Exception as e:
-            _LOGGER.debug(f"Failed to connect: {e}")
+            _LOGGER.error(f"Failed to connect: %s", e)
             await self._mqttClient.disconnect()
         return False
 

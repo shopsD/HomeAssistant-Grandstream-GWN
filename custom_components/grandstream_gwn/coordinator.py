@@ -1,13 +1,13 @@
 import logging
 
-import constants
-
 from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-_LOGGER = logging.getLogger(constants.Constants.LOG)
+from gwn.constants import Constants
+
+_LOGGER = logging.getLogger(Constants.LOG)
 
 class GwnDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:

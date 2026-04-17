@@ -5,20 +5,20 @@ import logging
 from pathlib import Path
 from aiohttp import ClientSession 
 
-import constants
 
 from gwn.api import GwnClient
+from gwn.constants import Constants
 from mqtt.app import MqttGwnManager
-from mqtt.connection import ConnectionManager
 from mqtt.config import ConfigParser
 from mqtt.config import LoggingConfig
+from mqtt.connection import ConnectionManager
 
-_LOGGER = logging.getLogger(constants.Constants.LOG)
+_LOGGER = logging.getLogger(Constants.LOG)
 
-def init_logger(config: LoggingConfig):
+def init_logger(config: LoggingConfig) -> None:
     _LOGGER.info("Initialising Logging")
     logging.basicConfig(level=config.level, force=True)
-    logging.getLogger(constants.Constants.LOG).setLevel(config.level)
+    logging.getLogger(Constants.LOG).setLevel(config.level)
     _LOGGER.info("Logging Initialised")
 
 async def async_main(config_path: Path) -> None:
@@ -34,7 +34,7 @@ async def async_main(config_path: Path) -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, force=True)
-    logging.getLogger(constants.Constants.LOG).setLevel(logging.DEBUG)
+    logging.getLogger(Constants.LOG).setLevel(logging.DEBUG)
     parser = argparse.ArgumentParser(description="Grandstream GWN Manager to MQTT")
     parser.add_argument(
         "-c"
