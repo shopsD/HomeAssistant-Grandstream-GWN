@@ -7,11 +7,23 @@ requires-python = ">=3.13"
 
 dependencies = [
     "homeassistant>=2025.4.4",
+    "aiomqtt>=2.5.1",
+    "PyYAML",
 ]
+
+[project.scripts]
+gwn_mqtt = "mqtt.main:main"
 
 [dependency-groups]
 dev = [
     "mypy>=1.20.1",
     "ruff>=0.15.10",
+    "types-PyYAML",
 ]
 
+[tool.uv]
+package = true
+
+[tool.setuptools.packages.find]
+include = ["gwn*", "mqtt*"]
+exclude = ["custom_components*", "local_docs*"]

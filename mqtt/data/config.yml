@@ -1,0 +1,15 @@
+mqtt:
+  port: 1883 # default 1883
+  host: HOST_OR_IP # default 127.0.0.1
+  password: CHANGE_ME # default None
+  username: CHANGE_ME # default None
+  keepalive: 60 # default 60
+  topic: "gwn" # default gwn
+  # client_id: # default None
+  # tls: False # default false
+  # verify_tls: True # default true
+logging:
+  level: DEBUG # default INFO
+  location: syslog # syslog/file/console default: syslog
+  #size: 10000 # number of log entries before rotation: default 0 (no rotation)
+  #files: 1 # number of files to keep on disk before rotation: default 1 (no rotation)
