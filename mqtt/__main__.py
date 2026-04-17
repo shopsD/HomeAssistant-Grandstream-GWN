@@ -3,7 +3,6 @@ import asyncio
 import logging
 
 from pathlib import Path
-from time import sleep
 from aiohttp import ClientSession 
 
 import constants
