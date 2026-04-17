@@ -24,6 +24,10 @@ class ConnectionManager:
             raise RuntimeError("MQTT client is not connected")
         return self._client
 
+    @property
+    def topic(self) -> str:
+        return self._config.topic
+
     async def connect(self) -> None:
         _LOGGER.info("Connecting to MQTT")
         if self._client is not None:

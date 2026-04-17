@@ -76,8 +76,8 @@ class GwnClient:
     async def authenticate(self) -> GwnToken:
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
         params = {
-            "client_id": self._config.client_id,
-            "client_secret": self._config.client_secret,
+            "client_id": self._config.app_id,
+            "client_secret": self._config.secret_key,
             "grant_type": "client_credentials",
         }
 

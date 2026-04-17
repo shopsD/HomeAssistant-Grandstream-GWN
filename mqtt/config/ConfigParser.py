@@ -27,21 +27,20 @@ class ConfigParser:
             raw = yaml.safe_load(file_handle) or {}
 
         gwn_section = raw.get("gwn", {})
-        gwnConfig = GwnAuthConfig()
+
         if not isinstance(gwn_section, dict):
             raise ConfigParserError("Invalid Config File: No GWN section found in config")
         _LOGGER.debug("Parsing GWN Manager Config")
         secret_key = gwn_section.get("secret_key")
         if not secret_key:
             raise ConfigParserError("gwn.secret_key is missing")
-        gwnConfig.secret_key = str(secret_key)
         app_id = gwn_section.get("app_id")
         if not secret_key:
             raise ConfigParserError("gwn.app_id is missing")
-        gwnConfig.app_id = str(app_id)
+        gwnConfig = GwnAuthConfig(app_id=str(app_id),secret_key=str(secret_key))
         gwn_url = gwn_section.get("url")
         if gwn_url:
-            gwnConfig.base_url = gwn_url
+            gwnConfig.base_url = str(gwn_url)
         _LOGGER.debug(f"GWN Config|URL: '{gwnConfig.base_url}'")
 
         mqttConfig = MqttConfig()

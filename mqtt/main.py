@@ -16,16 +16,18 @@ _LOGGER = logging.getLogger(__name__)
 
 def init_logger(config: LoggingConfig):
     _LOGGER.info("Initialising Logging")
-    _LOGGER.basicConfig(level=config.level)
+    logging.basicConfig(level=config.level)
     _LOGGER.info("Logging Initialised")
 
 async def async_main(config_path: Path) -> None:
     app_config = ConfigParser.load(config_path)
     init_logger(app_config.logging)
     manager = ConnectionManager(app_config.mqtt)
-    gwnClient = GwnClient(ClientSession(),app_config.gwn)
-    app_manager = MqttGwnManager(manager,gwnClient)
-    app_manager.connect()
+    async with ClientSession() as session:
+        gwnClient = GwnClient(session,app_config.gwn)
+        app_manager = MqttGwnManager(manager,gwnClient)
+        await app_manager.connect()
+        await app_manager.run()
 
 
 def main() -> None:
