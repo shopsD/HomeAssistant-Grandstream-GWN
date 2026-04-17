@@ -9,3 +9,5 @@ class MqttConfig:
     client_id: str | None = None
     keepalive: int = 60
     topic: str = "gwn"
+    tls: bool = False
+    verify_tls: bool = True

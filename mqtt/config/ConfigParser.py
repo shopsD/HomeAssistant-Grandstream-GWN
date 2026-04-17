@@ -52,8 +52,13 @@ class ConfigParser:
             topic = mqtt_section.get("topic")
             if topic:
                 mqttConfig.topic = topic
-
-        _LOGGER.debug(f"MQTT Config|Host: '{mqttConfig.host}'|Port: '{mqttConfig.port}'|Keepalive: '{mqttConfig.keepalive}'|Topic: '{mqttConfig.topic}'")
+            tls = mqtt_section.get("tls")
+            if tls:
+                mqttConfig.tls = bool(tls)
+            verify_tls = mqtt_section.get("verify_tls")
+            if verify_tls:
+                mqttConfig.verify_tls = bool(verify_tls)
+        _LOGGER.debug(f"MQTT Config|Host: '{mqttConfig.host}'|Port: '{mqttConfig.port}'|Keepalive: '{mqttConfig.keepalive}'|Topic: '{mqttConfig.topic}'|TLS: '{mqttConfig.tls}'|Verify TLS: '{mqttConfig.verify_tls}'")
 
         logging_section = raw.get("logging", {})
         logConfig = LoggingConfig()

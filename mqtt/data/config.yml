@@ -6,6 +6,8 @@ mqtt:
   keepalive: 60 # default 60
   topic: "gwn" # default gwn
   # client_id: # default None
+  # tls: False # default false
+  # verify_tls: True # default true
 logging:
   level: DEBUG # default INFO
   location: syslog # syslog/file/console default: syslog

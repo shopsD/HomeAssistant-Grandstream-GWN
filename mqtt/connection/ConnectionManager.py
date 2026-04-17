@@ -1,4 +1,5 @@
 import logging
+import ssl
 
 from aiomqtt import Client
 
@@ -28,7 +29,9 @@ class ConnectionManager:
         if self._client is not None:
             _LOGGER.error("Client is already connected")
             return
-
+        tls_context = None
+        if self._config.tls:
+            tls_context = ssl.create_default_context()
         client = Client(
             hostname=self._config.host,
             port=self._config.port,
@@ -36,6 +39,9 @@ class ConnectionManager:
             password=self._config.password,
             identifier=self._config.client_id,
             keepalive=self._config.keepalive,
+            tls_context = tls_context,
+            tls_insecure=not self._config.verify_tls,
+            logger = _LOGGER
         )
 
         await client.__aenter__()
