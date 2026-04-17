@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+           "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./python-dev/mqtt/__main__.py",
+            "args": ["--config_path","/opt/HomeAssistant-Grandstream-GWN/config.yml"],
+            "console": "integratedTerminal",
+            "python": "./python-dev/.venv/bin/python",
+            "preLaunchTask": "create-python-link",
+            "postDebugTask": "remove-python-link"
+        },
+    ]
+}

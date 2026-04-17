@@ -4,12 +4,14 @@ from typing import cast
 import logging
 import yaml
 
+import constants
+
 from gwn.authentication import GwnAuthConfig
 from mqtt.config.AppConfig import AppConfig
 from mqtt.config.MqttConfig import MqttConfig
 from mqtt.config.LoggingConfig import LogLocation, LoggingConfig
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(constants.Constants.LOG)
 
 class ConfigParserError(Exception):
     pass
