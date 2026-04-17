@@ -3,10 +3,10 @@ import ssl
 
 from aiomqtt import Client
 
+from gwn.constants import Constants
 from mqtt.config import MqttConfig
 
-_LOGGER = logging.getLogger(__name__)
-
+_LOGGER = logging.getLogger(Constants.LOG)
 
 class ConnectionManager:
     def __init__(self, config: MqttConfig) -> None:
@@ -23,6 +23,10 @@ class ConnectionManager:
         if self._client is None:
             raise RuntimeError("MQTT client is not connected")
         return self._client
+
+    @property
+    def topic(self) -> str:
+        return self._config.topic
 
     async def connect(self) -> None:
         _LOGGER.info("Connecting to MQTT")

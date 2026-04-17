@@ -8,6 +8,10 @@ mqtt:
   # client_id: # default None
   # tls: False # default false
   # verify_tls: True # default true
+gwn:
+  url: https://localhost:8443 # default https://localhost:8443
+  app_id: CHANGE_ME
+  secret_key: CHANGE_ME
 logging:
   level: DEBUG # default INFO
   location: syslog # syslog/file/console default: syslog

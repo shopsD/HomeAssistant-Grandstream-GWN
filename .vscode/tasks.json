@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "create-python-link",
+            "type": "shell",
+            "command": "ln -sfn ${workspaceFolder}/python-dev /opt/HomeAssistant-Grandstream-GWN"
+        },
+        {
+            "label": "remove-python-link",
+            "type": "shell",
+            "command": "rm -rf /opt/HomeAssistant-Grandstream-GWN"
+        }
+    ]
+}

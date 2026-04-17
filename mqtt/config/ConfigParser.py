@@ -4,11 +4,13 @@ from typing import cast
 import logging
 import yaml
 
+from gwn.authentication import GwnAuthConfig
+from gwn.constants import Constants
 from mqtt.config.AppConfig import AppConfig
 from mqtt.config.MqttConfig import MqttConfig
 from mqtt.config.LoggingConfig import LogLocation, LoggingConfig
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(Constants.LOG)
 
 class ConfigParserError(Exception):
     pass
@@ -24,6 +26,23 @@ class ConfigParser:
 
         with config_path.open("r", encoding="utf-8") as file_handle:
             raw = yaml.safe_load(file_handle) or {}
+
+        gwn_section = raw.get("gwn", {})
+
+        if not isinstance(gwn_section, dict):
+            raise ConfigParserError("Invalid Config File: No GWN section found in config")
+        _LOGGER.debug("Parsing GWN Manager Config")
+        secret_key = gwn_section.get("secret_key")
+        if not secret_key:
+            raise ConfigParserError("gwn.secret_key is missing")
+        app_id = gwn_section.get("app_id")
+        if not secret_key:
+            raise ConfigParserError("gwn.app_id is missing")
+        gwnConfig = GwnAuthConfig(app_id=str(app_id),secret_key=str(secret_key))
+        gwn_url = gwn_section.get("url")
+        if gwn_url:
+            gwnConfig.base_url = str(gwn_url)
+        _LOGGER.debug(f"GWN Config|URL: '{gwnConfig.base_url}'")
 
         mqttConfig = MqttConfig()
         mqtt_section = raw.get("mqtt")
@@ -59,7 +78,7 @@ class ConfigParser:
             if verify_tls:
                 mqttConfig.verify_tls = bool(verify_tls)
         _LOGGER.debug(f"MQTT Config|Host: '{mqttConfig.host}'|Port: '{mqttConfig.port}'|Keepalive: '{mqttConfig.keepalive}'|Topic: '{mqttConfig.topic}'|TLS: '{mqttConfig.tls}'|Verify TLS: '{mqttConfig.verify_tls}'")
-
+        
         logging_section = raw.get("logging", {})
         logConfig = LoggingConfig()
         if not isinstance(logging_section, dict):
@@ -99,7 +118,5 @@ class ConfigParser:
 
         _LOGGER.debug(f"Logging Config|Level: '{logConfig.level}'|Location: '{logConfig.location}'|Path: '{logConfig.output_path}")
 
-        if (not isinstance(logging_section, dict)) and (not isinstance(logging_section, dict)):
-            raise ConfigParserError("Invalid Config File")
         _LOGGER.info("Successfully loaded the config")
-        return AppConfig(mqttConfig, logConfig)
+        return AppConfig(mqttConfig, logConfig, gwnConfig)
