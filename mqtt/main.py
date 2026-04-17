@@ -3,24 +3,29 @@ import asyncio
 import logging
 from pathlib import Path
 
+from aiohttp import ClientSession 
+
+from gwn.api import GwnClient
+from mqtt.app import MqttGwnManager
 from mqtt.connection import ConnectionManager
 from mqtt.config import ConfigParser
 from mqtt.config import LoggingConfig
 
+
+_LOGGER = logging.getLogger(__name__)
+
 def init_logger(config: LoggingConfig):
-    logging.basicConfig(level=config.level)
+    _LOGGER.info("Initialising Logging")
+    _LOGGER.basicConfig(level=config.level)
+    _LOGGER.info("Logging Initialised")
 
 async def async_main(config_path: Path) -> None:
     app_config = ConfigParser.load(config_path)
     init_logger(app_config.logging)
     manager = ConnectionManager(app_config.mqtt)
-
-    try:
-        await manager.connect()
-        await manager.publish(f"{app_config.mqtt.topic}/status", "online", retain=True)
-        await asyncio.Event().wait()
-    finally:
-        await manager.disconnect()
+    gwnClient = GwnClient(ClientSession(),app_config.gwn)
+    app_manager = MqttGwnManager(manager,gwnClient)
+    app_manager.connect()
 
 
 def main() -> None:
