@@ -29,7 +29,7 @@ class MqttGwnManager:
                 _LOGGER.debug(f"Found: {len(devices)} Devices for Network: {network_name}")
                 ssids = await self._gwnClient.get_all_ssids(network_id)
                 _LOGGER.debug(f"Found: {len(ssids)} SSIDs for Network: {network_name}")
-        await asyncio.sleep(self._gwnClient.refresh_period)
+            await asyncio.sleep(self._gwnClient.refresh_period)
 
     async def _run_mqtt_interface(self) -> None:
         _LOGGER.info("Listening to MQTT")
