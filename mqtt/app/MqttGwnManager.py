@@ -21,13 +21,21 @@ class MqttGwnManager:
         _LOGGER.debug("Polling GWN")
         while True:
             networks = await self._gwnClient.get_all_networks()
-            _LOGGER.debug(f"Found: {len(networks)} networks")
+            
+            if networks is None:
+                networks = [] # dont loop but also allow the refresh poll to be respected
+            else:
+                _LOGGER.debug(f"Found: {len(networks)} networks")
             for network in networks:
                 network_id = str(network["id"])
                 network_name = str(network["networkName"])
                 devices = await self._gwnClient.get_all_devices(network_id)
+                if devices is None:
+                    continue
                 _LOGGER.debug(f"Found: {len(devices)} Devices for Network: {network_name}")
                 ssids = await self._gwnClient.get_all_ssids(network_id)
+                if ssids is None:
+                    continue
                 _LOGGER.debug(f"Found: {len(ssids)} SSIDs for Network: {network_name}")
             await asyncio.sleep(self._gwnClient.refresh_period)
 
@@ -53,7 +61,7 @@ class MqttGwnManager:
             await self._mqttClient.disconnect()
         return False
 
-    async def run(self):
+    async def run(self) -> None:
         _LOGGER.info("Starting Poll of GWN Manager and MQTT")
         gwn_task = asyncio.create_task(self._run_gwn_interface())
         mqtt_task = asyncio.create_task(self._run_mqtt_interface())

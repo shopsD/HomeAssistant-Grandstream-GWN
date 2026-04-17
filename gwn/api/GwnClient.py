@@ -1,11 +1,15 @@
 import hashlib
 import json
+import logging
 import time
 from typing import Any
 
 import aiohttp
 
 from gwn.authentication import GwnAuthConfig, GwnToken
+from gwn.constants import Constants
+
+_LOGGER = logging.getLogger(Constants.LOG)
 
 class GwnAuthenticationError(Exception):
     pass
@@ -73,7 +77,7 @@ class GwnClient:
 
             return data
 
-    async def _post_paginated(self, path: str, body: dict[str, Any]) -> list[dict[str, Any]]:
+    async def _post_paginated(self, path: str, body: dict[str, Any]) -> list[dict[str, Any]] | None:
         page_num = 1
         results: list[dict[str, Any]] = []
         page_count = 0
@@ -89,8 +93,9 @@ class GwnClient:
             page_results = data.get("result", [])
 
             if not isinstance(page_results, list):
-                raise GwnRequestError(f"Unexpected paginated response shape: {response}")
-            
+                _LOGGER.warning(f"Unexpected paginated response message: {response}")
+                return None
+
             results.extend(page_results)
 
             if len(page_results) != page_size:
@@ -105,7 +110,7 @@ class GwnClient:
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
 
-    async def authenticate(self) -> GwnToken:
+    async def authenticate(self) -> GwnToken | None:
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
         params = {
             "client_id": self._config.app_id,
@@ -117,10 +122,12 @@ class GwnClient:
             data = await response.json(content_type=None)
 
             if response.status != 200:
-                raise GwnAuthenticationError(f"Token request failed with status {response.status}: {data}")
+                _LOGGER.error(f"Token request failed with status {response.status}: {data}")
+                return None
 
             if "access_token" not in data:
-                raise GwnAuthenticationError(f"Token response missing access_token: {data}")
+                _LOGGER.error(f"Token response missing access_token: {data}")
+                return None
 
             self._token = GwnToken.from_response(data)
             return self._token
@@ -140,13 +147,13 @@ class GwnClient:
             }
         )
 
-    async def get_all_networks(self) -> list[dict[str, Any]]:
+    async def get_all_networks(self) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})
 
-    async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]]:
+    async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ssid/list",{ "networkId": network_id})
 
-    async def get_all_devices(self, network_id: str) -> list[dict[str, Any]]:
+    async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
             "networkId": network_id,
             "filter": {
