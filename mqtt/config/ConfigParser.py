@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import cast
 
+import logging
 import yaml
 
 from mqtt.config.AppConfig import AppConfig
@@ -13,6 +14,7 @@ class ConfigParserError(Exception):
 class ConfigParser:
     @staticmethod
     def load(path: str | Path) -> AppConfig:
+        logging.log(logging.DEBUG, f"Loading Config from {path}")
         config_path = Path(path)
 
         if not config_path.exists():
@@ -21,52 +23,72 @@ class ConfigParser:
         with config_path.open("r", encoding="utf-8") as file_handle:
             raw = yaml.safe_load(file_handle) or {}
 
+        mqttConfig = MqttConfig()
         mqtt_section = raw.get("mqtt")
-        if not isinstance(mqtt_section, dict):
-            raise ConfigParserError("Missing or invalid 'mqtt' section in config")
+        if isinstance(mqtt_section, dict):
+            logging.log(logging.DEBUG,"Parsing MQTT Config")
 
-        host = mqtt_section.get("host")
-        if not host:
-            raise ConfigParserError("Missing required mqtt.host")
+            host = mqtt_section.get("host")
+            if host:
+                mqttConfig.host = host
+            port = mqtt_section.get("port")
+            if port:
+                mqttConfig.port = port
+            username = mqtt_section.get("username")
+            if username:
+                mqttConfig.username = username
+            password = mqtt_section.get("password")
+            if password:
+                mqttConfig.password = password
+            client_id = mqtt_section.get("client_id")
+            if client_id:
+                mqttConfig.client_id = client_id
+            keepalive = mqtt_section.get("keepalive")
+            if keepalive:
+                mqttConfig.keepalive = keepalive
+            topic = mqtt_section.get("topic")
+            if topic:
+                mqttConfig.topic = topic
+
+        logging.log(logging.DEBUG, f"MQTT Config|Host: '{host}'|Port: '{port}'|Keepalive: '{keepalive}'|Topic: '{topic}'")
 
         logging_section = raw.get("logging", {})
-        if not isinstance(logging_section, dict):
-            raise ConfigParserError("Invalid 'logging' section in config")
+        logConfig = LoggingConfig()
+        if isinstance(logging_section, dict):
+            log_level = logging_section.get("level")
+            if log_level:
+                log_level = str(log_level)
+                if log_level not in {"FATAL", "ERROR", "WARNING", "INFO", "DEBUG", "NONE"}:
+                    raise ConfigParserError( "logging.location must be one of: FATAL, ERROR, WARNING, INFO, DEBUG, NONE")
+                logConfig.level = log_level
+            logging_location = logging_section.get("location")
+            if logging_location:
+                logging_location = str(logging_location)
+                if logging_location not in {"syslog", "file", "console"}:
+                    raise ConfigParserError( "logging.location must be one of: syslog, file, console")
+                logging_location = cast(LogLocation, logging_location)
+                if logging_location == "file":
+                    output_path = logging_section.get("output_path")
+                    if not output_path:
+                        raise ConfigParserError("logging.output_path is required when logging.location is 'file'")
+                    logConfig.output_path = Path(output_path).resolve()
+                logConfig.location=logging_location
+            size = logging_section.get("size")
+            if size:
+                size = int(size)
+                if size < 0:
+                    raise ConfigParserError("logging.size must be >= 0")
+                logConfig.size = size
 
-        logging_location = str(logging_section.get("location", "console"))
+            files = logging_section.get("files")
+            if files:
+                files = int(files)
+                if files < 1:
+                    raise ConfigParserError("logging.files must be >= 1")
+                logConfig.files = files
 
-        if logging_location not in {"syslog", "file", "console"}:
-            raise ConfigParserError( "logging.location must be one of: syslog, file, console")
+            
+            if (not isinstance(logging_section, dict)) and (not isinstance(logging_section, dict)):
+                raise ConfigParserError("Invalid Config File")
 
-        output_path = logging_section.get("output_path")
-        if logging_location == "file" and not output_path:
-            raise ConfigParserError("logging.output_path is required when logging.location is 'file'")
-
-        logging_location = cast(LogLocation, logging_location)
-        size = int(logging_section.get("size", 0))
-        files = int(logging_section.get("files", 1))
-
-        if size < 0:
-            raise ConfigParserError("logging.size must be >= 0")
-
-        if files < 1:
-            raise ConfigParserError("logging.files must be >= 1")
-
-        return AppConfig(
-            mqtt=MqttConfig(
-                host=str(host),
-                port=int(mqtt_section.get("port", 1883)),
-                username=mqtt_section.get("username"),
-                password=mqtt_section.get("password"),
-                client_id=str(mqtt_section.get("client_id", "gwn-bridge")),
-                keepalive=int(mqtt_section.get("keepalive", 60)),
-                topic=str(mqtt_section.get("topic", "gwn")),
-            ),
-            logging=LoggingConfig(
-                level=str(logging_section.get("level", "INFO")),
-                location=logging_location,
-                output_path=Path(output_path) if output_path is not None else None,
-                size=size,
-                files=files,
-            ),
-        )
+        return AppConfig(mqttConfig, logConfig)

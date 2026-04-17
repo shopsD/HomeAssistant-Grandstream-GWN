@@ -11,6 +11,9 @@ dependencies = [
     "PyYAML",
 ]
 
+[project.scripts]
+gwn_mqtt = "mqtt.main:main"
+
 [dependency-groups]
 dev = [
     "mypy>=1.20.1",
@@ -18,3 +21,9 @@ dev = [
     "types-PyYAML",
 ]
 
+[tool.uv]
+package = true
+
+[tool.setuptools.packages.find]
+include = ["gwn*", "mqtt*"]
+exclude = ["custom_components*", "local_docs*"]
