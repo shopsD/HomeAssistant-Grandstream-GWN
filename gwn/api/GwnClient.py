@@ -58,7 +58,7 @@ class GwnClient:
             "signature": signature,
         }
 
-        async with self._session.post(url, params=params, json=body_json,headers={"Content-Type": "application/json"} ) as response:
+        async with self._session.post(url, params=params, data=body_json,headers={"Content-Type": "application/json"} ) as response:
             data = await response.json(content_type=None)
 
             if response.status != 200:
