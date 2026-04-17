@@ -77,10 +77,11 @@ class GwnClient:
         page_num = 1
         results: list[dict[str, Any]] = []
         page_count = 0
+        page_size = self._config.page_size
         while self._config.max_pages < 1 or page_count < self._config.max_pages:
             page_body = dict(body)
             page_body["pageNum"] = page_num
-            page_body["pageSize"] = self._config.page_size
+            page_body["pageSize"] = page_size
 
             response = await self._post(path, page_body)
 
@@ -101,7 +102,7 @@ class GwnClient:
         return results
 
     @property
-    def refresh_period(self) -> str:
+    def refresh_period(self) -> int:
         return self._config.refresh_period_s
 
     async def authenticate(self) -> GwnToken:
@@ -143,6 +144,12 @@ class GwnClient:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})
 
     async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]]:
-        return await self._post_paginated("oapi/v1.0.0/ssid/list",{})
+        return await self._post_paginated("oapi/v1.0.0/ssid/list",{ "networkId": network_id})
 
-    
+    async def get_all_devices(self, network_id: str) -> list[dict[str, Any]]:
+        return await self._post_paginated("oapi/v1.0.0/ap/list",{
+            "networkId": network_id,
+            "filter": {
+                "showType": "all"
+            }
+        })

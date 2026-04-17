@@ -17,17 +17,23 @@ class MqttGwnManager:
         self._expiry: int = -1
 
 
-    async def _poll_gwn_manager(self) -> None:
+    async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
-        networks = await self._gwnClient.get_all_networks()
-        _LOGGER.debug(f"Found: {networks.length} networks")
-        for network in networks:
-            network_id = str(network["id"])
-            network_name = str(network["networkName"])
-            devices = await self._gwnClient.get_all_devices(network_id)
-            _LOGGER.debug(f"Found: {devices.length} Devices for Network: {network_name}")
-            ssids = await self._gwnClient.get_all_ssids(network_id)
-            _LOGGER.debug(f"Found: {ssids.length} SSIDs for Network: {network_name}")
+        while True:
+            networks = await self._gwnClient.get_all_networks()
+            _LOGGER.debug(f"Found: {len(networks)} networks")
+            for network in networks:
+                network_id = str(network["id"])
+                network_name = str(network["networkName"])
+                devices = await self._gwnClient.get_all_devices(network_id)
+                _LOGGER.debug(f"Found: {len(devices)} Devices for Network: {network_name}")
+                ssids = await self._gwnClient.get_all_ssids(network_id)
+                _LOGGER.debug(f"Found: {len(ssids)} SSIDs for Network: {network_name}")
+        await asyncio.sleep(self._gwnClient.refresh_period)
+
+    async def _run_mqtt_interface(self) -> None:
+        _LOGGER.info("Listening to MQTT")
+        await asyncio.Event().wait()
 
     async def connect(self) -> bool:
         try:
@@ -49,10 +55,9 @@ class MqttGwnManager:
 
     async def run(self):
         _LOGGER.info("Starting Poll of GWN Manager and MQTT")
-        while True:
-            self._poll_gwn_manager()
-            
-            await asyncio.sleep(self._gwnClient.refresh_period)
+        gwn_task = asyncio.create_task(self._run_gwn_interface())
+        mqtt_task = asyncio.create_task(self._run_mqtt_interface())
+        await asyncio.gather(gwn_task, mqtt_task)
 
 
         
