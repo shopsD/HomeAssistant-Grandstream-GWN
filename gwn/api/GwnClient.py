@@ -33,7 +33,7 @@ class GwnClient:
 
     def _body_hash(self, body: dict[str, Any]) -> str:
         # Use stable JSON encoding so hashing is deterministic.
-        encoded = json.dumps(body, separators=(",", ":"), sort_keys=True)
+        encoded = json.dumps(body, separators=(",", ":"))
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
     async def _ensure_token_valid(self) -> None:
@@ -68,7 +68,9 @@ class GwnClient:
             if response.status != 200:
                 _LOGGER.warning(f"Request failed with status {response.status}: {data}")
                 return None
-
+            retCode = data.get("retCode")
+            if retCode and int(retCode) != 0:
+                _LOGGER.warning(f"Request failed with code {retCode}: {data.get("msg")}")
             return data
 
     async def _post_paginated(self, path: str, body: dict[str, Any]) -> list[dict[str, Any]] | None:
