@@ -60,7 +60,7 @@ class ConfigParser:
         if not isinstance(logging_section, dict):
             _LOGGER.debug("No Logging section found in config")
         else:
-            _LOGGER.debug(f"Parsing Logging Config")
+            _LOGGER.debug("Parsing Logging Config")
             log_level = logging_section.get("level")
             if log_level:
                 log_level = str(log_level)
