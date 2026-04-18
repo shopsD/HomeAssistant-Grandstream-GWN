@@ -11,9 +11,67 @@ class GwnClient:
         self._config = config
         self._requestor = GwnRequestor(config)
 
+    def _normalise_dictionary_data(self, dictionary_data: dict[str, Any] | None) -> dict[str, Any]:
+        normalised:dict[str, Any] = {}
+        if not dictionary_data:
+            return {}
+        for entry in dictionary_data:
+            normalised[entry["key"]] = entry
 
-    def _build_device_data(self, ssid_info: dict[str,GwnSSID], detailed_info: list[dict[str, Any]]) -> list[GwnDevice]:
+        return normalised
+
+    def _normalise_mac(self, mac:str) -> str:
+        mac = mac.replace(":", "").replace("-", "").upper()
+        return ":".join(mac[i:i+2] for i in range(0, 12, 2))
+
+    def _build_device_data(self, ssid_info: dict[str,GwnSSID], device_info: list[dict[str, Any]]) -> list[GwnDevice]:
         device_list: list[GwnDevice] = []
+        for device in device_info:
+            basic_info:dict[str, Any] = device[0]
+            config_info_port:dict[str, Any] = device[1]
+            config_info_client:dict[str, Any] = device[2]
+            device_firmware:dict[str, Any] = device[3]
+            
+            # the sub tables are json objects with 3 parameters: type, key and value so use "key" as a dictionary key
+            config_info_port["result"] = self._normalise_dictionary_data(config_info_port["result"])
+            config_info_client["g24"] = self._normalise_dictionary_data(config_info_client["g24"])
+            config_info_client["g5"] = self._normalise_dictionary_data(config_info_client["g5"])
+            config_info_client["g6"] = self._normalise_dictionary_data(config_info_client["g6"])
+            device_list.append(GwnDevice(
+                status=int(basic_info["status"])==1,
+                apType=basic_info["apType"],
+                mac=self._normalise_mac(basic_info["mac"]),
+                name=basic_info["name"],
+                ip=basic_info["ipv4"] if basic_info["ipv4"] is not None else basic_info["ip"],
+                upTime=basic_info["upTime"],
+                usage=int(basic_info["usage"]),
+                upload=int(basic_info["upload"]),
+                download=int(basic_info["download"]),
+                clients=int(basic_info["clients"]),
+                versionFirmware=basic_info["versionFirmware"],
+                newFirmware=device_firmware["lastVersion"],
+                networkId=basic_info["networkId"],
+                ipv6=basic_info["ipv6"],
+                wireless=int(config_info_port["wireless"]) == 1,
+                vlanCount=int(config_info_port["vlanCount"]),
+                ssidNumber=int(config_info_port["ssidNumber"]),
+                temperature=config_info_client["temperature"],
+                bootVersion=config_info_client["bootVersion"],
+                online=int(config_info_port["online"]) == 1,
+
+                deviceType=config_info_port["deviceType"],
+                model=config_info_port["model"],
+                network=config_info_client["network"],
+                usedMemory=config_info_client["usedMemory"],
+                cpuUsage=config_info_client["cpuUsage"],
+                channelload_2g4=config_info_client["channelload_2g4"],
+                channelload_5g=config_info_client["channelload_5g"],
+                channelload_6g=config_info_client["channelload_6g"],
+                channel_2_4=int(config_info_client["g24"]["channel"]["value"]),
+                channel_5=int(config_info_client["g5"]["channel"]["value"]),
+                channel_6=int(config_info_client["g6"]["channel"]["value"]),
+                ssid=[]
+            ))
         return device_list
 
     def _build_ssid_data(self, ssid_info: dict[str, Any]) -> dict[str,GwnSSID]:
@@ -60,20 +118,31 @@ class GwnClient:
                 if id:
                     config_info = await self._requestor.get_ssid_configuration(int(id))
                     if config_info is not None:
-                        
                         ssid_data[id] = [basic_info,config_info]
         return ssid_data
 
-    async def _get_device_data(self, network_id: int,device_response: list[dict[str, Any]] | None) -> list[dict[str, Any]] :
-        device_data: list[dict[str, Any]] = []
+    async def _get_device_data(self, network_id: int,device_response: list[dict[str, Any]] | None, firmware_data: dict[str:dict[str:Any]]) -> list[dict[str, Any]] :
+        device_data: list[list[dict[str, Any]]] = []
         if device_response is not None:
-            for result in device_response:
-                mac = result.get("mac")
+            for basic_info in device_response:
+                mac = basic_info.get("mac")
                 if mac:
-                    device = await self._requestor.get_device_info(network_id,mac) or {}
-                    if device:
-                        device_data.append(device)
+                    mac = self._normalise_mac(mac)
+                    device_info_port = await self._requestor.get_device_info_port(network_id,mac) or {}
+                    device_info_client = await self._requestor.get_device_info_client(mac) or {}
+                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data[mac]])
         return device_data
+
+    async def _get_firmware_data(self, network_id: int) -> dict[str:dict[str:Any]]:
+        device_firmware = await self._requestor.get_device_firmware_version(int(network_id))
+        if device_firmware is None:
+            return {}
+        firmware_data: dict[str:dict[str:Any]] = {}
+        for firmware in device_firmware:
+            # mac the MAC actually follow the format of AA:BB:CC:DD:EE:FF instead of AABBCCDDEEFF
+            mac = self._normalise_mac(firmware["mac"])
+            firmware_data[mac] = firmware
+        return firmware_data
 
     @property
     def refresh_period(self) -> int:
@@ -91,7 +160,8 @@ class GwnClient:
     async def get_gwn_data(self, network_id: str) -> list[GwnDevice] | None:
         ssid_data = await self._get_ssid_data(network_id)
         device_response = await self._requestor.get_all_devices(network_id)
-        device_data = await self._get_device_data(int(network_id),device_response)
+        device_firmware_data = await self._get_firmware_data(int(network_id))
+        device_data = await self._get_device_data(int(network_id),device_response,device_firmware_data)
 
         ssids = self._build_ssid_data(ssid_data)
         return self._build_device_data(ssids,device_data)
