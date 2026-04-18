@@ -32,7 +32,8 @@ class MqttGwnManager:
             for network in networks:
                 network_id = str(network["id"])
                 network_name = str(network["networkName"])
-                devices = await self._gwnClient.get_all_devices(network_id)
+                devices = await self._gwnClient.get_gwn_data(network_id)
+
                 if devices is None:
                     continue
                 _LOGGER.debug(f"Found: {len(devices)} Devices for Network: {network_name}")

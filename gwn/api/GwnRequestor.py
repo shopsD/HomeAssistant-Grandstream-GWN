@@ -139,6 +139,9 @@ class GwnRequestor:
     async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ssid/list",{ "networkId": network_id})
 
+    async def get_ssid_configuration(self, ssid_id: int) -> dict[str, Any] | None:
+        return await self._post("oapi/v1.0.0/ssid/configuration",{ "id": ssid_id})
+
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
             "networkId": network_id,
