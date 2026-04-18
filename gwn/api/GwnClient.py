@@ -31,9 +31,9 @@ class GwnClient:
                 securityMode=cast(SecurityMode, int(basic_info["securityMode"])),
                 macFilteringEnabled=cast(MacFiltering,int(basic_info["macFilteringEnabled"])),
                 clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
-                ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="Radio" 
-                    else IsolationMode.Internet if config_info["ssidIsolationMode"]=="Internet" 
-                    else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="Gateway " 
+                ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0" 
+                    else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1" 
+                    else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2" 
                     else None),
                 ssidIsolation=int(config_info["ssidIsolation"])==1,
                 ssidSsidHidden=int(config_info["ssidSsidHidden"])==1,
