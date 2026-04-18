@@ -23,24 +23,12 @@ class MqttGwnManager:
     async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
         while True:
-            networks = await self._gwnClient.get_all_networks()
-            
-            if networks is None:
-                networks = [] # dont loop but also allow the refresh poll to be respected
-            else:
-                _LOGGER.debug(f"Found: {len(networks)} networks")
-            for network in networks:
-                network_id = str(network["id"])
-                network_name = str(network["networkName"])
-                devices = await self._gwnClient.get_gwn_data(network_id)
-
-                if devices is None:
-                    continue
-                _LOGGER.debug(f"Found: {len(devices)} Devices for Network: {network_name}")
-                ssids = await self._gwnClient.get_all_ssids(network_id)
-                if ssids is None:
-                    continue
-                _LOGGER.debug(f"Found: {len(ssids)} SSIDs for Network: {network_name}")
+            try:
+                networks = await self._gwnClient.get_gwn_data()
+                _LOGGER.info(f"Publishing {len(networks)} Networks over MQTT")
+            except Exception as e:
+                _LOGGER.error("Error retreiving GWN Data: %s", e)
+            _LOGGER.info(f"Will refresh in {self._gwnClient.refresh_period}s")
             await asyncio.sleep(self._gwnClient.refresh_period)
 
     async def _run_mqtt_interface(self) -> None:

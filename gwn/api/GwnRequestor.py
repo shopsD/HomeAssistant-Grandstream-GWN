@@ -69,12 +69,13 @@ class GwnRequestor:
             data = await response.json(content_type=None)
 
             if response.status != 200:
-                _LOGGER.warning(f"Request failed with status {response.status}: {data}")
+                _LOGGER.warning(f"Request to '{url}' failed with status {response.status}: {data}")
                 return None
             retCode = data.get("retCode")
             if retCode and int(retCode) != 0:
-                _LOGGER.warning(f"Request failed with code {retCode}: {data.get('msg')}")
+                _LOGGER.warning(f"Request to '{url}' failed with code {retCode}: {data.get('msg')}")
                 return None
+            _LOGGER.debug(f"Request to '{url}' succeeded")
             return data
 
     async def _post_paginated(self, path: str, body: dict[str, Any]) -> list[dict[str, Any]] | None:
@@ -113,10 +114,11 @@ class GwnRequestor:
 
     async def authenticate(self) -> bool:
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
+
         params = {
             "client_id": self._config.app_id,
             "client_secret": self._config.secret_key,
-            "grant_type": "client_credentials",
+            "grant_type": "client_credentials"
         }
 
         async with self._session.get(url, params=params) as response:
@@ -140,7 +142,11 @@ class GwnRequestor:
         return await self._post_paginated("oapi/v1.0.0/ssid/list",{ "networkId": network_id})
 
     async def get_ssid_configuration(self, ssid_id: int) -> dict[str, Any] | None:
-        return await self._post("oapi/v1.0.0/ssid/configuration",{ "id": ssid_id})
+        response = await self._post("oapi/v1.0.0/ssid/configuration",{ "id": ssid_id})
+        if response is None:
+            return None
+        data = response.get("data", {})
+        return data.get("configuration", {})
 
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
@@ -150,5 +156,21 @@ class GwnRequestor:
             }
         })
 
-    async def get_device_list_info(self, macs: list[str]) -> dict[str, Any] | None:
-        return await self._post("oapi/v1.0.0/ap/info",{"mac": macs})
+    async def get_device_info_port(self, network_id: int, mac: str) -> dict[str, Any] | None:
+        response = await self._post("oapi/v1.0.0/device/info",{"networkId":network_id, "mac": mac})
+        if not response:
+            return None
+        return response.get("data", {})
+
+    async def get_device_info_client(self, mac: str) -> dict[str, Any] | None:
+        response = await self._post("oapi/v2.0.0/ap/info",{"mac": [mac]})
+        if not response:
+            return None
+        return response.get("data", {})
+
+    async def get_device_firmware_version(self, network_id: int) -> list[dict[str, Any]] | None:
+        response = await self._post("oapi/v1.0.0/upgrade/version",{"networkId": network_id})
+        if not response:
+            return None
+        data = response.get("data", {})
+        return data.get("result", [])
