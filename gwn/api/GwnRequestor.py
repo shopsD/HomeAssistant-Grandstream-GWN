@@ -114,10 +114,11 @@ class GwnRequestor:
 
     async def authenticate(self) -> bool:
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
+
         params = {
             "client_id": self._config.app_id,
             "client_secret": self._config.secret_key,
-            "grant_type": "client_credentials",
+            "grant_type": "client_credentials"
         }
 
         async with self._session.get(url, params=params) as response:
@@ -157,7 +158,6 @@ class GwnRequestor:
 
     async def get_device_info_port(self, network_id: int, mac: str) -> dict[str, Any] | None:
         response = await self._post("oapi/v1.0.0/device/info",{"networkId":network_id, "mac": mac})
-        #d5 = await self._post("app/ap/monitor/info",{"mac":str(mac) })
         if not response:
             return None
         return response.get("data", {})

@@ -1,3 +1,5 @@
+import logging
+
 from typing import Any, cast
 
 from gwn.api.GwnRequestor import GwnRequestor
@@ -42,6 +44,14 @@ class GwnClient:
             config_info_client["g5"] = self._normalise_dictionary_data(config_info_client["g5"])
             config_info_client["g6"] = self._normalise_dictionary_data(config_info_client["g6"])
             
+            # map SSIDs to the device using SSID name
+            # ideally SSID name will not be used
+            ssids: list[GwnSSID] = []
+            for ssid in config_info_client["ssid"]:
+                ssid_key = list(ssid.keys())[0]
+                if ssid_key in ssid_info:
+                    ssids.append(ssid_info[ssid_key])
+
             gwn_device = GwnDevice(
                 status=int(basic_info["status"])==1,
                 apType=basic_info["apType"],
@@ -78,10 +88,10 @@ class GwnClient:
                 cpuUsage=config_info_client["cpuUsage"],
                 channelload_6g=config_info_client["channelload_6g"],
                 channelload_5g=config_info_client["channelload_5g"],
-                
-                ssid=[]
+                ssids=ssids
             )
-            _LOGGER.debug(f"Processed device with MAC {mac}")
+
+            _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
             device_list.append(gwn_device)
         _LOGGER.info(f"Processed {len(device_list)} Devices")
         return device_list
@@ -92,7 +102,7 @@ class GwnClient:
         for id in ssid_info:
             basic_info: dict[str, Any] = ssid_info[id][0]
             config_info: dict[str, Any] = ssid_info[id][1]
-            ssid_list[id] = GwnSSID(
+            gwn_ssid = GwnSSID(
                 id=id,
                 ssidName=basic_info["ssidName"],
                 wifiEnabled=int(basic_info["wifiEnabled"])==1,
@@ -120,6 +130,10 @@ class GwnClient:
                 ghz5_Enabled="5" in str(config_info["ssidNewSsidBand"]),
                 ghz6_Enabled="6" in str(config_info["ssidNewSsidBand"])
             )
+            if gwn_ssid.ssidName in ssid_list:
+                _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
+            else:
+                ssid_list[gwn_ssid.ssidName] = gwn_ssid
             _LOGGER.debug(f"Processed SSID: {id}")
         _LOGGER.info(f"Processed {len(ssid_list)} SSIDs")
         return ssid_list
@@ -142,7 +156,7 @@ class GwnClient:
             for basic_info in device_response:
                 mac = basic_info.get("mac")
                 if mac:
-                    _LOGGER.debug(f"Reqeusting data for {MAC}")
+                    _LOGGER.debug(f"Reqeusting data for {mac}")
                     mac = self._normalise_mac(mac)
                     device_info_port = await self._requestor.get_device_info_port(network_id,mac) or {}
                     device_info_client = await self._requestor.get_device_info_client(mac) or {}

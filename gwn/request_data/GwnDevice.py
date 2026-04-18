@@ -36,7 +36,6 @@ class GwnDevice:
     partNumber: str
     bootVersion: str
     network: str
-
     temperature: str
     usedMemory: str
     channelload_2g4: str
@@ -44,6 +43,5 @@ class GwnDevice:
     cpuUsage: str
     channelload_5g: str
 
-
-    ssid: list[GwnSSID]
+    ssids: list[GwnSSID]
 

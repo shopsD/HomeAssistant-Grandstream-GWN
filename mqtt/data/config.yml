@@ -12,7 +12,7 @@ gwn:
   url: https://localhost:8443 # default https://localhost:8443
   app_id: CHANGE_ME
   secret_key: CHANGE_ME
-  # page_size: 5 # default 5
+  # page_size: 5 # default 10
   # max_pages: 100 # default 100 (set to 0 for unlimited)
   # refresh_period_s: 30 # the rate to poll the GWN Manager for all data
 logging:
