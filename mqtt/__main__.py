@@ -23,8 +23,8 @@ async def async_main(config_path: Path) -> None:
     app_config = ConfigParser.load(config_path)
     init_logger(app_config.logging)
     manager = MqttClient(app_config.mqtt)
-    gwnClient = GwnClient(app_config.gwn)
-    app_manager = MqttGwnManager(manager,gwnClient)
+    gwn_client = GwnClient(app_config.gwn)
+    app_manager = MqttGwnManager(manager,gwn_client)
     if await app_manager.connect():
         await app_manager.run()
 
