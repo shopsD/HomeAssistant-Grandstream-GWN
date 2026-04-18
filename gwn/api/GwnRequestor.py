@@ -69,12 +69,13 @@ class GwnRequestor:
             data = await response.json(content_type=None)
 
             if response.status != 200:
-                _LOGGER.warning(f"Request failed with status {response.status}: {data}")
+                _LOGGER.warning(f"Request to '{url}' failed with status {response.status}: {data}")
                 return None
             retCode = data.get("retCode")
             if retCode and int(retCode) != 0:
-                _LOGGER.warning(f"Request failed with code {retCode}: {data.get('msg')}")
+                _LOGGER.warning(f"Request to '{url}' failed with code {retCode}: {data.get('msg')}")
                 return None
+            _LOGGER.debug(f"Request to '{url}' succeeded")
             return data
 
     async def _post_paginated(self, path: str, body: dict[str, Any]) -> list[dict[str, Any]] | None:

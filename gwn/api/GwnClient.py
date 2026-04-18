@@ -2,9 +2,11 @@ from typing import Any, cast
 
 from gwn.api.GwnRequestor import GwnRequestor
 from gwn.authentication import GwnConfig
+from gwn.constants import Constants
 from gwn.request_data import GwnDevice
 from gwn.request_data import GwnSSID, IsolationMode, MacFiltering, SecurityMode
 
+_LOGGER = logging.getLogger(Constants.LOG)
 
 class GwnClient:
     def __init__(self, config: GwnConfig) -> None:
@@ -26,7 +28,9 @@ class GwnClient:
 
     def _build_device_data(self, ssid_info: dict[str,GwnSSID], device_info: list[dict[str, Any]]) -> list[GwnDevice]:
         device_list: list[GwnDevice] = []
+        _LOGGER.info(f"Processing {len(device_info)} Devices")
         for device in device_info:
+            
             basic_info:dict[str, Any] = device[0]
             config_info_port:dict[str, Any] = device[1]
             config_info_client:dict[str, Any] = device[2]
@@ -37,7 +41,8 @@ class GwnClient:
             config_info_client["g24"] = self._normalise_dictionary_data(config_info_client["g24"])
             config_info_client["g5"] = self._normalise_dictionary_data(config_info_client["g5"])
             config_info_client["g6"] = self._normalise_dictionary_data(config_info_client["g6"])
-            device_list.append(GwnDevice(
+            
+            gwn_device = GwnDevice(
                 status=int(basic_info["status"])==1,
                 apType=basic_info["apType"],
                 mac=self._normalise_mac(basic_info["mac"]),
@@ -75,11 +80,15 @@ class GwnClient:
                 channelload_5g=config_info_client["channelload_5g"],
                 
                 ssid=[]
-            ))
+            )
+            _LOGGER.debug(f"Processed device with MAC {mac}")
+            device_list.append(gwn_device)
+        _LOGGER.info(f"Processed {len(device_list)} Devices")
         return device_list
 
     def _build_ssid_data(self, ssid_info: dict[str, Any]) -> dict[str,GwnSSID]:
         ssid_list: dict[str,GwnSSID] = {}
+        _LOGGER.info(f"Processing {len(ssid_info)} SSIDs")
         for id in ssid_info:
             basic_info: dict[str, Any] = ssid_info[id][0]
             config_info: dict[str, Any] = ssid_info[id][1]
@@ -111,6 +120,8 @@ class GwnClient:
                 ghz5_Enabled="5" in str(config_info["ssidNewSsidBand"]),
                 ghz6_Enabled="6" in str(config_info["ssidNewSsidBand"])
             )
+            _LOGGER.debug(f"Processed SSID: {id}")
+        _LOGGER.info(f"Processed {len(ssid_list)} SSIDs")
         return ssid_list
 
     async def _get_ssid_data(self, network_id: str) -> dict[str, Any]:
@@ -131,10 +142,13 @@ class GwnClient:
             for basic_info in device_response:
                 mac = basic_info.get("mac")
                 if mac:
+                    _LOGGER.debug(f"Reqeusting data for {MAC}")
                     mac = self._normalise_mac(mac)
                     device_info_port = await self._requestor.get_device_info_port(network_id,mac) or {}
                     device_info_client = await self._requestor.get_device_info_client(mac) or {}
                     device_data.append([basic_info,device_info_port,device_info_client, firmware_data[mac]])
+                else:
+                    _LOGGER.warn(f"Found response with missing MAC Address")
         return device_data
 
     async def _get_firmware_data(self, network_id: int) -> dict[str:dict[str:Any]]:
@@ -162,12 +176,14 @@ class GwnClient:
         return await self._requestor.get_all_ssids(network_id)
 
     async def get_gwn_data(self, network_id: str) -> list[GwnDevice] | None:
+        _LOGGER.info(f"Getting Devices for Network: {network_id}")
         ssid_data = await self._get_ssid_data(network_id)
         device_response = await self._requestor.get_all_devices(network_id)
         device_firmware_data = await self._get_firmware_data(int(network_id))
         device_data = await self._get_device_data(int(network_id),device_response,device_firmware_data)
 
         ssids = self._build_ssid_data(ssid_data)
-        return self._build_device_data(ssids,device_data)
+        devices = self._build_device_data(ssids,device_data)
+        _LOGGER.info(f"Found {len(devices)} Devices for Network: {network_id}")
 
     
