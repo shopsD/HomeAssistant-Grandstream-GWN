@@ -1,121 +1,57 @@
-import hashlib
-import json
-import time
 from typing import Any
 
-import aiohttp
-
-from gwn.authentication import GwnAuthConfig, GwnToken
-
-class GwnAuthenticationError(Exception):
-    pass
-
-
-class GwnRequestError(Exception):
-    pass
+from gwn.api.GwnRequestor import GwnRequestor
+from gwn.authentication import GwnConfig
+from gwn.request_data import GwnDevice
+from gwn.request_data import GwnSSID
 
 
 class GwnClient:
-    def __init__(self, session: aiohttp.ClientSession, config: GwnAuthConfig) -> None:
-        self._session = session
+    def __init__(self, config: GwnConfig) -> None:
         self._config = config
-        self._token: GwnToken | None = None
+        self._requestor = GwnRequestor(config)
 
-    def _build_signature(self, body: dict[str, Any], access_token: str, timestamp_ms: int) -> str:
-        """
-        This is used to build the signature that is required for GWN Manager requests
-        """
-        body_hash = self._body_hash(body)
-        params = (
-            f"access_token={access_token}"
-            f"&appID={self._config.app_id}"
-            f"&secretKey={self._config.secret_key}"
-            f"&timestamp={timestamp_ms}"
-        )
-        final = f"&{params}&{body_hash}&"
-        return hashlib.sha256(final.encode("utf-8")).hexdigest()
 
-    def _body_hash(self, body: dict[str, Any]) -> str:
-        # Use stable JSON encoding so hashing is deterministic.
-        encoded = json.dumps(body, separators=(",", ":"), sort_keys=True)
-        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    def _build_device_info(self,basic_info: list[dict[str, Any]] | None, detailed_info: dict[str, Any] | None, ssid_info: dict[str,GwnSSID]) -> list[GwnDevice]:
+        device_list: list[GwnDevice] = []
+        return device_list
 
-    async def _ensure_token_valid(self) -> None:
-        if self._token is None or self._token.is_expired():
-            await self.authenticate()
+    def _build_ssid_list(self, ssid_info: dict[str, Any]) -> dict[str,GwnSSID]:
+        ssid_list: dict[str,GwnSSID] = {}
+        return ssid_list
 
-    async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
-        await self._ensure_token_valid()
+    @property
+    def refresh_period(self) -> int:
+        return self._config.refresh_period_s
 
-        if self._token is None:
-            raise GwnAuthenticationError("No access token available")
+    async def authenticate(self) -> bool:
+        return await self._requestor.authenticate()
 
-        timestamp_ms = int(time.time() * 1000)
-        signature = self._build_signature(
-            body=body,
-            access_token=self._token.access_token,
-            timestamp_ms=timestamp_ms,
-        )
+    async def get_all_networks(self) -> list[dict[str, Any]] | None:
+        return await self._requestor.get_all_networks()
 
-        url = f"{self._config.base_url.rstrip('/')}/{path.lstrip('/')}"
-        params = {
-            "access_token": self._token.access_token,
-            "appID": self._config.app_id,
-            "timestamp": str(timestamp_ms),
-            "signature": signature,
-        }
+    async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]] | None:
+        return await self._requestor.get_all_ssids(network_id)
 
-        async with self._session.post(url, params=params, json=body) as response:
-            data = await response.json(content_type=None)
-
-            if response.status != 200:
-                raise GwnRequestError( f"Request failed with status {response.status}: {data}" )
-
-            return data
-
-    async def authenticate(self) -> GwnToken:
-        url = f"{self._config.base_url.rstrip('/')}/oauth/token"
-        params = {
-            "client_id": self._config.app_id,
-            "client_secret": self._config.secret_key,
-            "grant_type": "client_credentials",
-        }
-
-        async with self._session.get(url, params=params) as response:
-            data = await response.json(content_type=None)
-
-            if response.status != 200:
-                raise GwnAuthenticationError(f"Token request failed with status {response.status}: {data}")
-
-            if "access_token" not in data:
-                raise GwnAuthenticationError(f"Token response missing access_token: {data}")
-
-            self._token = GwnToken.from_response(data)
-            return self._token
-
-    
-
-    async def get_device_list(self,network_id: str, page_num: int = 1, page_size: int = 50,search: str = "") -> dict[str, Any]:
-        return await self._post(
-            "oapi/v1.0.0/ap/list",
-            {
-                "search": search,
-                "pageNum": page_num,
-                "pageSize": page_size,
-                "networkId": network_id,
-                "filter": {
-                    "showType": "all",
-                }
-            }
-        )
-
-    async def get_network_list(self, page_num: int = 1, page_size: int = 50) -> dict[str, Any]:
-        return await self._post(
-            "oapi/v1.0.0/network/list",
-            {
-                "pageNum": page_num,
-                "pageSize": page_size,
-            }
-        )
+    async def get_gwn_data(self, network_id: str) -> list[GwnDevice] | None:
+        ssid_response = await self._requestor.get_all_ssids(network_id)
+        ssid_data: dict[str, Any] = {}
+        if ssid_response is not None:
+            for result in ssid_response:
+                id = result.get("id")
+                if id:
+                    ssid =  await self._requestor.get_ssid_configuration(int(id))
+                    if ssid is not None:
+                        ssid_data[id] = ssid
+        ssids = self._build_ssid_list(ssid_data)
+        device_response = await self._requestor.get_all_devices(network_id)
+        macs: list[str] = []
+        if device_response is not None:
+            for result in device_response:
+                mac = result.get("mac")
+                if mac:
+                    macs.append(mac)
+        device_data = await self._requestor.get_device_list_info(macs)
+        return self._build_device_info(device_response,device_data,ssids)
 
     

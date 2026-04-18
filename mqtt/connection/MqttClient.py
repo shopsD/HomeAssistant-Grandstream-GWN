@@ -8,7 +8,7 @@ from mqtt.config import MqttConfig
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
-class ConnectionManager:
+class MqttClient:
     def __init__(self, config: MqttConfig) -> None:
         self._config = config
         self._client: Client | None = None
@@ -28,11 +28,11 @@ class ConnectionManager:
     def topic(self) -> str:
         return self._config.topic
 
-    async def connect(self) -> None:
+    async def connect(self) -> bool:
         _LOGGER.info("Connecting to MQTT")
         if self._client is not None:
             _LOGGER.error("Client is already connected")
-            return
+            return self._connected
         tls_context = None
         if self._config.tls:
             tls_context = ssl.create_default_context()
@@ -52,6 +52,7 @@ class ConnectionManager:
         self._client = client
         self._connected = True
         _LOGGER.info("Connected to MQTT broker at %s:%s", self._config.host, self._config.port)
+        return self._connected
 
     async def disconnect(self) -> None:
         if self._client is None:

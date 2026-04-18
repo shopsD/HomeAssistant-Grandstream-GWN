@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from gwn.authentication import GwnAuthConfig
+from gwn.authentication import GwnConfig
 from mqtt.config.LoggingConfig import LoggingConfig
 from mqtt.config.MqttConfig import MqttConfig
 
@@ -9,4 +9,4 @@ from mqtt.config.MqttConfig import MqttConfig
 class AppConfig:
     mqtt: MqttConfig
     logging: LoggingConfig
-    gwn: GwnAuthConfig
+    gwn: GwnConfig
