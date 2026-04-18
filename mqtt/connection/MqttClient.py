@@ -8,7 +8,7 @@ from mqtt.config import MqttConfig
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
-class ConnectionManager:
+class MqttClient:
     def __init__(self, config: MqttConfig) -> None:
         self._config = config
         self._client: Client | None = None

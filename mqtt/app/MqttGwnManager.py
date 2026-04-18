@@ -2,9 +2,8 @@ import asyncio
 import logging
 
 from gwn.api import GwnClient
-from gwn.authentication import GwnToken
 from gwn.constants import Constants
-from mqtt.connection import ConnectionManager
+from mqtt.connection import MqttClient
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
@@ -15,10 +14,9 @@ class RequestError(Exception):
     pass
 
 class MqttGwnManager:
-    def __init__(self, mqttClient: ConnectionManager, gwnClient: GwnClient) -> None:
+    def __init__(self, mqttClient: MqttClient, gwnClient: GwnClient) -> None:
         self._mqttClient = mqttClient
         self._gwnClient = gwnClient
-        self._access_token: GwnToken | None = None
         self._expiry: int = -1
 
 
@@ -57,8 +55,7 @@ class MqttGwnManager:
 
             _LOGGER.debug("Connected to MQTT Server")
             _LOGGER.debug("Connecting to GWN Manager")
-            self._access_token = await self._gwnClient.authenticate()
-            if self._access_token is None:
+            if not await self._gwnClient.authenticate():
                 raise AuthenticationError("Failed to acquire access token from GWN Manager")
 
             _LOGGER.debug("Connected to GWN Manager")

@@ -3,15 +3,13 @@ import asyncio
 import logging
 
 from pathlib import Path
-from aiohttp import ClientSession 
-
 
 from gwn.api import GwnClient
 from gwn.constants import Constants
 from mqtt.app import MqttGwnManager
 from mqtt.config import ConfigParser
 from mqtt.config import LoggingConfig
-from mqtt.connection import ConnectionManager
+from mqtt.connection import MqttClient
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
@@ -24,12 +22,11 @@ def init_logger(config: LoggingConfig) -> None:
 async def async_main(config_path: Path) -> None:
     app_config = ConfigParser.load(config_path)
     init_logger(app_config.logging)
-    manager = ConnectionManager(app_config.mqtt)
-    async with ClientSession() as session:
-        gwnClient = GwnClient(session,app_config.gwn)
-        app_manager = MqttGwnManager(manager,gwnClient)
-        if await app_manager.connect():
-            await app_manager.run()
+    manager = MqttClient(app_config.mqtt)
+    gwnClient = GwnClient(app_config.gwn)
+    app_manager = MqttGwnManager(manager,gwnClient)
+    if await app_manager.connect():
+        await app_manager.run()
 
 
 def main() -> None:

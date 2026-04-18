@@ -4,7 +4,7 @@ from typing import cast
 import logging
 import yaml
 
-from gwn.authentication import GwnAuthConfig
+from gwn.authentication import GwnConfig
 from gwn.constants import Constants
 from mqtt.config.AppConfig import AppConfig
 from mqtt.config.MqttConfig import MqttConfig
@@ -38,7 +38,7 @@ class ConfigParser:
         app_id = gwn_section.get("app_id")
         if not secret_key:
             raise ConfigParserError("gwn.app_id is missing")
-        gwnConfig = GwnAuthConfig(app_id=str(app_id),secret_key=str(secret_key))
+        gwnConfig = GwnConfig(app_id=str(app_id),secret_key=str(secret_key))
         gwn_url = gwn_section.get("url")
         if gwn_url:
             gwnConfig.base_url = str(gwn_url)

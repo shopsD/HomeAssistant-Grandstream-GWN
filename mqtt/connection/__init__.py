@@ -1,3 +1,3 @@
-from .ConnectionManager import ConnectionManager
+from .MqttClient import MqttClient
 
-__all__ = ["ConnectionManager"]
+__all__ = ["MqttClient"]

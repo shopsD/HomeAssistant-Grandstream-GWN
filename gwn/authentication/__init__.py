@@ -1,4 +1,4 @@
 from .GwnToken import GwnToken
-from .GwnAuthConfig import GwnAuthConfig
+from .GwnConfig import GwnConfig
 
-__all__ = ["GwnToken","GwnAuthConfig"]
+__all__ = ["GwnToken","GwnConfig"]
