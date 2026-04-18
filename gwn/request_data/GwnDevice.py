@@ -35,6 +35,6 @@ class GwnDevice:
     channelload_2g4: str
     channelload_5g: str
     channelload_6g: str
-    ssid: GwnSSID
+    ssid: list[GwnSSID]
     linkSpeed: str
 
