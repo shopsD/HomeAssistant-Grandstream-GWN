@@ -5,8 +5,7 @@ from typing import Any, cast
 from gwn.api.GwnRequestor import GwnRequestor
 from gwn.authentication import GwnConfig
 from gwn.constants import Constants
-from gwn.request_data import GwnDevice
-from gwn.request_data import GwnSSID, IsolationMode, MacFiltering, SecurityMode
+from gwn.request_data import GwnDevice, GwnNetwork, GwnSSID, IsolationMode, MacFiltering, SecurityMode
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
@@ -15,7 +14,7 @@ class GwnClient:
         self._config = config
         self._requestor = GwnRequestor(config)
 
-    def _normalise_dictionary_data(self, dictionary_data: dict[str, Any] | None) -> dict[str, Any]:
+    def _normalise_dictionary_data(self, dictionary_data: list[dict[str, Any]] | None) -> dict[str, Any]:
         normalised:dict[str, Any] = {}
         if not dictionary_data:
             return {}
@@ -28,15 +27,15 @@ class GwnClient:
         mac = mac.replace(":", "").replace("-", "").upper()
         return ":".join(mac[i:i+2] for i in range(0, 12, 2))
 
-    def _build_device_data(self, ssid_info: dict[str,GwnSSID], device_info: list[dict[str, Any]]) -> list[GwnDevice]:
+    def _build_device_data(self, ssid_info: dict[str,GwnSSID], device_info: list[list[dict[str, Any]]]) -> list[GwnDevice]:
         device_list: list[GwnDevice] = []
         _LOGGER.info(f"Processing {len(device_info)} Devices")
         for device in device_info:
             
-            basic_info:dict[str, Any] = device[0]
-            config_info_port:dict[str, Any] = device[1]
-            config_info_client:dict[str, Any] = device[2]
-            device_firmware:dict[str, Any] = device[3]
+            basic_info: dict[str, Any] = device[0]
+            config_info_port: dict[str, Any] = device[1]
+            config_info_client: dict[str, Any] = device[2]
+            device_firmware: dict[str, Any] = device[3]
             
             # the sub tables are json objects with 3 parameters: type, key and value so use "key" as a dictionary key
             config_info_port["result"] = self._normalise_dictionary_data(config_info_port["result"])
@@ -150,7 +149,7 @@ class GwnClient:
                         ssid_data[id] = [basic_info,config_info]
         return ssid_data
 
-    async def _get_device_data(self, network_id: int,device_response: list[dict[str, Any]] | None, firmware_data: dict[str:dict[str:Any]]) -> list[dict[str, Any]] :
+    async def _get_device_data(self, network_id: int, device_response: list[dict[str, Any]] | None, firmware_data: dict[str, dict[str, Any]]) -> list[list[dict[str, Any]]] :
         device_data: list[list[dict[str, Any]]] = []
         if device_response is not None:
             for basic_info in device_response:
@@ -162,34 +161,22 @@ class GwnClient:
                     device_info_client = await self._requestor.get_device_info_client(mac) or {}
                     device_data.append([basic_info,device_info_port,device_info_client, firmware_data[mac]])
                 else:
-                    _LOGGER.warn(f"Found response with missing MAC Address")
+                    _LOGGER.warn("Found response with missing MAC Address")
         return device_data
 
-    async def _get_firmware_data(self, network_id: int) -> dict[str:dict[str:Any]]:
+    async def _get_firmware_data(self, network_id: int) -> dict[str,dict[str,Any]]:
         device_firmware = await self._requestor.get_device_firmware_version(int(network_id))
         if device_firmware is None:
             return {}
-        firmware_data: dict[str:dict[str:Any]] = {}
+        firmware_data: dict[str,dict[str,Any]] = {}
         for firmware in device_firmware:
             # mac the MAC actually follow the format of AA:BB:CC:DD:EE:FF instead of AABBCCDDEEFF
             mac = self._normalise_mac(firmware["mac"])
             firmware_data[mac] = firmware
         return firmware_data
 
-    @property
-    def refresh_period(self) -> int:
-        return self._config.refresh_period_s
 
-    async def authenticate(self) -> bool:
-        return await self._requestor.authenticate()
-
-    async def get_all_networks(self) -> list[dict[str, Any]] | None:
-        return await self._requestor.get_all_networks()
-
-    async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]] | None:
-        return await self._requestor.get_all_ssids(network_id)
-
-    async def get_gwn_data(self, network_id: str) -> list[GwnDevice] | None:
+    async def _get_network_data(self, network_id: str) -> list[GwnDevice]:
         _LOGGER.info(f"Getting Devices for Network: {network_id}")
         ssid_data = await self._get_ssid_data(network_id)
         device_response = await self._requestor.get_all_devices(network_id)
@@ -199,5 +186,34 @@ class GwnClient:
         ssids = self._build_ssid_data(ssid_data)
         devices = self._build_device_data(ssids,device_data)
         _LOGGER.info(f"Found {len(devices)} Devices for Network: {network_id}")
+        return devices
+
+    @property
+    def refresh_period(self) -> int:
+        return self._config.refresh_period_s
+
+    async def authenticate(self) -> bool:
+        return await self._requestor.authenticate()
+
+    async def get_gwn_data(self) -> list[GwnNetwork]:
+        _LOGGER.info("Getting Networks")
+        networks = await self._requestor.get_all_networks()
+        gwn_networks: list[GwnNetwork] = []
+        if networks is not None:
+            for network in networks:
+                network_id =  str(network["id"])
+                _LOGGER.debug(f"Processing Network ID {network_id}")
+                gwn_network = GwnNetwork(
+                    id = network_id,
+                    networkName = str(network["networkName"]),
+                    countryDisplay = str(network["countryDisplay"]),
+                    country = str(network["country"]),
+                    timezone = str(network["timezone"]),
+                    devices = await self._get_network_data(network_id)
+                )
+                _LOGGER.debug(f"Processed Network {gwn_network.networkName} with ID {gwn_network.id}")
+                gwn_networks.append(gwn_network)
+        _LOGGER.info(f"Found {len(gwn_networks)} Networks")
+        return gwn_networks
 
     

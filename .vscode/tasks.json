@@ -4,7 +4,7 @@
         {
             "label": "create-python-link",
             "type": "shell",
-            "command": "ln -sfn ${workspaceFolder}/python-dev /opt/HomeAssistant-Grandstream-GWN"
+            "command": "ln -sfn ${workspaceFolder} /opt/HomeAssistant-Grandstream-GWN"
         },
         {
             "label": "remove-python-link",
