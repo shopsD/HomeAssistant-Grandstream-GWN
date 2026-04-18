@@ -161,7 +161,7 @@ class GwnClient:
                     device_info_client = await self._requestor.get_device_info_client(mac) or {}
                     device_data.append([basic_info,device_info_port,device_info_client, firmware_data[mac]])
                 else:
-                    _LOGGER.warn("Found response with missing MAC Address")
+                    _LOGGER.warning("Found response with missing MAC Address")
         return device_data
 
     async def _get_firmware_data(self, network_id: int) -> dict[str,dict[str,Any]]:
