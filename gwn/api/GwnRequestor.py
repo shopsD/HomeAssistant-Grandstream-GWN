@@ -156,9 +156,7 @@ class GwnRequestor:
 
     async def get_device_info_port(self, network_id: int, mac: str) -> dict[str, Any] | None:
         response = await self._post("oapi/v1.0.0/device/info",{"networkId":network_id, "mac": mac})
-        d3 = await self._post("oapi/v1.0.0/ap/info",{"mac": [mac]})
         #d5 = await self._post("app/ap/monitor/info",{"mac":str(mac) })
-        d4 = await self._post("oapi/v1.0.0/survey/list",{"networkId":str(network_id) })
         if not response:
             return None
         return response.get("data", {})

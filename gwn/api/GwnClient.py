@@ -49,27 +49,31 @@ class GwnClient:
                 download=int(basic_info["download"]),
                 clients=int(basic_info["clients"]),
                 versionFirmware=basic_info["versionFirmware"],
-                newFirmware=device_firmware["lastVersion"],
                 networkId=basic_info["networkId"],
                 ipv6=basic_info["ipv6"],
+
+                newFirmware=device_firmware["lastVersion"],
+                
                 wireless=int(config_info_port["wireless"]) == 1,
                 vlanCount=int(config_info_port["vlanCount"]),
                 ssidNumber=int(config_info_port["ssidNumber"]),
-                temperature=config_info_client["temperature"],
-                bootVersion=config_info_client["bootVersion"],
                 online=int(config_info_port["online"]) == 1,
-
-                deviceType=config_info_port["deviceType"],
                 model=config_info_port["model"],
-                network=config_info_client["network"],
-                usedMemory=config_info_client["usedMemory"],
-                cpuUsage=config_info_client["cpuUsage"],
-                channelload_2g4=config_info_client["channelload_2g4"],
-                channelload_5g=config_info_client["channelload_5g"],
-                channelload_6g=config_info_client["channelload_6g"],
-                channel_2_4=int(config_info_client["g24"]["channel"]["value"]),
+                deviceType=config_info_port["deviceType"],
+
                 channel_5=int(config_info_client["g5"]["channel"]["value"]),
+                channel_2_4=int(config_info_client["g24"]["channel"]["value"]),
                 channel_6=int(config_info_client["g6"]["channel"]["value"]),
+                partNumber=config_info_client["partNumber"],
+                bootVersion=config_info_client["bootVersion"],
+                network=config_info_client["network"],
+                temperature=config_info_client["temperature"],
+                usedMemory=config_info_client["usedMemory"],
+                channelload_2g4=config_info_client["channelload_2g4"],
+                cpuUsage=config_info_client["cpuUsage"],
+                channelload_6g=config_info_client["channelload_6g"],
+                channelload_5g=config_info_client["channelload_5g"],
+                
                 ssid=[]
             ))
         return device_list

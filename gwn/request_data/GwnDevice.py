@@ -15,29 +15,35 @@ class GwnDevice:
     download: int
     clients: int
     versionFirmware: str 
-    newFirmware: str 
     networkId: str
     ipv6: str
 
-    # detailed info
+    # firmware info
+    newFirmware: str 
+
+    # detailed info port
     wireless: bool
     vlanCount: int
     ssidNumber: int # supported SSID count
-    temperature: str
-    bootVersion: str
     online: bool
-
-    deviceType: str
     model: str
-    network: str
-    usedMemory: str
-    cpuUsage: str
-    channelload_2g4: str
-    channelload_5g: str
-    channelload_6g: str
+    deviceType: str
 
-    channel_2_4: int
+    # detailed info client
     channel_5: int
+    channel_2_4: int
     channel_6: int
+    partNumber: str
+    bootVersion: str
+    network: str
+
+    temperature: str
+    usedMemory: str
+    channelload_2g4: str
+    channelload_6g: str
+    cpuUsage: str
+    channelload_5g: str
+
+
     ssid: list[GwnSSID]
 
