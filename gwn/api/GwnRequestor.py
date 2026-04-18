@@ -140,7 +140,11 @@ class GwnRequestor:
         return await self._post_paginated("oapi/v1.0.0/ssid/list",{ "networkId": network_id})
 
     async def get_ssid_configuration(self, ssid_id: int) -> dict[str, Any] | None:
-        return await self._post("oapi/v1.0.0/ssid/configuration",{ "id": ssid_id})
+        response = await self._post("oapi/v1.0.0/ssid/configuration",{ "id": ssid_id})
+        if response is None:
+            return None
+        data = response.get("data", {})
+        return data.get("configuration", {})
 
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
@@ -150,5 +154,5 @@ class GwnRequestor:
             }
         })
 
-    async def get_device_list_info(self, macs: list[str]) -> dict[str, Any] | None:
-        return await self._post("oapi/v1.0.0/ap/info",{"mac": macs})
+    async def get_device_info(self, network_id: int, mac: str) -> dict[str, Any] | None:
+        return await self._post("oapi/v1.0.0/ap/info",{"networkId":network_id, "mac": mac})

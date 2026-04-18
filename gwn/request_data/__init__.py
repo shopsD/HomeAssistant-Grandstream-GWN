@@ -1,4 +1,4 @@
 from .GwnDevice import GwnDevice
-from .GwnSSID import GwnSSID
+from .GwnSSID import GwnSSID, IsolationMode, MacFiltering, SecurityMode
 
-__all__ = ["GwnDevice","GwnSSID"]
+__all__ = ["GwnDevice","GwnSSID", "IsolationMode", "MacFiltering", "SecurityMode"]

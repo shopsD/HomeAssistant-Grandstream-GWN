@@ -8,6 +8,8 @@ class SecurityMode(Enum):
     WPA_WPA2 = 2
     WPA2 = 3
     OPEN = 4
+    WPA3 = 5
+    WPA2_WPA3 = 6
     
 class MacFiltering(Enum):
     Disabled = 0
@@ -22,10 +24,9 @@ class IsolationMode(Enum):
 @dataclass(slots=True)
 class GwnSSID:
     # get data
-    id: int
+    id: str
     ssidName: str
     wifiEnabled: bool
-    vlanId: str
     onlineDevices: int
     scheduleEnabled: bool
     portalEnabled: bool
@@ -34,12 +35,18 @@ class GwnSSID:
     clientIsolationEnabled: bool
 
     # ssid config
-    ssidIsolationMode: IsolationMode
+    ssidIsolationMode: IsolationMode | None
+    ssidIsolation: bool
     ssidSsidHidden: bool
     ssidNewSsidBand: str
-    ssidVlanid: int
-    ssidVlan: int
+    ssidVlanid: int | None
+    ssidVlanEnabled: bool
     ssidEnable: bool
     ssidRemark: str
+    ssidKey: str | None
 
+    # parsed from above data
+    ghz2_4_Enabled: bool
+    ghz5_Enabled: bool
+    ghz6_Enabled: bool
 
