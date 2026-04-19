@@ -26,7 +26,7 @@ class MqttGwnManager:
             try:
                 networks = await self._gwn_client.get_gwn_data()
                 
-                self._publish_network(networks)
+                await self._publish_network(networks)
             except Exception as e:
                 _LOGGER.error("Error retreiving GWN Data: %s", e)
             _LOGGER.info(f"Will refresh in {self._gwn_client.refresh_period}s")
@@ -55,7 +55,7 @@ class MqttGwnManager:
         _LOGGER.info(f"Publishing {len(gwn_networks)} Networks over MQTT")
         for gwn_network in gwn_networks:
             ssid_assignments: dict[str, list[dict[str, str]]] = self._build_ssid_assignemts(gwn_network.devices)
-            _LOGGER.debug(f"Publishing Network: {gwn_network.name} with ID {gwn_network.id} to MQTT")
+            _LOGGER.debug(f"Publishing Network: {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
             network_topic = await self._mqtt_client.publish_network(gwn_network.id, self._serialise_network(gwn_network))
 
             # devices may share an SSID so dont republish it again if it already was published
