@@ -156,6 +156,12 @@ class GwnInterface:
             }
         })
 
+    async def get_network_info(self, network_id: int) -> dict[str, Any] | None:
+        response = await self._post("oapi/v1.0.0/network/detail",{"id":network_id})
+        if not response:
+            return None
+        return response.get("data", {})
+
     async def get_device_info_port(self, network_id: int, mac: str) -> dict[str, Any] | None:
         response = await self._post("oapi/v1.0.0/device/info",{"networkId":network_id, "mac": mac})
         if not response:
