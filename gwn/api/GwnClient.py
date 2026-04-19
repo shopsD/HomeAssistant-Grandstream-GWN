@@ -1,6 +1,6 @@
 import logging
 
-from typing import Any, cast
+from typing import Any
 
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
@@ -110,8 +110,8 @@ class GwnClient:
                     onlineDevices=int(basic_info["onlineDevices"]),
                     scheduleEnabled=int(basic_info["scheduleEnabled"])==1,
                     portalEnabled=int(basic_info["portalEnabled"])==1,
-                    securityMode=cast(SecurityMode, int(basic_info["securityMode"])),
-                    macFilteringEnabled=cast(MacFiltering,int(basic_info["macFilteringEnabled"])),
+                    securityMode=SecurityMode(int(basic_info["securityMode"])),
+                    macFilteringEnabled=MacFiltering(int(basic_info["macFilteringEnabled"])),
                     clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
                     ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0" 
                         else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1" 
