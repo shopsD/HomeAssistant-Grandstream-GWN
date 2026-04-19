@@ -27,70 +27,72 @@ class GwnClient:
         device_list: list[GwnDevice] = []
         _LOGGER.info(f"Processing {len(device_info)} Devices")
         for device in device_info:
-            
-            basic_info: dict[str, Any] = device[0]
-            config_info_port: dict[str, Any] = device[1]
-            config_info_client: dict[str, Any] = device[2]
-            device_firmware: dict[str, Any] = device[3]
-            
-            # the sub tables are json objects with 3 parameters: type, key and value so use "key" as a dictionary key
-            config_info_port["result"] = self._normalise_dictionary_data(config_info_port["result"])
-            config_info_client["g24"] = self._normalise_dictionary_data(config_info_client["g24"])
-            config_info_client["g5"] = self._normalise_dictionary_data(config_info_client["g5"])
-            config_info_client["g6"] = self._normalise_dictionary_data(config_info_client["g6"])
-            
-            # map SSIDs to the device using SSID name
-            # ideally SSID name will not be used
-            ssids: list[GwnSSID] = []
-            for ssid in config_info_client["ssid"]:
-                ssid_key = list(ssid.keys())[0]
-                if ssid_key in ssid_info:
-                    ssids.append(ssid_info[ssid_key])
+            try: # use a try catch so that only an individual device failure is ignored
+                basic_info: dict[str, Any] = device[0]
+                config_info_port: dict[str, Any] = device[1]
+                config_info_client: dict[str, Any] = device[2]
+                device_firmware: dict[str, Any] = device[3]
+                
+                # the sub tables are json objects with 3 parameters: type, key and value so use "key" as a dictionary key
+                config_info_port["result"] = self._normalise_dictionary_data(config_info_port["result"])
+                config_info_client["g24"] = self._normalise_dictionary_data(config_info_client["g24"])
+                config_info_client["g5"] = self._normalise_dictionary_data(config_info_client["g5"])
+                config_info_client["g6"] = self._normalise_dictionary_data(config_info_client["g6"])
+                
+                # map SSIDs to the device using SSID name
+                # ideally SSID name will not be used
+                ssids: list[GwnSSID] = []
+                for ssid in config_info_client["ssid"]:
+                    ssid_key = list(ssid.keys())[0]
+                    if ssid_key in ssid_info:
+                        ssids.append(ssid_info[ssid_key])
 
-            mac= GwnConfig.normalise_mac(basic_info["mac"])
-            if mac in self._config.exclude_device:
-                _LOGGER.debug(f"Ignoring Device: {mac}")
-            else:
-                gwn_device = GwnDevice(
-                    status=int(basic_info["status"])==1,
-                    apType=basic_info["apType"],
-                    mac=mac,
-                    name=basic_info["name"],
-                    ip=basic_info["ipv4"] if basic_info["ipv4"] is not None else basic_info["ip"],
-                    upTime=basic_info["upTime"],
-                    usage=int(basic_info["usage"]),
-                    upload=int(basic_info["upload"]),
-                    download=int(basic_info["download"]),
-                    clients=int(basic_info["clients"]),
-                    versionFirmware=basic_info["versionFirmware"],
-                    networkId=basic_info["networkId"],
-                    ipv6=basic_info["ipv6"],
+                mac= GwnConfig.normalise_mac(basic_info["mac"])
+                if mac in self._config.exclude_device:
+                    _LOGGER.debug(f"Ignoring Device: {mac}")
+                else:
+                    gwn_device = GwnDevice(
+                        status=int(basic_info["status"])==1,
+                        apType=basic_info["apType"],
+                        mac=mac,
+                        name=basic_info["name"],
+                        ip=basic_info["ipv4"] if basic_info["ipv4"] is not None else basic_info["ip"],
+                        upTime=basic_info["upTime"],
+                        usage=int(basic_info["usage"]),
+                        upload=int(basic_info["upload"]),
+                        download=int(basic_info["download"]),
+                        clients=int(basic_info["clients"]),
+                        versionFirmware=basic_info["versionFirmware"],
+                        networkId=basic_info["networkId"],
+                        ipv6=basic_info["ipv6"],
 
-                    newFirmware=device_firmware["lastVersion"],
-                    
-                    wireless=int(config_info_port["wireless"]) == 1,
-                    vlanCount=int(config_info_port["vlanCount"]),
-                    ssidNumber=int(config_info_port["ssidNumber"]),
-                    online=int(config_info_port["online"]) == 1,
-                    model=config_info_port["model"],
-                    deviceType=config_info_port["deviceType"],
+                        newFirmware=device_firmware["lastVersion"],
+                        
+                        wireless=int(config_info_port["wireless"]) == 1,
+                        vlanCount=int(config_info_port["vlanCount"]),
+                        ssidNumber=int(config_info_port["ssidNumber"]),
+                        online=int(config_info_port["online"]) == 1,
+                        model=config_info_port["model"],
+                        deviceType=config_info_port["deviceType"],
 
-                    channel_5=int(config_info_client["g5"]["channel"]["value"]),
-                    channel_2_4=int(config_info_client["g24"]["channel"]["value"]),
-                    channel_6=int(config_info_client["g6"]["channel"]["value"]),
-                    partNumber=config_info_client["partNumber"],
-                    bootVersion=config_info_client["bootVersion"],
-                    network=config_info_client["network"],
-                    temperature=config_info_client["temperature"],
-                    usedMemory=config_info_client["usedMemory"],
-                    channelload_2g4=config_info_client["channelload_2g4"],
-                    cpuUsage=config_info_client["cpuUsage"],
-                    channelload_6g=config_info_client["channelload_6g"],
-                    channelload_5g=config_info_client["channelload_5g"],
-                    ssids=ssids
-                )
-                _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
-                device_list.append(gwn_device)
+                        channel_5=int(config_info_client["g5"]["channel"]["value"]),
+                        channel_2_4=int(config_info_client["g24"]["channel"]["value"]),
+                        channel_6=int(config_info_client["g6"]["channel"]["value"]),
+                        partNumber=config_info_client["partNumber"],
+                        bootVersion=config_info_client["bootVersion"],
+                        network=config_info_client["network"],
+                        temperature=config_info_client["temperature"],
+                        usedMemory=config_info_client["usedMemory"],
+                        channelload_2g4=config_info_client["channelload_2g4"],
+                        cpuUsage=config_info_client["cpuUsage"],
+                        channelload_6g=config_info_client["channelload_6g"],
+                        channelload_5g=config_info_client["channelload_5g"],
+                        ssids=ssids
+                    )
+                    _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
+                    device_list.append(gwn_device)
+            except Exception as e:
+                _LOGGER.error("Failed to process a device %s", e)
         _LOGGER.info(f"Processed {len(device_list)} Devices")
         return device_list
 
@@ -146,7 +148,7 @@ class GwnClient:
         if ssid_response is not None:
             for basic_info in ssid_response:
                 id = basic_info.get("id")
-                if id:
+                if id is not None:
                     config_info = await self._interface.get_ssid_configuration(int(id))
                     if config_info is not None:
                         ssid_data[id] = [basic_info,config_info]
@@ -204,23 +206,26 @@ class GwnClient:
         gwn_networks: list[GwnNetwork] = []
         if networks is not None:
             for network in networks:
-                network_id =  int(network["id"])
-                if network_id in self._config.exclude_network:
-                    _LOGGER.debug(f"Ignoring Network: {network_id}")
-                else:
-                    _LOGGER.debug(f"Processing Network ID {network_id}")
-                    network_data = await self._interface.get_network_info(network_id)
-                    if network_data:
-                        gwn_network = GwnNetwork(
-                            id = str(network_id),
-                            networkName = str(network_data["networkName"]),
-                            countryDisplay = str(network_data["countryDisplay"]),
-                            country = str(network_data["country"]),
-                            timezone = str(network_data["timezone"]),
-                            devices = await self._get_network_data(str(network_id))
-                        )
-                        gwn_networks.append(gwn_network)
-                        _LOGGER.debug(f"Processed Network {gwn_network.networkName} with ID {gwn_network.id}")
+                try:
+                    network_id =  int(network["id"])
+                    if network_id in self._config.exclude_network:
+                        _LOGGER.debug(f"Ignoring Network: {network_id}")
+                    else:
+                        _LOGGER.debug(f"Processing Network ID {network_id}")
+                        network_data = await self._interface.get_network_info(network_id)
+                        if network_data:
+                            gwn_network = GwnNetwork(
+                                id = str(network_id),
+                                networkName = str(network_data["networkName"]),
+                                countryDisplay = str(network_data["countryDisplay"]),
+                                country = str(network_data["country"]),
+                                timezone = str(network_data["timezone"]),
+                                devices = await self._get_network_data(str(network_id))
+                            )
+                            gwn_networks.append(gwn_network)
+                            _LOGGER.debug(f"Processed Network {gwn_network.networkName} with ID {gwn_network.id}")
+                except Exception as e:
+                    _LOGGER.error("Failed to process a network %s", e)
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
