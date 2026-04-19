@@ -85,7 +85,7 @@ class ConfigParser:
                 raise ConfigParserError("gwn.exclude_ssid must be a list of SSID IDs")
             gwn_config.exclude_ssid = [int(ssid_id) for ssid_id in gwn_exclude_ssid]
 
-        _LOGGER.debug(f"GWN Config|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'")
+        _LOGGER.debug(f"GWN Config|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
 
         return gwn_config
 
@@ -133,7 +133,11 @@ class ConfigParser:
             verify_tls = mqtt_section.get("verify_tls")
             if verify_tls is not None:
                 mqtt_config.verify_tls = bool(verify_tls)
-        _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
+            # mqtt homeassistant
+            homeassistant = mqtt_section.get("homeassistant")
+            if homeassistant is not None:
+                mqtt_config.homeassistant = bool(homeassistant)
+        _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'|Support Home Assistant: '{mqtt_config.homeassistant}'")
         return mqtt_config
 
     @staticmethod

@@ -8,6 +8,7 @@ mqtt:
   # client_id: # default None
   # tls: False # default false
   # verify_tls: True # default true
+  homeassistant: False # default false Publish MQTT that is compatible with Home Assistant
 gwn: # required
   url: https://localhost:8443 # default https://localhost:8443
   app_id: CHANGE_ME # required

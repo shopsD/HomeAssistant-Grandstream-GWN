@@ -62,7 +62,7 @@ class MqttGwnManager:
             published_ssids: set[str] = set()
             for gwn_device in gwn_network.devices:
                 _LOGGER.debug(f"Publishing Device {gwn_device.mac} to MQTT")
-                device_payload = self._serialise_device(gwn_device)
+                device_payload = self._serialise_device(gwn_network, gwn_device)
                 await self._mqtt_client.publish_device(network_topic, self._strip_mac(gwn_device.mac), device_payload)
                 for gwn_ssid in gwn_device.ssids:
                     if gwn_ssid.id not in published_ssids:
@@ -99,7 +99,7 @@ class MqttGwnManager:
             "assignedDevices": assigned_devices,
         }
 
-    def _serialise_device(self, gwn_device: GwnDevice) -> dict[str, object]:
+    def _serialise_device(self, gwn_network: GwnNetwork, gwn_device: GwnDevice) -> dict[str, object]:
         return {
             "status": gwn_device.status,
             "apType": gwn_device.apType,
@@ -112,7 +112,6 @@ class MqttGwnManager:
             "download": gwn_device.download,
             "clients": gwn_device.clients,
             "versionFirmware": gwn_device.versionFirmware,
-            "networkId": gwn_device.networkId,
             "ipv6": gwn_device.ipv6,
             "newFirmware": gwn_device.newFirmware,
             "wireless": gwn_device.wireless,
@@ -133,6 +132,7 @@ class MqttGwnManager:
             "channelload_6g": gwn_device.channelload_6g,
             "cpuUsage": gwn_device.cpuUsage,
             "channelload_5g": gwn_device.channelload_5g,
+            "networkName": gwn_network.networkName,
             "ssids": [
                 {
                     "ssidName": ssid.ssidName,
