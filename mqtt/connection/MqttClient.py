@@ -197,8 +197,8 @@ class MqttClient:
         network_topic = f"{self._interface.topic}/networks/{gwn_network_id}"
         
         gwn_network_id_int: int = int(gwn_network_id)
-        auto_discovery: bool = (False 
-            if self._config.homeassistant is None or gwn_network_id_int not in self._config.homeassistant.network_autodiscovery 
+        auto_discovery: bool = (self._config.homeassistant.default_network_autodiscovery 
+            if gwn_network_id_int not in self._config.homeassistant.network_autodiscovery 
             else self._config.homeassistant.network_autodiscovery[gwn_network_id_int]
         )
         await self._interface.publish(f"{network_topic}/state",json.dumps(gwn_network),retain=True)
@@ -213,8 +213,8 @@ class MqttClient:
     async def publish_device(self, network_topic: str, device_mac:str, device_payload: dict[str, object]) -> None:
         device_topic = f"{network_topic}/devices/{device_mac}"
         
-        auto_discovery: bool = (False 
-            if self._config.homeassistant is None or device_mac not in self._config.homeassistant.device_autodiscovery 
+        auto_discovery: bool = (self._config.homeassistant.default_device_autodiscovery 
+            if device_mac not in self._config.homeassistant.device_autodiscovery 
             else self._config.homeassistant.device_autodiscovery[device_mac]
         )
         await self._interface.publish(f"{device_topic}/state",json.dumps(device_payload), retain=True)
@@ -228,8 +228,8 @@ class MqttClient:
         ssid_topic = f"{network_topic}/ssids/{gwn_ssid_id}"
         gwn_ssid_id_int: int = int(gwn_ssid_id)
         
-        auto_discovery: bool = (False 
-            if self._config.homeassistant is None or gwn_ssid_id_int not in self._config.homeassistant.ssid_autodiscovery 
+        auto_discovery: bool = (self._config.homeassistant.default_ssid_autodiscovery 
+            if gwn_ssid_id_int not in self._config.homeassistant.ssid_autodiscovery 
             else self._config.homeassistant.ssid_autodiscovery[gwn_ssid_id_int]
         )
 

@@ -7,7 +7,7 @@ import yaml
 from gwn.authentication import GwnConfig
 from gwn.constants import Constants
 from mqtt.config.AppConfig import AppConfig
-from mqtt.config.MqttConfig import MqttConfig, HomeAssistantConfig
+from mqtt.config.MqttConfig import MqttConfig
 from mqtt.config.LoggingConfig import LogLocation, LoggingConfig
 
 _LOGGER = logging.getLogger(Constants.LOG)
@@ -35,6 +35,8 @@ class ConfigParser:
                     raise ConfigParserError(f"Each mqtt.{field_name} item must contain exactly one key/value pair")
                 raw_key, raw_mode = next(iter(item.items()))
                 key = int(raw_key) if key_as_int else str(raw_key)
+                if not key_as_int:
+                    key = GwnConfig.normalise_mac(str(key))
                 parsed[key] = bool(raw_mode)
             else:
                 raise ConfigParserError(f"Each mqtt.{field_name} item must be either an integer or a single key/value pair")
@@ -160,34 +162,32 @@ class ConfigParser:
 
             homeassistant_sub_section = mqtt_section.get("homeassistant")
             if homeassistant_sub_section is not None:
-                homeassistant_config: HomeAssistantConfig = HomeAssistantConfig()
                 if not isinstance(homeassistant_sub_section, dict):
                     raise ConfigParserError("mqtt.homeassistant is invalid")
                 # mqtt default network autodiscovery. Must be evaluated before network_autodiscovery
-                default_network = homeassistant_sub_section.get("default_network")
+                default_network = homeassistant_sub_section.get("default_network_autodiscovery")
                 if default_network:
-                    homeassistant_config.default_network_autodiscovery = bool(default_network)
+                    mqtt_config.homeassistant.default_network_autodiscovery = bool(default_network)
                 # mqtt default device autodiscovery. Must be evaluated before device_autodiscovery
-                default_device = homeassistant_sub_section.get("default_device")
+                default_device = homeassistant_sub_section.get("default_device_autodiscovery")
                 if default_device:
-                    homeassistant_config.default_device_autodiscovery = bool(default_device)
+                    mqtt_config.homeassistant.default_device_autodiscovery = bool(default_device)
                 # mqtt default ssid autodiscovery. Must be evaluated before ssid_autodiscovery
-                default_ssid = homeassistant_sub_section.get("default_ssid")
+                default_ssid = homeassistant_sub_section.get("default_ssid_autodiscovery")
                 if default_ssid:
-                    homeassistant_config.default_ssid_autodiscovery = bool(default_ssid)
+                    mqtt_config.homeassistant.default_ssid_autodiscovery = bool(default_ssid)
                 # mqtt network autodiscovery
                 network_autodiscovery = homeassistant_sub_section.get("network_autodiscovery")
                 if network_autodiscovery is not None:
-                    homeassistant_config.network_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("network_autodiscovery"),"network_autodiscovery", homeassistant_config.default_network_autodiscovery)
+                    mqtt_config.homeassistant.network_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("network_autodiscovery"),"network_autodiscovery", mqtt_config.homeassistant.default_network_autodiscovery)
                 # mqtt device autodiscovery
                 device_autodiscovery = homeassistant_sub_section.get("device_autodiscovery")
                 if device_autodiscovery is not None:
-                    homeassistant_config.device_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("device_autodiscovery"),"device_autodiscovery", homeassistant_config.default_device_autodiscovery, False)
+                    mqtt_config.homeassistant.device_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("device_autodiscovery"),"device_autodiscovery", mqtt_config.homeassistant.default_device_autodiscovery, False)
                 # mqtt ssid autodiscovery
                 ssid_autodiscovery = homeassistant_sub_section.get("ssid_autodiscovery")
                 if ssid_autodiscovery is not None:
-                    homeassistant_config.ssid_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("ssid_autodiscovery"),"ssid_autodiscovery", homeassistant_config.default_ssid_autodiscovery)
-                mqtt_config.homeassistant = homeassistant_config
+                    mqtt_config.homeassistant.ssid_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("ssid_autodiscovery"),"ssid_autodiscovery", mqtt_config.homeassistant.default_ssid_autodiscovery)
                 _LOGGER.debug(f"MQTT.HomeAssistant Config|Default Network Autodiscovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Autodiscovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Autodiscovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Autodiscoverys: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Autodiscoverys: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of SSID Network Autodiscoverys: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'")
 
         _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
