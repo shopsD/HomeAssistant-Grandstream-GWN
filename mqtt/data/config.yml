@@ -9,9 +9,9 @@ mqtt:
   # tls: False # default false
   # verify_tls: True # default true
   homeassistant: # controls support for home assistant auto discovery
-    default_network_autodiscovery: False # default generic. This will not support home assistant auto discovery for networks that are not otherwise specified below
-    default_device_autodiscovery: False # default generic. This will not support home assistant auto discovery for devices that are not otherwise specified below
-    default_ssid_autodiscovery: False # default generic. This will not support home assistant auto discovery for ssids that are not otherwise specified below
+    default_network_autodiscovery: False # default False. This will not support home assistant auto discovery for networks that are not otherwise specified below
+    default_device_autodiscovery: False # default False. This will not support home assistant auto discovery for devices that are not otherwise specified below
+    default_ssid_autodiscovery: False # default False. This will not support home assistant auto discovery for ssids that are not otherwise specified below
     # the options below determine the format of the message. If not specified, then the default above is applied
     network_autodiscovery: # default is empty so all networks will use default_network Publish MQTT for these networks
       - 1 # will use default_network as the default
