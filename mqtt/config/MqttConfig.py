@@ -11,3 +11,4 @@ class MqttConfig:
     topic: str = "gwn"
     tls: bool = False
     verify_tls: bool = True
+    homeassistant: bool = False

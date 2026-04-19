@@ -11,13 +11,13 @@ from gwn.constants import Constants
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
-class GwnRequestor:
+class GwnInterface:
     def __init__(self, config: GwnConfig) -> None:
         self._config:GwnConfig = config
         self._session: aiohttp.ClientSession = aiohttp.ClientSession()
         self._token: GwnToken | None = None
 
-    async def __aenter__(self) -> "GwnRequestor":
+    async def __aenter__(self) -> "GwnInterface":
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
@@ -112,6 +112,9 @@ class GwnRequestor:
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
 
+    async def close(self) -> None:
+        await self._session.close()
+
     async def authenticate(self) -> bool:
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
 
@@ -155,6 +158,12 @@ class GwnRequestor:
                 "showType": "all"
             }
         })
+
+    async def get_network_info(self, network_id: int) -> dict[str, Any] | None:
+        response = await self._post("oapi/v1.0.0/network/detail",{"id":network_id})
+        if not response:
+            return None
+        return response.get("data", {})
 
     async def get_device_info_port(self, network_id: int, mac: str) -> dict[str, Any] | None:
         response = await self._post("oapi/v1.0.0/device/info",{"networkId":network_id, "mac": mac})

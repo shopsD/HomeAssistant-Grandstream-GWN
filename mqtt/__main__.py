@@ -23,8 +23,8 @@ async def async_main(config_path: Path) -> None:
     app_config = ConfigParser.load(config_path)
     init_logger(app_config.logging)
     manager = MqttClient(app_config.mqtt)
-    gwnClient = GwnClient(app_config.gwn)
-    app_manager = MqttGwnManager(manager,gwnClient)
+    gwn_client = GwnClient(app_config.gwn)
+    app_manager = MqttGwnManager(manager,gwn_client)
     if await app_manager.connect():
         await app_manager.run()
 
@@ -40,10 +40,10 @@ def main() -> None:
         ,default=Path(__file__).resolve().parent / "data" / "config.yml"
         ,help="Path to config YAML file. Defaults to ./data/config.yml relative to mqtt/main.py"
     )
-    _LOGGER.info("Starting GWN Manager")
+    _LOGGER.info("Starting GWN Manager to MQTT")
     args = parser.parse_args()
-
     asyncio.run(async_main(args.config_path))
+    _LOGGER.info("Stopped GWN Manager to MQTT")
 
 if __name__ == "__main__":
     main()
