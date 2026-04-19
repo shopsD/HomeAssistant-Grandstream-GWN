@@ -164,15 +164,15 @@ class ConfigParser:
                     raise ConfigParserError("mqtt.homeassistant is invalid")
                 # mqtt default network autodiscovery. Must be evaluated before network_autodiscovery
                 default_network = homeassistant_sub_section.get("default_network_autodiscovery")
-                if default_network:
+                if default_network is not None:
                     mqtt_config.homeassistant.default_network_autodiscovery = bool(default_network)
                 # mqtt default device autodiscovery. Must be evaluated before device_autodiscovery
                 default_device = homeassistant_sub_section.get("default_device_autodiscovery")
-                if default_device:
+                if default_device is not None:
                     mqtt_config.homeassistant.default_device_autodiscovery = bool(default_device)
                 # mqtt default ssid autodiscovery. Must be evaluated before ssid_autodiscovery
                 default_ssid = homeassistant_sub_section.get("default_ssid_autodiscovery")
-                if default_ssid:
+                if default_ssid is not None:
                     mqtt_config.homeassistant.default_ssid_autodiscovery = bool(default_ssid)
                 # mqtt network autodiscovery
                 network_autodiscovery = homeassistant_sub_section.get("network_autodiscovery")

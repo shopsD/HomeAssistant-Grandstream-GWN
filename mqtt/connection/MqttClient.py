@@ -13,7 +13,7 @@ class MqttClient:
         self._interface = MqttInterface(config)
 
     def _strip_mac(self, mac: str) -> str:
-        return mac.replace(":", "").lower()
+        return mac.replace(":", "").replace("-","").lower()
 
     def _normalise_macs(self, macs:dict[int | str, bool] ) -> dict[str, bool]:
         normalised: dict[str, bool] = {}
