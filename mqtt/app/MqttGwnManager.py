@@ -17,7 +17,6 @@ class RequestError(Exception):
 
 class MqttGwnManager:
     def __init__(self, mqtt_client: MqttClient, gwn_client: GwnClient) -> None:
-        self._config = mqtt_client
         self._mqtt_client = mqtt_client
         self._gwn_client = gwn_client
 
@@ -83,6 +82,7 @@ class MqttGwnManager:
 
     def _serialise_ssid(self, gwn_ssid: GwnSSID, assigned_devices: list[dict[str, str]]) -> dict[str, object]:
         return {
+            "id": gwn_ssid.id,
             "ssidName": gwn_ssid.ssidName,
             "wifiEnabled": gwn_ssid.wifiEnabled,
             "onlineDevices": gwn_ssid.onlineDevices,

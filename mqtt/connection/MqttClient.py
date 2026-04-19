@@ -24,7 +24,7 @@ class MqttClient:
         return f"homeassistant/{component}/{object_id}/config"
 
     def _generic_ssid_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
-        ssid_id: str = str(payload.get("ssidName"))
+        ssid_id: str = str(payload.get("id"))
         device = self._ha_device_block(f"gwn_ssid_{ssid_id}",f"SSID {ssid_id}", "GWN SSID")
 
         return [

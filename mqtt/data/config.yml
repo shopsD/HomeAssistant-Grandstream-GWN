@@ -16,8 +16,8 @@ mqtt:
     - 1 # will use "generic" as the default
     - 2: "homeassistant"
   device_payload: # default is empty so all devices will use "generic" Publish MQTT for these networks
-    - 1: "generic"
-    - 2: "homeassistant"
+    - "AA:BB:CC:DD:EE:FF": "generic"
+    - "AA:BB:CC:DD:EE:f0": "homeassistant"
   ssid_payload: # default is empty so all payloads will use "generic" Publish MQTT for these networks
     - 3: "both"
     - 2: "both"
