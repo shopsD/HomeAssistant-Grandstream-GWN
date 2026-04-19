@@ -36,7 +36,7 @@ class MqttGwnManager:
         _LOGGER.info("Listening to MQTT")
         await asyncio.Event().wait()
 
-    def _build_ssid_assignemts(self, devices: list[GwnDevice]) -> dict[str, list[dict[str, str]]]:
+    def _build_ssid_assignments(self, devices: list[GwnDevice]) -> dict[str, list[dict[str, str]]]:
         ssid_assignments: dict[str, list[dict[str, str]]] = {}
         for gwn_device in devices:
             for gwn_ssid in gwn_device.ssids:
@@ -54,7 +54,7 @@ class MqttGwnManager:
     async def _publish_network(self, gwn_networks: list[GwnNetwork]) -> None:
         _LOGGER.info(f"Publishing {len(gwn_networks)} Networks over MQTT")
         for gwn_network in gwn_networks:
-            ssid_assignments: dict[str, list[dict[str, str]]] = self._build_ssid_assignemts(gwn_network.devices)
+            ssid_assignments: dict[str, list[dict[str, str]]] = self._build_ssid_assignments(gwn_network.devices)
             _LOGGER.debug(f"Publishing Network: {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
             network_topic = await self._mqtt_client.publish_network(gwn_network.id, self._serialise_network(gwn_network))
 
@@ -78,19 +78,16 @@ class MqttGwnManager:
 
     def _serialise_ssid(self, gwn_ssid: GwnSSID, assigned_devices: list[dict[str, str]]) -> dict[str, object]:
         return {
-            "id": gwn_ssid.id,
             "ssidName": gwn_ssid.ssidName,
             "wifiEnabled": gwn_ssid.wifiEnabled,
             "onlineDevices": gwn_ssid.onlineDevices,
             "scheduleEnabled": gwn_ssid.scheduleEnabled,
             "portalEnabled": gwn_ssid.portalEnabled,
-            "securityMode": self._enum_value(gwn_ssid.securityMode),
             "macFilteringEnabled": self._enum_value(gwn_ssid.macFilteringEnabled),
             "clientIsolationEnabled": gwn_ssid.clientIsolationEnabled,
             "ssidIsolationMode": self._enum_value(gwn_ssid.ssidIsolationMode),
             "ssidIsolation": gwn_ssid.ssidIsolation,
             "ssidSsidHidden": gwn_ssid.ssidSsidHidden,
-            "ssidNewSsidBand": gwn_ssid.ssidNewSsidBand,
             "ssidVlanid": gwn_ssid.ssidVlanid,
             "ssidVlanEnabled": gwn_ssid.ssidVlanEnabled,
             "ssidEnable": gwn_ssid.ssidEnable,
@@ -138,7 +135,6 @@ class MqttGwnManager:
             "channelload_5g": gwn_device.channelload_5g,
             "ssids": [
                 {
-                    "id": ssid.id,
                     "ssidName": ssid.ssidName,
                 }
                 for ssid in gwn_device.ssids

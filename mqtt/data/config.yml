@@ -8,13 +8,26 @@ mqtt:
   # client_id: # default None
   # tls: False # default false
   # verify_tls: True # default true
-gwn:
+gwn: # required
   url: https://localhost:8443 # default https://localhost:8443
-  app_id: CHANGE_ME
-  secret_key: CHANGE_ME
+  app_id: CHANGE_ME # required
+  secret_key: CHANGE_ME # required
   # page_size: 5 # default 10
   # max_pages: 100 # default 100 (set to 0 for unlimited)
   # refresh_period_s: 30 # the rate to poll the GWN Manager for all data
+  exclude_ssid: # list of ssids by ID to exclude
+    - 1
+    - 2
+  exclude_passphrase: # list of ssids by ID to not publish the WPA/WEP passphrase. NOTE: When editing an SSID, a passphrase MUST be provided
+    - 3
+    - 4
+    - 5
+  # exclude_device: # devices that will not be processed or published. default is empty
+  #  - "AA:BB:CC:DD:EE:FF"
+  #  - "AA:BB:CC:DD:EE:F0"
+  # exclude_network: # networks that will not be processed or published. default is empty
+  #  - 1
+  #  - 2
 logging:
   level: DEBUG # default INFO
   location: syslog # syslog/file/console default: syslog

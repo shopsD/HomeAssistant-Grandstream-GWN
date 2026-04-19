@@ -60,6 +60,31 @@ class ConfigParser:
             if gwn_refresh_period_s < 0:
                 raise ConfigParserError("gwn.refresh_period_s must be >= 0")
             gwn_config.refresh_period_s = gwn_refresh_period_s
+        # gwn exclude passphrase
+        gwn_exclude_passphrase = gwn_section.get("exclude_passphrase")
+        if gwn_exclude_passphrase:
+            if not isinstance(gwn_exclude_passphrase, list):
+                raise ConfigParserError("gwn.exclude_passphrase must be a list of SSID IDs")
+            gwn_config.exclude_passphrase = [int(ssid_id) for ssid_id in gwn_exclude_passphrase]
+        # gwn exclude networks
+        gwn_exclude_networks = gwn_section.get("exclude_networks")
+        if gwn_exclude_networks:
+            if not isinstance(gwn_exclude_networks, list):
+                raise ConfigParserError("gwn.exclude_networks must be a list of SSID IDs")
+            gwn_config.exclude_networks = [int(network_id) for network_id in gwn_exclude_networks]
+        # gwn exclude devices
+        gwn_exclude_devices = gwn_section.get("exclude_devices")
+        if gwn_exclude_devices:
+            if not isinstance(gwn_exclude_devices, list):
+                raise ConfigParserError("gwn.exclude_devices must be a list of MAC Addresses")
+            gwn_config.exclude_devices = [GwnConfig.normalise_mac(mac) for mac in gwn_exclude_devices]
+        # gwn exclude passphrase
+        gwn_exclude_ssid = gwn_section.get("exclude_ssid")
+        if gwn_exclude_ssid:
+            if not isinstance(gwn_exclude_ssid, list):
+                raise ConfigParserError("gwn.exclude_ssid must be a list of SSID IDs")
+            gwn_config.exclude_ssid = [int(ssid_id) for ssid_id in gwn_exclude_ssid]
+
         _LOGGER.debug(f"GWN Config|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'")
 
         return gwn_config

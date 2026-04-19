@@ -23,10 +23,6 @@ class GwnClient:
 
         return normalised
 
-    def _normalise_mac(self, mac:str) -> str:
-        mac = mac.replace(":", "").replace("-", "").upper()
-        return ":".join(mac[i:i+2] for i in range(0, 12, 2))
-
     def _build_device_data(self, ssid_info: dict[str,GwnSSID], device_info: list[list[dict[str, Any]]]) -> list[GwnDevice]:
         device_list: list[GwnDevice] = []
         _LOGGER.info(f"Processing {len(device_info)} Devices")
@@ -51,47 +47,50 @@ class GwnClient:
                 if ssid_key in ssid_info:
                     ssids.append(ssid_info[ssid_key])
 
-            gwn_device = GwnDevice(
-                status=int(basic_info["status"])==1,
-                apType=basic_info["apType"],
-                mac=self._normalise_mac(basic_info["mac"]),
-                name=basic_info["name"],
-                ip=basic_info["ipv4"] if basic_info["ipv4"] is not None else basic_info["ip"],
-                upTime=basic_info["upTime"],
-                usage=int(basic_info["usage"]),
-                upload=int(basic_info["upload"]),
-                download=int(basic_info["download"]),
-                clients=int(basic_info["clients"]),
-                versionFirmware=basic_info["versionFirmware"],
-                networkId=basic_info["networkId"],
-                ipv6=basic_info["ipv6"],
+            mac= GwnConfig.normalise_mac(basic_info["mac"])
+            if mac in self._config.exclude_devices:
+                _LOGGER.debug(f"Ignoring Device: {id}")
+            else:
+                gwn_device = GwnDevice(
+                    status=int(basic_info["status"])==1,
+                    apType=basic_info["apType"],
+                    mac=mac,
+                    name=basic_info["name"],
+                    ip=basic_info["ipv4"] if basic_info["ipv4"] is not None else basic_info["ip"],
+                    upTime=basic_info["upTime"],
+                    usage=int(basic_info["usage"]),
+                    upload=int(basic_info["upload"]),
+                    download=int(basic_info["download"]),
+                    clients=int(basic_info["clients"]),
+                    versionFirmware=basic_info["versionFirmware"],
+                    networkId=basic_info["networkId"],
+                    ipv6=basic_info["ipv6"],
 
-                newFirmware=device_firmware["lastVersion"],
-                
-                wireless=int(config_info_port["wireless"]) == 1,
-                vlanCount=int(config_info_port["vlanCount"]),
-                ssidNumber=int(config_info_port["ssidNumber"]),
-                online=int(config_info_port["online"]) == 1,
-                model=config_info_port["model"],
-                deviceType=config_info_port["deviceType"],
+                    newFirmware=device_firmware["lastVersion"],
+                    
+                    wireless=int(config_info_port["wireless"]) == 1,
+                    vlanCount=int(config_info_port["vlanCount"]),
+                    ssidNumber=int(config_info_port["ssidNumber"]),
+                    online=int(config_info_port["online"]) == 1,
+                    model=config_info_port["model"],
+                    deviceType=config_info_port["deviceType"],
 
-                channel_5=int(config_info_client["g5"]["channel"]["value"]),
-                channel_2_4=int(config_info_client["g24"]["channel"]["value"]),
-                channel_6=int(config_info_client["g6"]["channel"]["value"]),
-                partNumber=config_info_client["partNumber"],
-                bootVersion=config_info_client["bootVersion"],
-                network=config_info_client["network"],
-                temperature=config_info_client["temperature"],
-                usedMemory=config_info_client["usedMemory"],
-                channelload_2g4=config_info_client["channelload_2g4"],
-                cpuUsage=config_info_client["cpuUsage"],
-                channelload_6g=config_info_client["channelload_6g"],
-                channelload_5g=config_info_client["channelload_5g"],
-                ssids=ssids
-            )
-
-            _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
-            device_list.append(gwn_device)
+                    channel_5=int(config_info_client["g5"]["channel"]["value"]),
+                    channel_2_4=int(config_info_client["g24"]["channel"]["value"]),
+                    channel_6=int(config_info_client["g6"]["channel"]["value"]),
+                    partNumber=config_info_client["partNumber"],
+                    bootVersion=config_info_client["bootVersion"],
+                    network=config_info_client["network"],
+                    temperature=config_info_client["temperature"],
+                    usedMemory=config_info_client["usedMemory"],
+                    channelload_2g4=config_info_client["channelload_2g4"],
+                    cpuUsage=config_info_client["cpuUsage"],
+                    channelload_6g=config_info_client["channelload_6g"],
+                    channelload_5g=config_info_client["channelload_5g"],
+                    ssids=ssids
+                )
+                _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
+                device_list.append(gwn_device)
         _LOGGER.info(f"Processed {len(device_list)} Devices")
         return device_list
 
@@ -99,41 +98,45 @@ class GwnClient:
         ssid_list: dict[str,GwnSSID] = {}
         _LOGGER.info(f"Processing {len(ssid_info)} SSIDs")
         for id in ssid_info:
-            basic_info: dict[str, Any] = ssid_info[id][0]
-            config_info: dict[str, Any] = ssid_info[id][1]
-            gwn_ssid = GwnSSID(
-                id=id,
-                ssidName=basic_info["ssidName"],
-                wifiEnabled=int(basic_info["wifiEnabled"])==1,
-                onlineDevices=int(basic_info["onlineDevices"]),
-                scheduleEnabled=int(basic_info["scheduleEnabled"])==1,
-                portalEnabled=int(basic_info["portalEnabled"])==1,
-                securityMode=cast(SecurityMode, int(basic_info["securityMode"])),
-                macFilteringEnabled=cast(MacFiltering,int(basic_info["macFilteringEnabled"])),
-                clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
-                ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0" 
-                    else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1" 
-                    else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2" 
-                    else None),
-                ssidIsolation=int(config_info["ssidIsolation"])==1,
-                ssidSsidHidden=int(config_info["ssidSsidHidden"])==1,
-                ssidNewSsidBand=str(config_info["ssidNewSsidBand"]),
-                ssidVlanid=int(config_info["ssidVlanid"]) if config_info["ssidVlanid"] is not None else None,
-                ssidVlanEnabled=int(config_info["ssidVlan"])==1 if config_info["ssidVlan"] is not None else False,
-                ssidEnable=int(config_info["ssidEnable"]) == 1,
-                ssidRemark=str(config_info["ssidRemark"]),
-                ssidKey=(str(config_info["ssidWpaKey"]) if config_info["ssidWpaKey"] is not None
-                    else str(config_info["ssidWepKey"]) if config_info["ssidWepKey"] is not None
-                    else None),
-                ghz2_4_Enabled="2" in str(config_info["ssidNewSsidBand"]),
-                ghz5_Enabled="5" in str(config_info["ssidNewSsidBand"]),
-                ghz6_Enabled="6" in str(config_info["ssidNewSsidBand"])
-            )
-            if gwn_ssid.ssidName in ssid_list:
-                _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
+            if id in self._config.exclude_ssid:
+                _LOGGER.debug(f"Ignoring SSID: {id}")
             else:
-                ssid_list[gwn_ssid.ssidName] = gwn_ssid
-            _LOGGER.debug(f"Processed SSID: {id}")
+                basic_info: dict[str, Any] = ssid_info[id][0]
+                config_info: dict[str, Any] = ssid_info[id][1]
+                gwn_ssid = GwnSSID(
+                    id=id,
+                    ssidName=basic_info["ssidName"],
+                    wifiEnabled=int(basic_info["wifiEnabled"])==1,
+                    onlineDevices=int(basic_info["onlineDevices"]),
+                    scheduleEnabled=int(basic_info["scheduleEnabled"])==1,
+                    portalEnabled=int(basic_info["portalEnabled"])==1,
+                    securityMode=cast(SecurityMode, int(basic_info["securityMode"])),
+                    macFilteringEnabled=cast(MacFiltering,int(basic_info["macFilteringEnabled"])),
+                    clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
+                    ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0" 
+                        else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1" 
+                        else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2" 
+                        else None),
+                    ssidIsolation=int(config_info["ssidIsolation"])==1,
+                    ssidSsidHidden=int(config_info["ssidSsidHidden"])==1,
+                    ssidNewSsidBand=str(config_info["ssidNewSsidBand"]),
+                    ssidVlanid=int(config_info["ssidVlanid"]) if config_info["ssidVlanid"] is not None else None,
+                    ssidVlanEnabled=int(config_info["ssidVlan"])==1 if config_info["ssidVlan"] is not None else False,
+                    ssidEnable=int(config_info["ssidEnable"]) == 1,
+                    ssidRemark=str(config_info["ssidRemark"]),
+                    ssidKey=(None if id in self._config.exclude_passphrase
+                        else str(config_info["ssidWpaKey"]) if config_info["ssidWpaKey"] is not None
+                        else str(config_info["ssidWepKey"]) if config_info["ssidWepKey"] is not None
+                        else None),
+                    ghz2_4_Enabled="2" in str(config_info["ssidNewSsidBand"]),
+                    ghz5_Enabled="5" in str(config_info["ssidNewSsidBand"]),
+                    ghz6_Enabled="6" in str(config_info["ssidNewSsidBand"])
+                )
+                if gwn_ssid.ssidName in ssid_list:
+                    _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
+                else:
+                    ssid_list[gwn_ssid.ssidName] = gwn_ssid
+                _LOGGER.debug(f"Processed SSID: {id}")
         _LOGGER.info(f"Processed {len(ssid_list)} SSIDs")
         return ssid_list
 
@@ -156,7 +159,7 @@ class GwnClient:
                 mac = basic_info.get("mac")
                 if mac:
                     _LOGGER.debug(f"Reqeusting data for {mac}")
-                    mac = self._normalise_mac(mac)
+                    mac = GwnConfig.normalise_mac(mac)
                     device_info_port = await self._interface.get_device_info_port(network_id,mac) or {}
                     device_info_client = await self._interface.get_device_info_client(mac) or {}
                     device_data.append([basic_info,device_info_port,device_info_client, firmware_data[mac]])
@@ -171,7 +174,7 @@ class GwnClient:
         firmware_data: dict[str,dict[str,Any]] = {}
         for firmware in device_firmware:
             # mac the MAC actually follow the format of AA:BB:CC:DD:EE:FF instead of AABBCCDDEEFF
-            mac = self._normalise_mac(firmware["mac"])
+            mac = GwnConfig.normalise_mac(firmware["mac"])
             firmware_data[mac] = firmware
         return firmware_data
 
@@ -202,16 +205,19 @@ class GwnClient:
         if networks is not None:
             for network in networks:
                 network_id =  str(network["id"])
-                _LOGGER.debug(f"Processing Network ID {network_id}")
-                gwn_network = GwnNetwork(
-                    id = network_id,
-                    networkName = str(network["networkName"]),
-                    countryDisplay = str(network["countryDisplay"]),
-                    country = str(network["country"]),
-                    timezone = str(network["timezone"]),
-                    devices = await self._get_network_data(network_id)
-                )
-                _LOGGER.debug(f"Processed Network {gwn_network.networkName} with ID {gwn_network.id}")
+                if network_id in self._config.exclude_networks:
+                    _LOGGER.debug(f"Ignoring Network: {network_id}")
+                else:
+                    _LOGGER.debug(f"Processing Network ID {network_id}")
+                    gwn_network = GwnNetwork(
+                        id = network_id,
+                        networkName = str(network["networkName"]),
+                        countryDisplay = str(network["countryDisplay"]),
+                        country = str(network["country"]),
+                        timezone = str(network["timezone"]),
+                        devices = await self._get_network_data(network_id)
+                    )
+                    _LOGGER.debug(f"Processed Network {gwn_network.networkName} with ID {gwn_network.id}")
                 gwn_networks.append(gwn_network)
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
