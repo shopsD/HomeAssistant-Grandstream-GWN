@@ -48,7 +48,7 @@ class GwnClient:
                     ssids.append(ssid_info[ssid_key])
 
             mac= GwnConfig.normalise_mac(basic_info["mac"])
-            if mac in self._config.exclude_devices:
+            if mac in self._config.exclude_device:
                 _LOGGER.debug(f"Ignoring Device: {id}")
             else:
                 gwn_device = GwnDevice(
@@ -205,7 +205,7 @@ class GwnClient:
         if networks is not None:
             for network in networks:
                 network_id =  str(network["id"])
-                if network_id in self._config.exclude_networks:
+                if network_id in self._config.exclude_network:
                     _LOGGER.debug(f"Ignoring Network: {network_id}")
                 else:
                     _LOGGER.debug(f"Processing Network ID {network_id}")

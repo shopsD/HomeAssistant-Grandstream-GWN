@@ -41,21 +41,21 @@ class ConfigParser:
             gwn_config.base_url = str(gwn_url)
         # gwn page size
         gwn_page_size = gwn_section.get("page_size")
-        if gwn_page_size:
+        if gwn_page_size is not None:
             gwn_page_size = int(gwn_page_size)
-            if gwn_page_size < 0:
+            if gwn_page_size < 1:
                 raise ConfigParserError("gwn.page_size must be >= 1")
             gwn_config.page_size = gwn_page_size
         # gwn max pages
         gwn_max_pages = gwn_section.get("max_pages")
-        if gwn_max_pages:
+        if gwn_max_pages is not None:
             gwn_max_pages = int(gwn_max_pages)
             if gwn_max_pages < 0:
                 raise ConfigParserError("gwn.max_pages must be >= 0")
             gwn_config.max_pages = gwn_max_pages
         # gwn refresh period
         gwn_refresh_period_s = gwn_section.get("refresh_period_s")
-        if gwn_refresh_period_s:
+        if gwn_refresh_period_s is not None:
             gwn_refresh_period_s = int(gwn_refresh_period_s)
             if gwn_refresh_period_s < 0:
                 raise ConfigParserError("gwn.refresh_period_s must be >= 0")
@@ -67,17 +67,17 @@ class ConfigParser:
                 raise ConfigParserError("gwn.exclude_passphrase must be a list of SSID IDs")
             gwn_config.exclude_passphrase = [int(ssid_id) for ssid_id in gwn_exclude_passphrase]
         # gwn exclude networks
-        gwn_exclude_networks = gwn_section.get("exclude_networks")
-        if gwn_exclude_networks:
-            if not isinstance(gwn_exclude_networks, list):
-                raise ConfigParserError("gwn.exclude_networks must be a list of SSID IDs")
-            gwn_config.exclude_networks = [int(network_id) for network_id in gwn_exclude_networks]
+        gwn_exclude_network = gwn_section.get("exclude_network")
+        if gwn_exclude_network:
+            if not isinstance(gwn_exclude_network, list):
+                raise ConfigParserError("gwn.exclude_network must be a list of SSID IDs")
+            gwn_config.exclude_network = [int(network_id) for network_id in gwn_exclude_network]
         # gwn exclude devices
-        gwn_exclude_devices = gwn_section.get("exclude_devices")
-        if gwn_exclude_devices:
-            if not isinstance(gwn_exclude_devices, list):
-                raise ConfigParserError("gwn.exclude_devices must be a list of MAC Addresses")
-            gwn_config.exclude_devices = [GwnConfig.normalise_mac(mac) for mac in gwn_exclude_devices]
+        gwn_exclude_device = gwn_section.get("exclude_device")
+        if gwn_exclude_device:
+            if not isinstance(gwn_exclude_device, list):
+                raise ConfigParserError("gwn.exclude_device must be a list of MAC Addresses")
+            gwn_config.exclude_device = [GwnConfig.normalise_mac(mac) for mac in gwn_exclude_device]
         # gwn exclude passphrase
         gwn_exclude_ssid = gwn_section.get("exclude_ssid")
         if gwn_exclude_ssid:
@@ -127,11 +127,11 @@ class ConfigParser:
                 mqtt_config.topic = topic
             # mqtt tls
             tls = mqtt_section.get("tls")
-            if tls:
+            if tls is not None:
                 mqtt_config.tls = bool(tls)
             # mqtt verify tls
             verify_tls = mqtt_section.get("verify_tls")
-            if verify_tls:
+            if verify_tls is not None:
                 mqtt_config.verify_tls = bool(verify_tls)
         _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
         return mqtt_config
