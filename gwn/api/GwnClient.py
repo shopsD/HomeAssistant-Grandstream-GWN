@@ -219,8 +219,8 @@ class GwnClient:
                             timezone = str(network_data["timezone"]),
                             devices = await self._get_network_data(str(network_id))
                         )
+                        gwn_networks.append(gwn_network)
                         _LOGGER.debug(f"Processed Network {gwn_network.networkName} with ID {gwn_network.id}")
-                    gwn_networks.append(gwn_network)
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
