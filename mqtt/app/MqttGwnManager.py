@@ -52,7 +52,7 @@ class MqttGwnManager:
         return ssid_assignments
                 
     async def _publish_network(self, gwn_networks: list[GwnNetwork]) -> None:
-        _LOGGER.info(f"Publishing {len(networks)} Networks over MQTT")
+        _LOGGER.info(f"Publishing {len(gwn_networks)} Networks over MQTT")
         for gwn_network in gwn_networks:
             ssid_assignments: dict[str, list[dict[str, str]]] = self._build_ssid_assignemts(gwn_network.devices)
             _LOGGER.debug(f"Publishing Network: {gwn_network.name} with ID {gwn_network.id} to MQTT")
@@ -70,7 +70,7 @@ class MqttGwnManager:
                         _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
                         ssid_payload = self._serialise_ssid(gwn_ssid, ssid_assignments.get(gwn_ssid.id, []))
                         await self._mqtt_client.publish_ssid(network_topic, gwn_ssid.id, ssid_payload )
-        _LOGGER.info(f"Published {len(networks)} Networks over MQTT")
+        _LOGGER.info(f"Published {len(gwn_networks)} Networks over MQTT")
     def _enum_value(self, value: Enum | None) -> str | None:
         if value is None:
             return None
