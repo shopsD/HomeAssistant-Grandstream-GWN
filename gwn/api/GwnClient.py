@@ -98,7 +98,7 @@ class GwnClient:
         ssid_list: dict[str,GwnSSID] = {}
         _LOGGER.info(f"Processing {len(ssid_info)} SSIDs")
         for id in ssid_info:
-            if id in self._config.exclude_ssid:
+            if int(id) in self._config.exclude_ssid:
                 _LOGGER.debug(f"Ignoring SSID: {id}")
             else:
                 basic_info: dict[str, Any] = ssid_info[id][0]
@@ -124,7 +124,7 @@ class GwnClient:
                     ssidVlanEnabled=int(config_info["ssidVlan"])==1 if config_info["ssidVlan"] is not None else False,
                     ssidEnable=int(config_info["ssidEnable"]) == 1,
                     ssidRemark=str(config_info["ssidRemark"]),
-                    ssidKey=(None if id in self._config.exclude_passphrase
+                    ssidKey=(None if int(id) in self._config.exclude_passphrase
                         else str(config_info["ssidWpaKey"]) if config_info["ssidWpaKey"] is not None
                         else str(config_info["ssidWepKey"]) if config_info["ssidWepKey"] is not None
                         else None),
