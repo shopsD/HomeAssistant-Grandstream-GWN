@@ -18,7 +18,19 @@ class ConfigParserError(Exception):
 class ConfigParser:
 
     @staticmethod
-    def _load_payload_modes(value: object, field_name: str, key_as_int: bool = True) -> dict[int|str, MqttPayloadFormat]:
+    def _get_payload_mode(mode: str, field_name: str) -> MqttPayloadFormat:
+        valid_modes = {"generic", "homeassistant", "both"}
+        mode = mode.lower()
+        if mode not in valid_modes:
+            raise ConfigParserError(f"mqtt.{field_name} mode must be one of: generic, homeassistant, both")
+        
+        return (MqttPayloadFormat.BOTH if mode == "both"
+            else MqttPayloadFormat.GENERIC if mode == "generic"
+            else MqttPayloadFormat.HOMEASSISTANT
+        )
+        
+    @staticmethod
+    def _load_payload_modes(value: object, field_name: str, default_mode: MqttPayloadFormat, key_as_int: bool = True) -> dict[int|str, MqttPayloadFormat]:
         if value is None:
             return {}
 
@@ -26,24 +38,16 @@ class ConfigParser:
             raise ConfigParserError(f"mqtt.{field_name} must be a list")
 
         parsed: dict[int | str, MqttPayloadFormat] = {}
-        valid_modes = {"generic", "homeassistant", "both"}
 
         for item in value:
             if isinstance(item, int):
-                parsed[item] = MqttPayloadFormat.GENERIC
+                parsed[item] = default_mode
             elif isinstance(item, dict):
                 if len(item) != 1:
                     raise ConfigParserError(f"Each mqtt.{field_name} item must contain exactly one key/value pair")
                 raw_key, raw_mode = next(iter(item.items()))
                 key = int(raw_key) if key_as_int else str(raw_key)
-                mode = str(raw_mode).lower()
-                if mode not in valid_modes:
-                    raise ConfigParserError(f"mqtt.{field_name} mode must be one of: generic, homeassistant, both")
-               
-                parsed[key] = (MqttPayloadFormat.BOTH if mode == "both"
-                    else MqttPayloadFormat.GENERIC if mode == "generic"
-                    else MqttPayloadFormat.HOMEASSISTANT
-                )
+                parsed[key] = ConfigParser._get_payload_mode(raw_mode, field_name)
             else:
                 raise ConfigParserError(f"Each mqtt.{field_name} item must be either an integer or a single key/value pair")
 
@@ -165,20 +169,32 @@ class ConfigParser:
             verify_tls = mqtt_section.get("verify_tls")
             if verify_tls is not None:
                 mqtt_config.verify_tls = bool(verify_tls)
-            # mqtt network_payload
+            # mqtt default network payload. Must be evaluated before network_payload
+            default_network_payload = mqtt_section.get("default_network_payload")
+            if default_network_payload:
+                mqtt_config.default_network_payload = ConfigParser._get_payload_mode(default_network_payload,"default_network_payload")
+            # mqtt default device payload. Must be evaluated before device_payload
+            default_device_payload = mqtt_section.get("default_device_payload")
+            if default_device_payload:
+                mqtt_config.default_device_payload = ConfigParser._get_payload_mode(default_device_payload,"default_device_payload")
+            # mqtt default ssid payload. Must be evaluated before ssid_payload
+            default_ssid_payload = mqtt_section.get("default_ssid_payload")
+            if default_ssid_payload:
+                mqtt_config.default_ssid_payload = ConfigParser._get_payload_mode(default_ssid_payload,"default_ssid_payload")
+            # mqtt network payload
             network_payload = mqtt_section.get("network_payload")
             if network_payload is not None:
-                mqtt_config.network_payload = ConfigParser._load_payload_modes(mqtt_section.get("network_payload"),"network_payload")
-            # mqtt device_payload
+                mqtt_config.network_payload = ConfigParser._load_payload_modes(mqtt_section.get("network_payload"),"network_payload", mqtt_config.default_network_payload)
+            # mqtt device payload
             device_payload = mqtt_section.get("device_payload")
             if device_payload is not None:
-                mqtt_config.device_payload = ConfigParser._load_payload_modes(mqtt_section.get("device_payload"),"device_payload", False)
-            # mqtt ssid_payload
+                mqtt_config.device_payload = ConfigParser._load_payload_modes(mqtt_section.get("device_payload"),"device_payload", mqtt_config.default_device_payload, False)
+            # mqtt ssid payload
             ssid_payload = mqtt_section.get("ssid_payload")
             if ssid_payload is not None:
-                mqtt_config.ssid_payload = ConfigParser._load_payload_modes(mqtt_section.get("ssid_payload"),"ssid_payload")
+                mqtt_config.ssid_payload = ConfigParser._load_payload_modes(mqtt_section.get("ssid_payload"),"ssid_payload", mqtt_config.default_ssid_payload)
         
-        _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'|No. of Custom Network Payloads: '{len(mqtt_config.network_payload)}'|No. of Custom Device Payloads: '{len(mqtt_config.device_payload)}'|No. of SSID Network Payloads: '{len(mqtt_config.ssid_payload)}'")
+        _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'|Default Network Payload: '{mqtt_config.default_network_payload.name}'|Default Device Payload: '{mqtt_config.default_device_payload.name}'|Default SSID Payload: '{mqtt_config.default_ssid_payload.name}'|No. of Custom Network Payloads: '{len(mqtt_config.network_payload)}'|No. of Custom Device Payloads: '{len(mqtt_config.device_payload)}'|No. of SSID Network Payloads: '{len(mqtt_config.ssid_payload)}'")
         return mqtt_config
 
     @staticmethod
