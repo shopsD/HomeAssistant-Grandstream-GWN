@@ -20,5 +20,5 @@ class MqttConfig:
     topic: str = "gwn"
     tls: bool = False
     verify_tls: bool = True
-    homeassistant: HomeAssistantConfig = HomeAssistantConfig()
+    homeassistant: HomeAssistantConfig = field(default_factory=HomeAssistantConfig)
     

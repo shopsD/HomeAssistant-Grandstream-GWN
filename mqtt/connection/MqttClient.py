@@ -25,7 +25,7 @@ class MqttClient:
 
     def _generic_ssid_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         ssid_id: str = str(payload.get("id"))
-        device = self._ha_device_block(f"gwn_ssid_{ssid_id}",f"SSID {ssid_id}", "GWN SSID")
+        device = self._ha_device_block(f"gwn_ssid_{ssid_id}",f"SSID {str(payload.get('ssidName'))}", "GWN SSID")
 
         return [
             (
