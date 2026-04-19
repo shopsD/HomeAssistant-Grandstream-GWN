@@ -16,6 +16,51 @@ class ConfigParserError(Exception):
     pass
 
 class ConfigParser:
+        
+    @staticmethod
+    def _load_autodiscovery_modes(value: object, field_name: str, default_mode: bool, key_as_int: bool = True) -> dict[int|str, bool]:
+        if value is None:
+            return {}
+
+        if not isinstance(value, list):
+            raise ConfigParserError(f"mqtt.{field_name} must be a list")
+
+        parsed: dict[int | str, bool] = {}
+
+        for item in value:
+            if isinstance(item, int):
+                parsed[item] = default_mode
+            elif isinstance(item, dict):
+                if len(item) != 1:
+                    raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} child must contain exactly one key/value pair")
+                raw_key, raw_mode = next(iter(item.items()))
+                key = int(raw_key) if key_as_int else str(raw_key)
+                parsed[key] = bool(raw_mode)
+            else:
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} child must be either an integer or a single key/value pair")
+
+        return parsed
+
+    @staticmethod
+    def _load_name_override_module(value: object, field_name: str, key_as_int: bool = True) -> dict[int|str, str]:
+        if value is None:
+            return {}
+
+        if not isinstance(value, list):
+            raise ConfigParserError(f"mqtt.{field_name} must be a list")
+
+        parsed: dict[int | str, str] = {}
+
+        for item in value:
+            if not isinstance(item, dict):
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} child must be a key/value pair")
+            if len(item) != 1:
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} child must contain exactly one key/value pair")
+            raw_key, raw_mode = next(iter(item.items()))
+            key = int(raw_key) if key_as_int else str(raw_key)
+            parsed[key] = str(raw_mode)
+
+        return parsed
 
     @staticmethod
     def _load_gwn(raw) -> GwnConfig:
@@ -84,8 +129,11 @@ class ConfigParser:
             if not isinstance(gwn_exclude_ssid, list):
                 raise ConfigParserError("gwn.exclude_ssid must be a list of SSID IDs")
             gwn_config.exclude_ssid = [int(ssid_id) for ssid_id in gwn_exclude_ssid]
-
-        _LOGGER.debug(f"GWN Config|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
+        # mqtt verify tls
+        no_publish = gwn_section.get("no_publish")
+        if no_publish is not None:
+            gwn_config.no_publish = bool(no_publish)
+        _LOGGER.debug(f"GWN Config|No Publish: '{gwn_config.no_publish}'|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
 
         return gwn_config
 
@@ -133,11 +181,54 @@ class ConfigParser:
             verify_tls = mqtt_section.get("verify_tls")
             if verify_tls is not None:
                 mqtt_config.verify_tls = bool(verify_tls)
-            # mqtt homeassistant
-            homeassistant = mqtt_section.get("homeassistant")
-            if homeassistant is not None:
-                mqtt_config.homeassistant = bool(homeassistant)
-        _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'|Support Home Assistant: '{mqtt_config.homeassistant}'")
+            # mqtt verify tls
+            no_publish = mqtt_section.get("no_publish")
+            if no_publish is not None:
+                mqtt_config.no_publish = bool(no_publish)
+            homeassistant_sub_section = mqtt_section.get("homeassistant")
+            if homeassistant_sub_section is not None:
+                if not isinstance(homeassistant_sub_section, dict):
+                    raise ConfigParserError("mqtt.homeassistant is invalid")
+                # mqtt default network autodiscovery. Must be evaluated before network_autodiscovery
+                default_network = homeassistant_sub_section.get("default_network_autodiscovery")
+                if default_network is not None:
+                    mqtt_config.homeassistant.default_network_autodiscovery = bool(default_network)
+                # mqtt default device autodiscovery. Must be evaluated before device_autodiscovery
+                default_device = homeassistant_sub_section.get("default_device_autodiscovery")
+                if default_device is not None:
+                    mqtt_config.homeassistant.default_device_autodiscovery = bool(default_device)
+                # mqtt default ssid autodiscovery. Must be evaluated before ssid_autodiscovery
+                default_ssid = homeassistant_sub_section.get("default_ssid_autodiscovery")
+                if default_ssid is not None:
+                    mqtt_config.homeassistant.default_ssid_autodiscovery = bool(default_ssid)
+                # mqtt network autodiscovery
+                network_autodiscovery = homeassistant_sub_section.get("network_autodiscovery")
+                if network_autodiscovery is not None:
+                    mqtt_config.homeassistant.network_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("network_autodiscovery"),"network_autodiscovery", mqtt_config.homeassistant.default_network_autodiscovery)
+                # mqtt device autodiscovery
+                device_autodiscovery = homeassistant_sub_section.get("device_autodiscovery")
+                if device_autodiscovery is not None:
+                    mqtt_config.homeassistant.device_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("device_autodiscovery"),"device_autodiscovery", mqtt_config.homeassistant.default_device_autodiscovery, False)
+                # mqtt ssid autodiscovery
+                ssid_autodiscovery = homeassistant_sub_section.get("ssid_autodiscovery")
+                if ssid_autodiscovery is not None:
+                    mqtt_config.homeassistant.ssid_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("ssid_autodiscovery"),"ssid_autodiscovery", mqtt_config.homeassistant.default_ssid_autodiscovery)
+                # mqtt network autodiscovery
+                network_name_override = homeassistant_sub_section.get("network_name_override")
+                if network_name_override is not None:
+                    mqtt_config.homeassistant.network_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("network_name_override"),"network_name_override")
+                # mqtt device autodiscovery
+                device_name_override = homeassistant_sub_section.get("device_name_override")
+                if device_name_override is not None:
+                    mqtt_config.homeassistant.device_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("device_name_override"),"device_name_override", False)
+                # mqtt ssid autodiscovery
+                ssid_name_override = homeassistant_sub_section.get("ssid_name_override")
+                if ssid_name_override is not None:
+                    mqtt_config.homeassistant.ssid_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("ssid_name_override"),"ssid_name_override")
+                
+                _LOGGER.debug(f"MQTT.HomeAssistant Config|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
+
+        _LOGGER.debug(f"MQTT Config|No Publish: '{mqtt_config.no_publish}'|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
         return mqtt_config
 
     @staticmethod
@@ -182,7 +273,7 @@ class ConfigParser:
                 if files < 1:
                     raise ConfigParserError("logging.files must be >= 1")
                 log_config.files = files
-        _LOGGER.debug(f"Logging Config|Level: '{log_config.level}'|Location: '{log_config.location}'|Path: '{log_config.output_path}")
+        _LOGGER.debug(f"Logging Config|Level: '{log_config.level}'|Location: '{log_config.location}'|Path: '{log_config.output_path}'")
         return log_config
 
     @staticmethod

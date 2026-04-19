@@ -65,7 +65,7 @@ class MqttGwnManager:
             for gwn_device in gwn_network.devices:
                 _LOGGER.debug(f"Publishing Device {gwn_device.mac} to MQTT")
                 device_payload = self._serialise_device(gwn_network, gwn_device)
-                await self._mqtt_client.publish_device(network_topic, self._strip_mac(gwn_device.mac), device_payload)
+                await self._mqtt_client.publish_device(network_topic, gwn_device.mac, device_payload)
                 for gwn_ssid in gwn_device.ssids:
                     if gwn_ssid.id not in published_ssids: 
                         _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
@@ -82,6 +82,7 @@ class MqttGwnManager:
 
     def _serialise_ssid(self, gwn_ssid: GwnSSID, assigned_devices: list[dict[str, str]]) -> dict[str, object]:
         return {
+            "id": gwn_ssid.id,
             "ssidName": gwn_ssid.ssidName,
             "wifiEnabled": gwn_ssid.wifiEnabled,
             "onlineDevices": gwn_ssid.onlineDevices,
@@ -100,7 +101,7 @@ class MqttGwnManager:
             "ghz2_4_Enabled": gwn_ssid.ghz2_4_Enabled,
             "ghz5_Enabled": gwn_ssid.ghz5_Enabled,
             "ghz6_Enabled": gwn_ssid.ghz6_Enabled,
-            "assignedDevices": assigned_devices,
+            "assignedDevices": assigned_devices
         }
 
     def _serialise_device(self, gwn_network: GwnNetwork, gwn_device: GwnDevice) -> dict[str, object]:
@@ -143,7 +144,7 @@ class MqttGwnManager:
                     "ssidName": ssid.ssidName,
                 }
                 for ssid in gwn_device.ssids
-            ],
+            ]
         }
 
     def _serialise_network(self, gwn_network: GwnNetwork) -> dict[str, object]:
@@ -153,9 +154,6 @@ class MqttGwnManager:
             "countryDisplay": gwn_network.countryDisplay,
             "timezone": gwn_network.timezone
         }
-
-    def _strip_mac(self, mac: str) -> str:
-        return mac.replace(":", "").lower()
 
     async def connect(self) -> bool:
         try:

@@ -12,7 +12,8 @@ class GwnConfig:
     exclude_ssid: list[int] = field(default_factory=list)
     exclude_device: list[str] = field(default_factory=list)
     exclude_network: list[int] = field(default_factory=list)
-
+    no_publish: bool = False
+    
     @staticmethod
     def normalise_mac(mac: str) -> str:
         mac = mac.replace(":", "").replace("-", "").upper()
