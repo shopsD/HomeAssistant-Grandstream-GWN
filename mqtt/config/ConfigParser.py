@@ -108,8 +108,11 @@ class ConfigParser:
             if not isinstance(gwn_exclude_ssid, list):
                 raise ConfigParserError("gwn.exclude_ssid must be a list of SSID IDs")
             gwn_config.exclude_ssid = [int(ssid_id) for ssid_id in gwn_exclude_ssid]
-
-        _LOGGER.debug(f"GWN Config|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
+        # mqtt verify tls
+        no_publish = gwn_section.get("no_publish")
+        if no_publish is not None:
+            gwn_config.no_publish = bool(no_publish)
+        _LOGGER.debug(f"GWN Config|No Publish: '{gwn_config.no_publish}'|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
 
         return gwn_config
 
@@ -157,7 +160,10 @@ class ConfigParser:
             verify_tls = mqtt_section.get("verify_tls")
             if verify_tls is not None:
                 mqtt_config.verify_tls = bool(verify_tls)
-
+            # mqtt verify tls
+            no_publish = mqtt_section.get("no_publish")
+            if no_publish is not None:
+                mqtt_config.no_publish = bool(no_publish)
             homeassistant_sub_section = mqtt_section.get("homeassistant")
             if homeassistant_sub_section is not None:
                 if not isinstance(homeassistant_sub_section, dict):
@@ -188,7 +194,7 @@ class ConfigParser:
                     mqtt_config.homeassistant.ssid_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("ssid_autodiscovery"),"ssid_autodiscovery", mqtt_config.homeassistant.default_ssid_autodiscovery)
                 _LOGGER.debug(f"MQTT.HomeAssistant Config|Default Network Autodiscovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Autodiscovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Autodiscovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Autodiscoverys: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Autodiscoverys: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of SSID Network Autodiscoverys: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'")
 
-        _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
+        _LOGGER.debug(f"MQTT Config|No Publish: '{mqtt_config.no_publish}'|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
         return mqtt_config
 
     @staticmethod
@@ -233,7 +239,7 @@ class ConfigParser:
                 if files < 1:
                     raise ConfigParserError("logging.files must be >= 1")
                 log_config.files = files
-        _LOGGER.debug(f"Logging Config|Level: '{log_config.level}'|Location: '{log_config.location}'|Path: '{log_config.output_path}")
+        _LOGGER.debug(f"Logging Config|Level: '{log_config.level}'|Location: '{log_config.location}'|Path: '{log_config.output_path}'")
         return log_config
 
     @staticmethod

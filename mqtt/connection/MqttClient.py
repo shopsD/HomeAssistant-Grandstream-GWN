@@ -67,7 +67,7 @@ class MqttClient:
                     "name": "VLAN ID",
                     "unique_id": f"gwn_ssid_{ssid_id}_vlan",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ssidVlanid }}",
+                    "value_template": "{{ value_json.ssidVlanid if value_json.get('ssidVlanEnabled') else 'No VLAN' }}",
                     "device": device
                 }
             ),
@@ -77,22 +77,113 @@ class MqttClient:
                     "name": "Devices",
                     "unique_id": f"gwn_ssid_{ssid_id}_devices",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.assignedDevices | map(attribute='name') | join(', ') }}",
+                    "value_template": "{% set devices = value_json.get('assignedDevices', []) %}{% if devices %}{% for dev in devices %}{{ dev.name if dev.name else dev.mac }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}None{% endif %}",
                     "device": device
                 }
             ),
+            (
+                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled_2_4"),
+                {
+                    "name": "Devices",
+                    "unique_id": f"gwn_ssid_{ssid_id}_enabled_2_4",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.ghz2_4_Enabled }}",
+                    "payload_on": True,
+                    "payload_off": False,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled_2_4"),
+                {
+                    "name": "2.4GHz Station",
+                    "unique_id": f"gwn_ssid_{ssid_id}_enabled_2_4",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.ghz2_4_Enabled }}",
+                    "payload_on": True,
+                    "payload_off": False,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled_5"),
+                {
+                    "name": "5GHz Station",
+                    "unique_id": f"gwn_ssid_{ssid_id}_enabled_5",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.ghz5_Enabled }}",
+                    "payload_on": True,
+                    "payload_off": False,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled_6"),
+                {
+                    "name": "6GHz Station",
+                    "unique_id": f"gwn_ssid_{ssid_id}_enabled_6",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.ghz6_Enabled }}",
+                    "payload_on": True,
+                    "payload_off": False,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_ssid_{ssid_id}_passphrase"),
+                {
+                    "name": "WiFi Passphrase",
+                    "unique_id": f"gwn_ssid_{ssid_id}_passphrase",
+                    "state_topic": state_topic,
+                     "value_template": "{{ value_json.ssidKey }}",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_hidden"),
+                {
+                    "name": "WiFi Hidden",
+                    "unique_id": f"gwn_ssid_{ssid_id}_hidden",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.ssidSsidHidden }}",
+                    "payload_on": True,
+                    "payload_off": False,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_ssid_{ssid_id}_client_count"),
+                {
+                    "name": "Clients Online",
+                    "unique_id": f"gwn_ssid_{ssid_id}_client_count",
+                    "state_topic": state_topic,
+                     "value_template": "{{ value_json.onlineDevices }}",
+                    "device": device
+                }
+            )
         ]
 
     def _generic_device_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         device_mac = str(payload.get("mac"))
-        device = self._ha_device_block(f"gwn_device_{device_mac}", str(payload.get("name") or device_mac), str(payload.get("apType", "GWN Device")))
+        normalised_device_mac = self._strip_mac(device_mac)
+        device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", str(payload.get("apType", "GWN Device")), str(payload.get("name") or device_mac))
 
         return [
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_device_{device_mac}_status"),
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_network_name"),
+                {
+                    "name": "Network",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_network_name",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.networkName }}",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("binary_sensor", f"gwn_device_{normalised_device_mac}_status"),
                 {
                     "name": "Status",
-                    "unique_id": f"gwn_device_{device_mac}_status",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_status",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.status }}",
                     "payload_on": True,
@@ -101,55 +192,127 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{device_mac}_ip"),
+                self._ha_discovery_topic("binary_sensor", f"gwn_device_{normalised_device_mac}_wireless"),
                 {
-                    "name": "IP",
-                    "unique_id": f"gwn_device_{device_mac}_ip",
+                    "name": "Wireless Status",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_wireless",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.wireless }}",
+                    "payload_on": True,
+                    "payload_off": False,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_ipv4"),
+                {
+                    "name": "IPv4",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_ipv4",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.ip }}",
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{device_mac}_firmware"),
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_ipv6"),
                 {
-                    "name": "Firmware",
-                    "unique_id": f"gwn_device_{device_mac}_firmware",
+                    "name": "IPv6",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_ipv6",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.ipv6 }}",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_firmware"),
+                {
+                    "name": "Current Firmware",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_firmware",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.versionFirmware }}",
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{device_mac}_firmware_new"),
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_firmware_new"),
                 {
                     "name": "Available Firmware",
-                    "unique_id": f"gwn_device_{device_mac}_firmware_new",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_firmware_new",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.newFirmware }}",
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{device_mac}_temperature"),
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_cpu_usage"),
+                {
+                    "name": "CPU Usage",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_cpu_usage",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.cpuUsage }}",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_temperature"),
                 {
                     "name": "Temperature",
-                    "unique_id": f"gwn_device_{device_mac}_temperature",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_temperature",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.temperature }}",
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{device_mac}_ssid_names"),
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_ssid_names"),
                 {
                     "name": "SSIDs",
-                    "unique_id": f"gwn_device_{device_mac}_ssid_names",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_ssid_names",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.ssids | map(attribute='ssidName') | join(', ') }}",
                     "device": device
                 }
-            )
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_uptime"),
+                {
+                    "name": "Up Time",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_uptime",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.upTime }}",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_2_4"),
+                {
+                    "name": "2.4Ghz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_2_4",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.channel_2_4 }}",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_5"),
+                {
+                    "name": "5Ghz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_5",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.channel_5 }}",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_6"),
+                {
+                    "name": "6Ghz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_6",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.channel_6 }}",
+                    "device": device
+                }
+            ),
         ]
 
     def _generic_network_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:

@@ -101,7 +101,7 @@ class MqttGwnManager:
             "ghz2_4_Enabled": gwn_ssid.ghz2_4_Enabled,
             "ghz5_Enabled": gwn_ssid.ghz5_Enabled,
             "ghz6_Enabled": gwn_ssid.ghz6_Enabled,
-            "assignedDevices": assigned_devices,
+            "assignedDevices": assigned_devices
         }
 
     def _serialise_device(self, gwn_network: GwnNetwork, gwn_device: GwnDevice) -> dict[str, object]:
@@ -144,7 +144,7 @@ class MqttGwnManager:
                     "ssidName": ssid.ssidName,
                 }
                 for ssid in gwn_device.ssids
-            ],
+            ]
         }
 
     def _serialise_network(self, gwn_network: GwnNetwork) -> dict[str, object]:

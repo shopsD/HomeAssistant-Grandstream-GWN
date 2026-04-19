@@ -22,7 +22,7 @@ mqtt:
     ssid_autodiscovery: # default is empty so all payloads will use default_ssid Publish MQTT for these networks
       - 3: False
       - 2: False
-
+  no_publish: False # default False. Listens to MQTT messages but will not publish anything to MQTT. Good for monitoring logs for application data. Primarily a dev/debug setting
 gwn: # required
   url: https://localhost:8443 # default https://localhost:8443
   app_id: CHANGE_ME # required
@@ -43,6 +43,7 @@ gwn: # required
   # exclude_network: # networks that will not be processed or published. default is empty
   #   - 1
   #   - 2
+  no_publish: False # default False. Polls for data from GWN Manager but does not send commands. Good for monitoring logs for application data. Primarily a dev/debug setting
 logging:
   level: DEBUG # default INFO
   location: syslog # syslog/file/console default: syslog

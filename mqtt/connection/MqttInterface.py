@@ -64,4 +64,5 @@ class MqttInterface:
         _LOGGER.info("Disconnected from MQTT broker")
 
     async def publish(self, topic: str, payload: str, retain: bool = False) -> None:
-        await self.client.publish(topic, payload, retain=retain)
+        if not self._config.no_publish:
+            await self.client.publish(topic, payload, retain=retain)
