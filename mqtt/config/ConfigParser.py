@@ -32,12 +32,12 @@ class ConfigParser:
                 parsed[item] = default_mode
             elif isinstance(item, dict):
                 if len(item) != 1:
-                    raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} item must contain exactly one key/value pair")
+                    raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} child must contain exactly one key/value pair")
                 raw_key, raw_mode = next(iter(item.items()))
                 key = int(raw_key) if key_as_int else str(raw_key)
                 parsed[key] = bool(raw_mode)
             else:
-                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} item must be either an integer or a single key/value pair")
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} child must be either an integer or a single key/value pair")
 
         return parsed
 
@@ -53,14 +53,12 @@ class ConfigParser:
 
         for item in value:
             if not isinstance(item, dict):
-                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} must be a key/value pair")
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} child must be a key/value pair")
             if len(item) != 1:
-                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} item must contain exactly one key/value pair")
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} child must contain exactly one key/value pair")
             raw_key, raw_mode = next(iter(item.items()))
             key = int(raw_key) if key_as_int else str(raw_key)
             parsed[key] = str(raw_mode)
-        else:
-            raise ConfigParserError(f"Each mqtt.{field_name} item must be either an integer or a single key/value pair")
 
         return parsed
 
