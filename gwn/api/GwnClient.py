@@ -49,7 +49,7 @@ class GwnClient:
 
             mac= GwnConfig.normalise_mac(basic_info["mac"])
             if mac in self._config.exclude_device:
-                _LOGGER.debug(f"Ignoring Device: {id}")
+                _LOGGER.debug(f"Ignoring Device: {mac}")
             else:
                 gwn_device = GwnDevice(
                     status=int(basic_info["status"])==1,
@@ -204,23 +204,23 @@ class GwnClient:
         gwn_networks: list[GwnNetwork] = []
         if networks is not None:
             for network in networks:
-                network_id =  str(network["id"])
+                network_id =  int(network["id"])
                 if network_id in self._config.exclude_network:
                     _LOGGER.debug(f"Ignoring Network: {network_id}")
                 else:
                     _LOGGER.debug(f"Processing Network ID {network_id}")
-                    network_data = await self._interface.get_network_info(int(network_id))
+                    network_data = await self._interface.get_network_info(network_id)
                     if network_data:
                         gwn_network = GwnNetwork(
-                            id = network_id,
+                            id = str(network_id),
                             networkName = str(network_data["networkName"]),
                             countryDisplay = str(network_data["countryDisplay"]),
                             country = str(network_data["country"]),
                             timezone = str(network_data["timezone"]),
-                            devices = await self._get_network_data(network_id)
+                            devices = await self._get_network_data(str(network_id))
                         )
                         _LOGGER.debug(f"Processed Network {gwn_network.networkName} with ID {gwn_network.id}")
-                gwn_networks.append(gwn_network)
+                    gwn_networks.append(gwn_network)
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
