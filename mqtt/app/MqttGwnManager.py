@@ -25,7 +25,8 @@ class MqttGwnManager:
         while True:
             try:
                 networks = await self._gwn_client.get_gwn_data()
-                _LOGGER.info(f"Publishing {len(networks)} Networks over MQTT")
+                
+                self._publish_network(networks)
             except Exception as e:
                 _LOGGER.error("Error retreiving GWN Data: %s", e)
             _LOGGER.info(f"Will refresh in {self._gwn_client.refresh_period}s")
@@ -51,21 +52,25 @@ class MqttGwnManager:
         return ssid_assignments
                 
     async def _publish_network(self, gwn_networks: list[GwnNetwork]) -> None:
+        _LOGGER.info(f"Publishing {len(networks)} Networks over MQTT")
         for gwn_network in gwn_networks:
             ssid_assignments: dict[str, list[dict[str, str]]] = self._build_ssid_assignemts(gwn_network.devices)
+            _LOGGER.debug(f"Publishing Network: {gwn_network.name} with ID {gwn_network.id} to MQTT")
             network_topic = await self._mqtt_client.publish_network(gwn_network.id, self._serialise_network(gwn_network))
 
             # devices may share an SSID so dont republish it again if it already was published
             published_ssids: set[str] = set()
             for gwn_device in gwn_network.devices:
+                _LOGGER.debug(f"Publishing Device {gwn_device.mac} to MQTT")
                 device_payload = self._serialise_device(gwn_device)
                 await self._mqtt_client.publish_device(network_topic, self._strip_mac(gwn_device.mac), device_payload)
                 for gwn_ssid in gwn_device.ssids:
                     if gwn_ssid.id not in published_ssids:
                         published_ssids.add(gwn_ssid.id)
-                        ssid_payload = self._serialise_ssid( gwn_ssid, ssid_assignments.get(gwn_ssid.id, []))
+                        _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
+                        ssid_payload = self._serialise_ssid(gwn_ssid, ssid_assignments.get(gwn_ssid.id, []))
                         await self._mqtt_client.publish_ssid(network_topic, gwn_ssid.id, ssid_payload )
-
+        _LOGGER.info(f"Published {len(networks)} Networks over MQTT")
     def _enum_value(self, value: Enum | None) -> str | None:
         if value is None:
             return None
