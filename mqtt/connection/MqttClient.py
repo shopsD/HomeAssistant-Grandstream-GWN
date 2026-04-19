@@ -91,12 +91,12 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled_2_4"),
+                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_client_isolation_enabled"),
                 {
-                    "name": "Devices",
-                    "unique_id": f"gwn_ssid_{ssid_id}_enabled_2_4",
+                    "name": "Client Isolation",
+                    "unique_id": f"gwn_ssid_{ssid_id}_client_isolation_enabled",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ghz2_4_Enabled }}",
+                    "value_template": "{{ value_json.clientIsolationEnabled }}",
                     "payload_on": True,
                     "payload_off": False,
                     "device": device
@@ -177,11 +177,16 @@ class MqttClient:
         normalised_device_mac = self._strip_mac(device_mac)
 
         normalised_name_override_macs = self._normalise_macs(self._config.homeassistant.device_name_override)
-        device_type: str = str(payload.get("apType", "GWN Device"))
-        if normalised_device_mac in normalised_name_override_macs:
-            device_type = str(normalised_name_override_macs[normalised_device_mac])
+        device_model: str = device_mac
+        device_name: str = payload.get("name")
+        if len(device_name) == 0:
+            device_name = str(payload.get("apType", "GWN Device"))
 
-        device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", device_type, str(payload.get("name") or device_mac))
+        if normalised_device_mac in normalised_name_override_macs:
+            device_model = device_name if len(device_name) > 0 else device_mac
+            device_name = str(normalised_name_override_macs[normalised_device_mac])
+
+        device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", device_name, device_model)
 
         return [
             (
