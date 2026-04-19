@@ -1,8 +1,10 @@
 import asyncio
 import logging
+from enum import Enum
 
 from gwn.api import GwnClient
 from gwn.constants import Constants
+from gwn.request_data import GwnDevice, GwnNetwork, GwnSSID
 from mqtt.connection import MqttClient
 
 _LOGGER = logging.getLogger(Constants.LOG)
@@ -33,6 +35,122 @@ class MqttGwnManager:
         _LOGGER.info("Listening to MQTT")
         await asyncio.Event().wait()
 
+    def _build_ssid_assignemts(self, devices: list[GwnDevice]) -> dict[str, list[dict[str, str]]]:
+        ssid_assignments: dict[str, list[dict[str, str]]] = {}
+        for gwn_device in devices:
+            for gwn_ssid in gwn_device.ssids:
+                if gwn_ssid.id not in ssid_assignments:
+                    ssid_assignments[gwn_ssid.id] = []
+                ssid_assignments[gwn_ssid.id].append(
+                    {
+                        "mac": gwn_device.mac,
+                        "name": gwn_device.name,
+                        "apType": gwn_device.apType,
+                    }
+                )
+        return ssid_assignments
+                
+    async def _publish_network(self, gwn_networks: list[GwnNetwork]) -> None:
+        for gwn_network in gwn_networks:
+            ssid_assignments: dict[str, list[dict[str, str]]] = self._build_ssid_assignemts(gwn_network.devices)
+            network_topic = await self._mqtt_client.publish_network(gwn_network.id, self._serialise_network(gwn_network))
+
+            # devices may share an SSID so dont republish it again if it already was published
+            published_ssids: set[str] = set()
+            for gwn_device in gwn_network.devices:
+                device_payload = self._serialise_device(gwn_device)
+                await self._mqtt_client.publish_device(network_topic, self._strip_mac(gwn_device.mac), device_payload)
+                for gwn_ssid in gwn_device.ssids:
+                    if gwn_ssid.id not in published_ssids:
+                        published_ssids.add(gwn_ssid.id)
+                        ssid_payload = self._serialise_ssid( gwn_ssid, ssid_assignments.get(gwn_ssid.id, []))
+                        await self._mqtt_client.publish_ssid(network_topic, gwn_ssid.id, ssid_payload )
+
+    def _enum_value(self, value: Enum | None) -> str | None:
+        if value is None:
+            return None
+        return value.name
+
+    def _serialise_ssid(self, gwn_ssid: GwnSSID, assigned_devices: list[dict[str, str]]) -> dict[str, object]:
+        return {
+            "id": gwn_ssid.id,
+            "ssidName": gwn_ssid.ssidName,
+            "wifiEnabled": gwn_ssid.wifiEnabled,
+            "onlineDevices": gwn_ssid.onlineDevices,
+            "scheduleEnabled": gwn_ssid.scheduleEnabled,
+            "portalEnabled": gwn_ssid.portalEnabled,
+            "securityMode": self._enum_value(gwn_ssid.securityMode),
+            "macFilteringEnabled": self._enum_value(gwn_ssid.macFilteringEnabled),
+            "clientIsolationEnabled": gwn_ssid.clientIsolationEnabled,
+            "ssidIsolationMode": self._enum_value(gwn_ssid.ssidIsolationMode),
+            "ssidIsolation": gwn_ssid.ssidIsolation,
+            "ssidSsidHidden": gwn_ssid.ssidSsidHidden,
+            "ssidNewSsidBand": gwn_ssid.ssidNewSsidBand,
+            "ssidVlanid": gwn_ssid.ssidVlanid,
+            "ssidVlanEnabled": gwn_ssid.ssidVlanEnabled,
+            "ssidEnable": gwn_ssid.ssidEnable,
+            "ssidRemark": gwn_ssid.ssidRemark,
+            "ssidKey": gwn_ssid.ssidKey,
+            "ghz2_4_Enabled": gwn_ssid.ghz2_4_Enabled,
+            "ghz5_Enabled": gwn_ssid.ghz5_Enabled,
+            "ghz6_Enabled": gwn_ssid.ghz6_Enabled,
+            "assignedDevices": assigned_devices,
+        }
+
+    def _serialise_device(self, gwn_device: GwnDevice) -> dict[str, object]:
+        return {
+            "status": gwn_device.status,
+            "apType": gwn_device.apType,
+            "mac": gwn_device.mac,
+            "name": gwn_device.name,
+            "ip": gwn_device.ip,
+            "upTime": gwn_device.upTime,
+            "usage": gwn_device.usage,
+            "upload": gwn_device.upload,
+            "download": gwn_device.download,
+            "clients": gwn_device.clients,
+            "versionFirmware": gwn_device.versionFirmware,
+            "networkId": gwn_device.networkId,
+            "ipv6": gwn_device.ipv6,
+            "newFirmware": gwn_device.newFirmware,
+            "wireless": gwn_device.wireless,
+            "vlanCount": gwn_device.vlanCount,
+            "ssidNumber": gwn_device.ssidNumber,
+            "online": gwn_device.online,
+            "model": gwn_device.model,
+            "deviceType": gwn_device.deviceType,
+            "channel_5": gwn_device.channel_5,
+            "channel_2_4": gwn_device.channel_2_4,
+            "channel_6": gwn_device.channel_6,
+            "partNumber": gwn_device.partNumber,
+            "bootVersion": gwn_device.bootVersion,
+            "network": gwn_device.network,
+            "temperature": gwn_device.temperature,
+            "usedMemory": gwn_device.usedMemory,
+            "channelload_2g4": gwn_device.channelload_2g4,
+            "channelload_6g": gwn_device.channelload_6g,
+            "cpuUsage": gwn_device.cpuUsage,
+            "channelload_5g": gwn_device.channelload_5g,
+            "ssids": [
+                {
+                    "id": ssid.id,
+                    "ssidName": ssid.ssidName,
+                }
+                for ssid in gwn_device.ssids
+            ],
+        }
+
+    def _serialise_network(self, gwn_network: GwnNetwork) -> dict[str, object]:
+        return {
+            "id": gwn_network.id,
+            "networkName": gwn_network.networkName,
+            "countryDisplay": gwn_network.countryDisplay,
+            "timezone": gwn_network.timezone
+        }
+
+    def _strip_mac(self, mac: str) -> str:
+        return mac.replace(":", "").lower()
+
     async def connect(self) -> bool:
         try:
             _LOGGER.info("Connecting to MQTT")
@@ -45,7 +163,7 @@ class MqttGwnManager:
                 raise AuthenticationError("Failed to acquire access token from GWN Manager")
             _LOGGER.debug("Connected to GWN Manager")
 
-            await self._mqtt_client.publish(f"{self._mqtt_client.topic}/status", "online", retain=True)
+            await self._mqtt_client.publish_online()
             _LOGGER.debug("Published Application status")
             _LOGGER.info("Successfully connected to MQTT and GWN Manager")
             return True

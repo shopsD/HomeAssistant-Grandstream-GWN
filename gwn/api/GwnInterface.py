@@ -11,13 +11,13 @@ from gwn.constants import Constants
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
-class GwnRequestor:
+class GwnInterface:
     def __init__(self, config: GwnConfig) -> None:
         self._config:GwnConfig = config
         self._session: aiohttp.ClientSession = aiohttp.ClientSession()
         self._token: GwnToken | None = None
 
-    async def __aenter__(self) -> "GwnRequestor":
+    async def __aenter__(self) -> "GwnInterface":
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:

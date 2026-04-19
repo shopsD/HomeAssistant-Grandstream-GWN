@@ -1,4 +1,4 @@
 from .GwnClient import GwnClient
-from .GwnRequestor import GwnRequestor
+from .GwnInterface import GwnInterface
 
-__all__ = ["GwnClient", "GwnRequestor"]
+__all__ = ["GwnClient", "GwnInterface"]

@@ -2,7 +2,7 @@ import logging
 
 from typing import Any, cast
 
-from gwn.api.GwnRequestor import GwnRequestor
+from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
 from gwn.constants import Constants
 from gwn.request_data import GwnDevice, GwnNetwork, GwnSSID, IsolationMode, MacFiltering, SecurityMode
@@ -12,7 +12,7 @@ _LOGGER = logging.getLogger(Constants.LOG)
 class GwnClient:
     def __init__(self, config: GwnConfig) -> None:
         self._config = config
-        self._requestor = GwnRequestor(config)
+        self._interface = GwnInterface(config)
 
     def _normalise_dictionary_data(self, dictionary_data: list[dict[str, Any]] | None) -> dict[str, Any]:
         normalised:dict[str, Any] = {}
@@ -138,13 +138,13 @@ class GwnClient:
         return ssid_list
 
     async def _get_ssid_data(self, network_id: str) -> dict[str, Any]:
-        ssid_response = await self._requestor.get_all_ssids(network_id)
+        ssid_response = await self._interface.get_all_ssids(network_id)
         ssid_data: dict[str, list[dict[str,Any]]] = {}
         if ssid_response is not None:
             for basic_info in ssid_response:
                 id = basic_info.get("id")
                 if id:
-                    config_info = await self._requestor.get_ssid_configuration(int(id))
+                    config_info = await self._interface.get_ssid_configuration(int(id))
                     if config_info is not None:
                         ssid_data[id] = [basic_info,config_info]
         return ssid_data
@@ -157,15 +157,15 @@ class GwnClient:
                 if mac:
                     _LOGGER.debug(f"Reqeusting data for {mac}")
                     mac = self._normalise_mac(mac)
-                    device_info_port = await self._requestor.get_device_info_port(network_id,mac) or {}
-                    device_info_client = await self._requestor.get_device_info_client(mac) or {}
+                    device_info_port = await self._interface.get_device_info_port(network_id,mac) or {}
+                    device_info_client = await self._interface.get_device_info_client(mac) or {}
                     device_data.append([basic_info,device_info_port,device_info_client, firmware_data[mac]])
                 else:
                     _LOGGER.warning("Found response with missing MAC Address")
         return device_data
 
     async def _get_firmware_data(self, network_id: int) -> dict[str,dict[str,Any]]:
-        device_firmware = await self._requestor.get_device_firmware_version(int(network_id))
+        device_firmware = await self._interface.get_device_firmware_version(int(network_id))
         if device_firmware is None:
             return {}
         firmware_data: dict[str,dict[str,Any]] = {}
@@ -179,7 +179,7 @@ class GwnClient:
     async def _get_network_data(self, network_id: str) -> list[GwnDevice]:
         _LOGGER.info(f"Getting Devices for Network: {network_id}")
         ssid_data = await self._get_ssid_data(network_id)
-        device_response = await self._requestor.get_all_devices(network_id)
+        device_response = await self._interface.get_all_devices(network_id)
         device_firmware_data = await self._get_firmware_data(int(network_id))
         device_data = await self._get_device_data(int(network_id),device_response,device_firmware_data)
 
@@ -193,11 +193,11 @@ class GwnClient:
         return self._config.refresh_period_s
 
     async def authenticate(self) -> bool:
-        return await self._requestor.authenticate()
+        return await self._interface.authenticate()
 
     async def get_gwn_data(self) -> list[GwnNetwork]:
         _LOGGER.info("Getting Networks")
-        networks = await self._requestor.get_all_networks()
+        networks = await self._interface.get_all_networks()
         gwn_networks: list[GwnNetwork] = []
         if networks is not None:
             for network in networks:
