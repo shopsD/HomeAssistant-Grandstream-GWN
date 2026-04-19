@@ -18,14 +18,14 @@ class ConfigParserError(Exception):
 class ConfigParser:
 
     @staticmethod
-    def _load_payload_modes(value: object, field_name: str, key_as_int: bool = True) -> dict[int, MqttPayloadFormat]:
+    def _load_payload_modes(value: object, field_name: str, key_as_int: bool = True) -> dict[int|str, MqttPayloadFormat]:
         if value is None:
             return {}
 
         if not isinstance(value, list):
             raise ConfigParserError(f"mqtt.{field_name} must be a list")
 
-        parsed: dict[int, MqttPayloadFormat] = {}
+        parsed: dict[int | str, MqttPayloadFormat] = {}
         valid_modes = {"generic", "homeassistant", "both"}
 
         for item in value:
@@ -39,6 +39,7 @@ class ConfigParser:
                 mode = str(raw_mode).lower()
                 if mode not in valid_modes:
                     raise ConfigParserError(f"mqtt.{field_name} mode must be one of: generic, homeassistant, both")
+               
                 parsed[key] = (MqttPayloadFormat.BOTH if mode == "both"
                     else MqttPayloadFormat.GENERIC if mode == "generic"
                     else MqttPayloadFormat.HOMEASSISTANT

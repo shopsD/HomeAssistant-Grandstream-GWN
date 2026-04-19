@@ -17,6 +17,6 @@ class MqttConfig:
     topic: str = "gwn"
     tls: bool = False
     verify_tls: bool = True
-    network_payload: dict[int, MqttPayloadFormat] = field(default_factory=dict)
-    device_payload: dict[str, MqttPayloadFormat] = field(default_factory=dict)
-    ssid_payload: dict[int, MqttPayloadFormat] = field(default_factory=dict)
+    network_payload: dict[int | str, MqttPayloadFormat] = field(default_factory=dict)
+    device_payload: dict[int | str, MqttPayloadFormat] = field(default_factory=dict)
+    ssid_payload: dict[int | str, MqttPayloadFormat] = field(default_factory=dict)
