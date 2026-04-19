@@ -7,7 +7,7 @@ import yaml
 from gwn.authentication import GwnConfig
 from gwn.constants import Constants
 from mqtt.config.AppConfig import AppConfig
-from mqtt.config.MqttConfig import MqttConfig
+from mqtt.config.MqttConfig import MqttConfig, MqttPayloadFormat
 from mqtt.config.LoggingConfig import LogLocation, LoggingConfig
 
 _LOGGER = logging.getLogger(Constants.LOG)
@@ -16,6 +16,37 @@ class ConfigParserError(Exception):
     pass
 
 class ConfigParser:
+
+    @staticmethod
+    def _load_payload_modes(value: object, field_name: str, key_as_int: bool = True) -> dict[int, MqttPayloadFormat]:
+        if value is None:
+            return {}
+
+        if not isinstance(value, list):
+            raise ConfigParserError(f"mqtt.{field_name} must be a list")
+
+        parsed: dict[int, MqttPayloadFormat] = {}
+        valid_modes = {"generic", "homeassistant", "both"}
+
+        for item in value:
+            if isinstance(item, int):
+                parsed[item] = MqttPayloadFormat.GENERIC
+            elif isinstance(item, dict):
+                if len(item) != 1:
+                    raise ConfigParserError(f"Each mqtt.{field_name} item must contain exactly one key/value pair")
+                raw_key, raw_mode = next(iter(item.items()))
+                key = int(raw_key) if key_as_int else str(raw_key)
+                mode = str(raw_mode).lower()
+                if mode not in valid_modes:
+                    raise ConfigParserError(f"mqtt.{field_name} mode must be one of: generic, homeassistant, both")
+                parsed[key] = (MqttPayloadFormat.BOTH if mode == "both"
+                    else MqttPayloadFormat.GENERIC if mode == "generic"
+                    else MqttPayloadFormat.HOMEASSISTANT
+                )
+            else:
+                raise ConfigParserError(f"Each mqtt.{field_name} item must be either an integer or a single key/value pair")
+
+        return parsed
 
     @staticmethod
     def _load_gwn(raw) -> GwnConfig:
@@ -133,11 +164,20 @@ class ConfigParser:
             verify_tls = mqtt_section.get("verify_tls")
             if verify_tls is not None:
                 mqtt_config.verify_tls = bool(verify_tls)
-            # mqtt homeassistant
-            homeassistant = mqtt_section.get("homeassistant")
-            if homeassistant is not None:
-                mqtt_config.homeassistant = bool(homeassistant)
-        _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'|Support Home Assistant: '{mqtt_config.homeassistant}'")
+            # mqtt network_payload
+            network_payload = mqtt_section.get("network_payload")
+            if network_payload is not None:
+                mqtt_config.network_payload = ConfigParser._load_payload_modes(mqtt_section.get("network_payload"),"network_payload")
+            # mqtt device_payload
+            device_payload = mqtt_section.get("device_payload")
+            if device_payload is not None:
+                mqtt_config.device_payload = ConfigParser._load_payload_modes(mqtt_section.get("device_payload"),"device_payload", False)
+            # mqtt ssid_payload
+            ssid_payload = mqtt_section.get("ssid_payload")
+            if ssid_payload is not None:
+                mqtt_config.ssid_payload = ConfigParser._load_payload_modes(mqtt_section.get("ssid_payload"),"ssid_payload")
+        
+        _LOGGER.debug(f"MQTT Config|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'|No. of Custom Network Payloads: '{len(mqtt_config.network_payload)}'|No. of Custom Device Payloads: '{len(mqtt_config.device_payload)}'|No. of SSID Network Payloads: '{len(mqtt_config.ssid_payload)}'")
         return mqtt_config
 
     @staticmethod

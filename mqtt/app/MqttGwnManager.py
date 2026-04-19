@@ -17,6 +17,7 @@ class RequestError(Exception):
 
 class MqttGwnManager:
     def __init__(self, mqtt_client: MqttClient, gwn_client: GwnClient) -> None:
+        self._config = mqtt_client
         self._mqtt_client = mqtt_client
         self._gwn_client = gwn_client
 
