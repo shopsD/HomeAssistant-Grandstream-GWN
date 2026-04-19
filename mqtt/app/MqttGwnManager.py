@@ -65,7 +65,7 @@ class MqttGwnManager:
             for gwn_device in gwn_network.devices:
                 _LOGGER.debug(f"Publishing Device {gwn_device.mac} to MQTT")
                 device_payload = self._serialise_device(gwn_network, gwn_device)
-                await self._mqtt_client.publish_device(network_topic, self._strip_mac(gwn_device.mac), device_payload)
+                await self._mqtt_client.publish_device(network_topic, gwn_device.mac, device_payload)
                 for gwn_ssid in gwn_device.ssids:
                     if gwn_ssid.id not in published_ssids: 
                         _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
@@ -154,9 +154,6 @@ class MqttGwnManager:
             "countryDisplay": gwn_network.countryDisplay,
             "timezone": gwn_network.timezone
         }
-
-    def _strip_mac(self, mac: str) -> str:
-        return mac.replace(":", "").lower()
 
     async def connect(self) -> bool:
         try:

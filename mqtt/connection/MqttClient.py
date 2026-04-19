@@ -12,6 +12,15 @@ class MqttClient:
         self._config = config
         self._interface = MqttInterface(config)
 
+    def _strip_mac(self, mac: str) -> str:
+        return mac.replace(":", "").lower()
+
+    def _normalise_macs(self, macs:dict[int | str, bool] ) -> dict[str, bool]:
+        normalised: dict[str, bool] = {}
+        for mac, enabled in macs.items():
+            normalised[self._strip_mac(str(mac))] = enabled
+        return normalised
+
     def _ha_device_block(self, identifier: str, name: str, model: str) -> dict[str, object]:
         return {
             "identifiers": [identifier],
@@ -195,10 +204,10 @@ class MqttClient:
 
     async def publish_network(self, gwn_network_id: str, gwn_network: dict[str, object]) -> str:
         network_topic = f"{self._interface.topic}/networks/{gwn_network_id}"
-        
+
         gwn_network_id_int: int = int(gwn_network_id)
         auto_discovery: bool = (self._config.homeassistant.default_network_autodiscovery 
-            if gwn_network_id_int not in self._config.homeassistant.network_autodiscovery 
+            if gwn_network_id_int not in self._normalise_macs(self._config.homeassistant.network_autodiscovery)
             else self._config.homeassistant.network_autodiscovery[gwn_network_id_int]
         )
         await self._interface.publish(f"{network_topic}/state",json.dumps(gwn_network),retain=True)
@@ -211,6 +220,7 @@ class MqttClient:
         return network_topic
     
     async def publish_device(self, network_topic: str, device_mac:str, device_payload: dict[str, object]) -> None:
+        device_mac = self._strip_mac(device_mac)
         device_topic = f"{network_topic}/devices/{device_mac}"
         
         auto_discovery: bool = (self._config.homeassistant.default_device_autodiscovery 

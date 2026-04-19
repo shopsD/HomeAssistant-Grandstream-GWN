@@ -35,8 +35,6 @@ class ConfigParser:
                     raise ConfigParserError(f"Each mqtt.{field_name} item must contain exactly one key/value pair")
                 raw_key, raw_mode = next(iter(item.items()))
                 key = int(raw_key) if key_as_int else str(raw_key)
-                if not key_as_int:
-                    key = GwnConfig.normalise_mac(str(key))
                 parsed[key] = bool(raw_mode)
             else:
                 raise ConfigParserError(f"Each mqtt.{field_name} item must be either an integer or a single key/value pair")
