@@ -22,6 +22,15 @@ mqtt:
     ssid_autodiscovery: # default is empty so all payloads will use default_ssid Publish MQTT for these networks
       - 3: False
       - 2: False
+    network_name_override: # will override the network name used in Home Assistant with this value
+      - 1: "New Name"
+      - 2: "New Name"
+    device_name_override: # will override the device name used in Home Assistant with this value
+      - "AA:BB:CC:DD:EE:FF": "New Name"
+      - "AA:BB:CC:DD:EE:f0": "New Name"
+    ssid_name_override: # will override the ssid name used in Home Assistant with this value
+      - 1: "New Name"
+      - 2: "New Name"
   no_publish: False # default False. Listens to MQTT messages but will not publish anything to MQTT. Good for monitoring logs for application data. Primarily a dev/debug setting
 gwn: # required
   url: https://localhost:8443 # default https://localhost:8443

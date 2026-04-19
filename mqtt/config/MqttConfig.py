@@ -8,6 +8,9 @@ class HomeAssistantConfig:
     network_autodiscovery: dict[int | str, bool] = field(default_factory=dict)
     device_autodiscovery: dict[int | str, bool] = field(default_factory=dict)
     ssid_autodiscovery: dict[int | str, bool] = field(default_factory=dict)
+    network_name_override: dict[int | str, str] = field(default_factory=dict)
+    device_name_override: dict[int | str, str] = field(default_factory=dict)
+    ssid_name_override: dict[int | str, str] = field(default_factory=dict)
 
 @dataclass(slots=True)
 class MqttConfig:

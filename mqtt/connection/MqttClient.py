@@ -1,5 +1,6 @@
 import logging
 import json
+from typing import Any
 
 from gwn.constants import Constants
 from mqtt.config import MqttConfig
@@ -15,8 +16,8 @@ class MqttClient:
     def _strip_mac(self, mac: str) -> str:
         return mac.replace(":", "").replace("-","").lower()
 
-    def _normalise_macs(self, macs:dict[int | str, bool] ) -> dict[str, bool]:
-        normalised: dict[str, bool] = {}
+    def _normalise_macs(self, macs:dict[int | str, Any] ) -> dict[str, Any]:
+        normalised: dict[str, Any] = {}
         for mac, enabled in macs.items():
             normalised[self._strip_mac(str(mac))] = enabled
         return normalised
@@ -34,7 +35,15 @@ class MqttClient:
 
     def _generic_ssid_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         ssid_id: str = str(payload.get("id"))
-        device = self._ha_device_block(f"gwn_ssid_{ssid_id}",f"{str(payload.get('ssidName'))}", "GWN SSID")
+        ssid_id_int: int = int(ssid_id)
+
+        ssid_name: str = str(payload.get('ssidName'))
+        ssid_model: str = "GWN SSID"
+        if ssid_id_int in self._config.homeassistant.ssid_name_override:
+            ssid_model = ssid_name
+            ssid_name = str(self._config.homeassistant.ssid_name_override[ssid_id_int])
+        
+        device = self._ha_device_block(f"gwn_ssid_{ssid_id}", ssid_name, ssid_model)
 
         return [
             (
@@ -166,7 +175,13 @@ class MqttClient:
     def _generic_device_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         device_mac = str(payload.get("mac"))
         normalised_device_mac = self._strip_mac(device_mac)
-        device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", str(payload.get("apType", "GWN Device")), str(payload.get("name") or device_mac))
+
+        normalised_name_override_macs = self._normalise_macs(self._config.homeassistant.device_name_override)
+        device_type: str = str(payload.get("apType", "GWN Device"))
+        if normalised_device_mac in normalised_name_override_macs:
+            device_type = str(normalised_name_override_macs[normalised_device_mac])
+
+        device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", device_type, str(payload.get("name") or device_mac))
 
         return [
             (
@@ -313,11 +328,29 @@ class MqttClient:
                     "device": device
                 }
             ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_mac"),
+                {
+                    "name": "MAC",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_mac",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.mac }}",
+                    "device": device
+                }
+            ),
         ]
 
     def _generic_network_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         network_id: str = str(payload.get("id"))
-        device = self._ha_device_block(f"gwn_network_{network_id}", f"{payload.get('networkName')}", "GWN Network")
+        network_id_int: int = int(network_id)
+
+        network_name: str = str(payload.get('networkName'))
+        network_model: str = "GWN Network"
+        if network_id_int in self._config.homeassistant.network_name_override:
+            network_model = network_name
+            network_name = str(self._config.homeassistant.network_name_override[network_id_int])
+
+        device = self._ha_device_block(f"gwn_network_{network_id}", network_name, network_model)
 
         return [
             (

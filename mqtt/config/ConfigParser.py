@@ -32,12 +32,35 @@ class ConfigParser:
                 parsed[item] = default_mode
             elif isinstance(item, dict):
                 if len(item) != 1:
-                    raise ConfigParserError(f"Each mqtt.{field_name} item must contain exactly one key/value pair")
+                    raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} item must contain exactly one key/value pair")
                 raw_key, raw_mode = next(iter(item.items()))
                 key = int(raw_key) if key_as_int else str(raw_key)
                 parsed[key] = bool(raw_mode)
             else:
-                raise ConfigParserError(f"Each mqtt.{field_name} item must be either an integer or a single key/value pair")
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} item must be either an integer or a single key/value pair")
+
+        return parsed
+
+    @staticmethod
+    def _load_name_override_module(value: object, field_name: str, key_as_int: bool = True) -> dict[int|str, str]:
+        if value is None:
+            return {}
+
+        if not isinstance(value, list):
+            raise ConfigParserError(f"mqtt.{field_name} must be a list")
+
+        parsed: dict[int | str, str] = {}
+
+        for item in value:
+            if not isinstance(item, dict):
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} must be a key/value pair")
+            if len(item) != 1:
+                raise ConfigParserError(f"Each mqtt.homeassistant.{field_name} item must contain exactly one key/value pair")
+            raw_key, raw_mode = next(iter(item.items()))
+            key = int(raw_key) if key_as_int else str(raw_key)
+            parsed[key] = str(raw_mode)
+        else:
+            raise ConfigParserError(f"Each mqtt.{field_name} item must be either an integer or a single key/value pair")
 
         return parsed
 
@@ -192,7 +215,20 @@ class ConfigParser:
                 ssid_autodiscovery = homeassistant_sub_section.get("ssid_autodiscovery")
                 if ssid_autodiscovery is not None:
                     mqtt_config.homeassistant.ssid_autodiscovery = ConfigParser._load_autodiscovery_modes(homeassistant_sub_section.get("ssid_autodiscovery"),"ssid_autodiscovery", mqtt_config.homeassistant.default_ssid_autodiscovery)
-                _LOGGER.debug(f"MQTT.HomeAssistant Config|Default Network Autodiscovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Autodiscovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Autodiscovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Autodiscoverys: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Autodiscoverys: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of SSID Network Autodiscoverys: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'")
+                # mqtt network autodiscovery
+                network_name_override = homeassistant_sub_section.get("network_name_override")
+                if network_name_override is not None:
+                    mqtt_config.homeassistant.network_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("network_name_override"),"network_name_override")
+                # mqtt device autodiscovery
+                device_name_override = homeassistant_sub_section.get("device_name_override")
+                if device_name_override is not None:
+                    mqtt_config.homeassistant.device_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("device_name_override"),"device_name_override", False)
+                # mqtt ssid autodiscovery
+                ssid_name_override = homeassistant_sub_section.get("ssid_name_override")
+                if ssid_name_override is not None:
+                    mqtt_config.homeassistant.ssid_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("ssid_name_override"),"ssid_name_override")
+                
+                _LOGGER.debug(f"MQTT.HomeAssistant Config|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
 
         _LOGGER.debug(f"MQTT Config|No Publish: '{mqtt_config.no_publish}'|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
         return mqtt_config
