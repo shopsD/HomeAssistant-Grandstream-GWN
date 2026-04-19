@@ -1,10 +1,13 @@
 from dataclasses import dataclass, field
-from enum import Enum
 
-class MqttPayloadFormat(Enum):
-    BOTH = 0
-    GENERIC = 1
-    HOMEASSISTANT = 2
+@dataclass(slots=True)
+class HomeAssistantConfig:
+    default_network_autodiscovery: bool = False
+    default_device_autodiscovery: bool = False
+    default_ssid_autodiscovery: bool = False
+    network_autodiscovery: dict[int | str, bool] = field(default_factory=dict)
+    device_autodiscovery: dict[int | str, bool] = field(default_factory=dict)
+    ssid_autodiscovery: dict[int | str, bool] = field(default_factory=dict)
 
 @dataclass(slots=True)
 class MqttConfig:
@@ -17,9 +20,5 @@ class MqttConfig:
     topic: str = "gwn"
     tls: bool = False
     verify_tls: bool = True
-    default_network_payload: MqttPayloadFormat = MqttPayloadFormat.GENERIC
-    default_device_payload: MqttPayloadFormat = MqttPayloadFormat.GENERIC
-    default_ssid_payload: MqttPayloadFormat = MqttPayloadFormat.GENERIC
-    network_payload: dict[int | str, MqttPayloadFormat] = field(default_factory=dict)
-    device_payload: dict[int | str, MqttPayloadFormat] = field(default_factory=dict)
-    ssid_payload: dict[int | str, MqttPayloadFormat] = field(default_factory=dict)
+    homeassistant: HomeAssistantConfig | None = None
+    

@@ -2,7 +2,7 @@ import logging
 import json
 
 from gwn.constants import Constants
-from mqtt.config import MqttConfig, MqttPayloadFormat
+from mqtt.config import MqttConfig
 from mqtt.connection.MqttInterface import MqttInterface
 
 _LOGGER = logging.getLogger(Constants.LOG)
@@ -197,11 +197,13 @@ class MqttClient:
         network_topic = f"{self._interface.topic}/networks/{gwn_network_id}"
         
         gwn_network_id_int: int = int(gwn_network_id)
-        payload_format: MqttPayloadFormat = MqttPayloadFormat.BOTH if gwn_network_id_int not in self._config.network_payload else self._config.network_payload[gwn_network_id_int]
-        if payload_format != MqttPayloadFormat.HOMEASSISTANT:
-            await self._interface.publish(f"{network_topic}/state",json.dumps(gwn_network),retain=True)
-        if payload_format != MqttPayloadFormat.GENERIC:
-            ha_network_payload = self._generic_network_payload_to_homeassistant(f"{network_topic}/homeassistant/state", gwn_network)
+        auto_discovery: bool = (False 
+            if self._config.homeassistant is None or gwn_network_id_int not in self._config.homeassistant.network_autodiscovery 
+            else self._config.homeassistant.network_autodiscovery[gwn_network_id_int]
+        )
+        await self._interface.publish(f"{network_topic}/state",json.dumps(gwn_network),retain=True)
+        if auto_discovery:
+            ha_network_payload = self._generic_network_payload_to_homeassistant(f"{network_topic}/state", gwn_network)
             # now actually publish
             for topic, discovery_payload in ha_network_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
@@ -211,11 +213,13 @@ class MqttClient:
     async def publish_device(self, network_topic: str, device_mac:str, device_payload: dict[str, object]) -> None:
         device_topic = f"{network_topic}/devices/{device_mac}"
         
-        payload_format: MqttPayloadFormat = MqttPayloadFormat.BOTH if device_mac not in self._config.device_payload else self._config.device_payload[device_mac]
-        if payload_format != MqttPayloadFormat.HOMEASSISTANT:
-            await self._interface.publish(f"{device_topic}/state",json.dumps(device_payload), retain=True)
-        if payload_format != MqttPayloadFormat.GENERIC:
-            ha_device_payload = self._generic_device_payload_to_homeassistant(f"{device_topic}/homeassistant/state", device_payload)
+        auto_discovery: bool = (False 
+            if self._config.homeassistant is None or device_mac not in self._config.homeassistant.device_autodiscovery 
+            else self._config.homeassistant.device_autodiscovery[device_mac]
+        )
+        await self._interface.publish(f"{device_topic}/state",json.dumps(device_payload), retain=True)
+        if auto_discovery:
+            ha_device_payload = self._generic_device_payload_to_homeassistant(f"{device_topic}/state", device_payload)
             # now actually publish
             for topic, discovery_payload in ha_device_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
@@ -223,11 +227,15 @@ class MqttClient:
     async def publish_ssid(self, network_topic: str, gwn_ssid_id: str, ssid_payload: dict[str, object]) -> None:
         ssid_topic = f"{network_topic}/ssids/{gwn_ssid_id}"
         gwn_ssid_id_int: int = int(gwn_ssid_id)
-        payload_format: MqttPayloadFormat = MqttPayloadFormat.BOTH if gwn_ssid_id_int not in self._config.ssid_payload else self._config.ssid_payload[gwn_ssid_id_int]
-        if payload_format != MqttPayloadFormat.HOMEASSISTANT:
-            await self._interface.publish(f"{ssid_topic}/state",json.dumps(ssid_payload), retain=True)
-        if payload_format != MqttPayloadFormat.GENERIC:
-            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(f"{ssid_topic}/homeassistant/state", ssid_payload)
+        
+        auto_discovery: bool = (False 
+            if self._config.homeassistant is None or gwn_ssid_id_int not in self._config.homeassistant.ssid_autodiscovery 
+            else self._config.homeassistant.ssid_autodiscovery[gwn_ssid_id_int]
+        )
+
+        await self._interface.publish(f"{ssid_topic}/state",json.dumps(ssid_payload), retain=True)
+        if auto_discovery:
+            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(f"{ssid_topic}/state", ssid_payload)
             # now actually publish
             for topic, discovery_payload in ha_ssid_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)

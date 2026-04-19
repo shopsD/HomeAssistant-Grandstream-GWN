@@ -8,19 +8,20 @@ mqtt:
   # client_id: # default None
   # tls: False # default false
   # verify_tls: True # default true
-  default_network_payload: "generic" # default generic. This will use generic as any payloads for network that are not otherwise specified below
-  default_device_payload: "generic" # default generic. This will use generic as any payloads for network that are not otherwise specified below
-  default_ssid_payload: "generic" # default generic. This will use generic as any payloads for network that are not otherwise specified below
-  # the options below determine the format of the message. If not specified, then "generic" is default
-  network_payload: # default is empty so all networks will use "generic" Publish MQTT for these networks
-    - 1 # will use "generic" as the default
-    - 2: "homeassistant"
-  device_payload: # default is empty so all devices will use "generic" Publish MQTT for these networks
-    - "AA:BB:CC:DD:EE:FF": "generic"
-    - "AA:BB:CC:DD:EE:f0": "homeassistant"
-  ssid_payload: # default is empty so all payloads will use "generic" Publish MQTT for these networks
-    - 3: "both"
-    - 2: "both"
+  homeassistant: # controls support for home assistant auto discovery
+    default_network_autodiscovery: False # default generic. This will not support home assistant auto discovery for networks that are not otherwise specified below
+    default_device_autodiscovery: False # default generic. This will not support home assistant auto discovery for devices that are not otherwise specified below
+    default_ssid_autodiscovery: False # default generic. This will not support home assistant auto discovery for ssids that are not otherwise specified below
+    # the options below determine the format of the message. If not specified, then the default above is applied
+    network_autodiscovery: # default is empty so all networks will use default_network Publish MQTT for these networks
+      - 1 # will use default_network as the default
+      - 2: True
+    device_autodiscovery: # default is empty so all devices will use default_device Publish MQTT for these networks
+      - "AA:BB:CC:DD:EE:FF": False
+      - "AA:BB:CC:DD:EE:f0": True
+    ssid_autodiscovery: # default is empty so all payloads will use default_ssid Publish MQTT for these networks
+      - 3: False
+      - 2: False
 
 gwn: # required
   url: https://localhost:8443 # default https://localhost:8443
