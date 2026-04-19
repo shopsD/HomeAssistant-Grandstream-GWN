@@ -178,7 +178,7 @@ class MqttClient:
 
         normalised_name_override_macs = self._normalise_macs(self._config.homeassistant.device_name_override)
         device_model: str = device_mac
-        device_name: str = payload.get("name")
+        device_name: str = str(payload.get("name"))
         if len(device_name) == 0:
             device_name = str(payload.get("apType", "GWN Device"))
 
