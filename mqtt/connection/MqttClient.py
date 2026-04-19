@@ -201,8 +201,11 @@ class MqttClient:
         if payload_format != MqttPayloadFormat.HOMEASSISTANT:
             await self._interface.publish(f"{network_topic}/state",json.dumps(gwn_network),retain=True)
         if payload_format != MqttPayloadFormat.GENERIC:
-            ha_network_payload = self._generic_network_payload_to_homeassistant(f"{network_topic}/state", gwn_network)
-            await self._interface.publish(f"{network_topic}/homeassistant/state",json.dumps(ha_network_payload),retain=True)
+            ha_network_payload = self._generic_network_payload_to_homeassistant(f"{network_topic}/homeassistant/state", gwn_network)
+            # now actually publish
+            for topic, discovery_payload in ha_network_payload:
+                await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
+
         return network_topic
     
     async def publish_device(self, network_topic: str, device_mac:str, device_payload: dict[str, object]) -> None:
@@ -212,8 +215,10 @@ class MqttClient:
         if payload_format != MqttPayloadFormat.HOMEASSISTANT:
             await self._interface.publish(f"{device_topic}/state",json.dumps(device_payload), retain=True)
         if payload_format != MqttPayloadFormat.GENERIC:
-            ha_device_payload = self._generic_device_payload_to_homeassistant(f"{device_topic}/state", device_payload)
-            await self._interface.publish(f"{device_topic}/homeassistant/state",json.dumps(ha_device_payload), retain=True)
+            ha_device_payload = self._generic_device_payload_to_homeassistant(f"{device_topic}/homeassistant/state", device_payload)
+            # now actually publish
+            for topic, discovery_payload in ha_device_payload:
+                await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
 
     async def publish_ssid(self, network_topic: str, gwn_ssid_id: str, ssid_payload: dict[str, object]) -> None:
         ssid_topic = f"{network_topic}/ssids/{gwn_ssid_id}"
@@ -222,5 +227,7 @@ class MqttClient:
         if payload_format != MqttPayloadFormat.HOMEASSISTANT:
             await self._interface.publish(f"{ssid_topic}/state",json.dumps(ssid_payload), retain=True)
         if payload_format != MqttPayloadFormat.GENERIC:
-            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(f"{ssid_topic}/state", ssid_payload)
-            await self._interface.publish(f"{ssid_topic}/homeassistant/state",json.dumps(ha_ssid_payload), retain=True)
+            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(f"{ssid_topic}/homeassistant/state", ssid_payload)
+            # now actually publish
+            for topic, discovery_payload in ha_ssid_payload:
+                await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
