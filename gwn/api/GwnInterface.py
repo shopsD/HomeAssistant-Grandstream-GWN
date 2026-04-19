@@ -112,6 +112,9 @@ class GwnInterface:
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
 
+    async def close(self) -> None:
+        await self._session.close()
+
     async def authenticate(self) -> bool:
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
 

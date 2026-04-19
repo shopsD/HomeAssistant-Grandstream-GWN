@@ -31,10 +31,12 @@ class MqttGwnManager:
                 _LOGGER.error("Error retreiving GWN Data: %s", e)
             _LOGGER.info(f"Will refresh in {self._gwn_client.refresh_period}s")
             await asyncio.sleep(self._gwn_client.refresh_period)
+        _LOGGER.info("Stopped Polling of GWN Manager")
 
     async def _run_mqtt_interface(self) -> None:
         _LOGGER.info("Listening to MQTT")
         await asyncio.Event().wait()
+        _LOGGER.info("Stopped listening to MQTT")
 
     def _build_ssid_assignments(self, devices: list[GwnDevice]) -> dict[str, list[dict[str, str]]]:
         ssid_assignments: dict[str, list[dict[str, str]]] = {}
@@ -65,14 +67,14 @@ class MqttGwnManager:
                 device_payload = self._serialise_device(gwn_network, gwn_device)
                 await self._mqtt_client.publish_device(network_topic, self._strip_mac(gwn_device.mac), device_payload)
                 for gwn_ssid in gwn_device.ssids:
-                    if gwn_ssid.id not in published_ssids:
-                        
+                    if gwn_ssid.id not in published_ssids: 
                         _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
                         ssid_payload = self._serialise_ssid(gwn_ssid, ssid_assignments.get(gwn_ssid.id, []))
                         await self._mqtt_client.publish_ssid(network_topic, gwn_ssid.id, ssid_payload )
                         published_ssids.add(gwn_ssid.id) # dont republish this SSID
+
         _LOGGER.info(f"Published {len(gwn_networks)} Networks over MQTT")
-    
+
     def _enum_value(self, value: Enum | None) -> str | None:
         if value is None:
             return None
@@ -180,7 +182,10 @@ class MqttGwnManager:
         _LOGGER.info("Starting Poll of GWN Manager and MQTT")
         gwn_task = asyncio.create_task(self._run_gwn_interface())
         mqtt_task = asyncio.create_task(self._run_mqtt_interface())
-        await asyncio.gather(gwn_task, mqtt_task)
+        try:
+            await asyncio.gather(gwn_task, mqtt_task)
+        finally:
+            await self._mqtt_client.disconnect()
+            await self._gwn_client.close()
+        _LOGGER.info("Application shutting down")
 
-
-        

@@ -197,6 +197,9 @@ class GwnClient:
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
 
+    async def close(self) -> None:
+        await self._interface.close()
+
     async def authenticate(self) -> bool:
         return await self._interface.authenticate()
 

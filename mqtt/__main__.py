@@ -40,10 +40,10 @@ def main() -> None:
         ,default=Path(__file__).resolve().parent / "data" / "config.yml"
         ,help="Path to config YAML file. Defaults to ./data/config.yml relative to mqtt/main.py"
     )
-    _LOGGER.info("Starting GWN Manager")
+    _LOGGER.info("Starting GWN Manager to MQTT")
     args = parser.parse_args()
-
     asyncio.run(async_main(args.config_path))
+    _LOGGER.info("Stopped GWN Manager to MQTT")
 
 if __name__ == "__main__":
     main()
