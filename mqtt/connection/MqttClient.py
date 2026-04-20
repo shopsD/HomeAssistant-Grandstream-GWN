@@ -60,8 +60,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ssidEnable == 1}}",
-                    "payload_on": '{"action":"set_enabled","value":true}',
-                    "payload_off": '{"action":"set_enabled","value":false}',
+                    "payload_on": '{"action":"ssidEnable","value":true}',
+                    "payload_off": '{"action":"ssidEnable","value":false}',
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -75,8 +75,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.portalEnabled == 1}}",
-                    "payload_on": '{"action":"set_captive_portal_enabled","value":true}',
-                    "payload_off": '{"action":"set_captive_portal_enabled","value":false}',
+                    "payload_on": '{"action":"portalEnabled","value":true}',
+                    "payload_off": '{"action":"portalEnabled","value":false}',
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -90,7 +90,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ssidVlanid if value_json.get('ssidVlanEnabled') else 'No VLAN' }}",
-                    "command_template": '{"action":"set_vlan","value":{{ value | int }}}',
+                    "command_template": '{"action":"ssidVlanid","value":{{ value | int }}}',
                     "min": 0,
                     "max": 4094,
                     "step": 1,
@@ -116,8 +116,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.clientIsolationEnabled == 1}}",
-                    "payload_on": '{"action":"set_client_isolation_enabled","value":true}',
-                    "payload_off": '{"action":"set_client_isolation_enabled","value":false}',
+                    "payload_on": '{"action":"clientIsolationEnabled","value":true}',
+                    "payload_off": '{"action":"clientIsolationEnabled","value":false}',
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -131,8 +131,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ghz2_4_Enabled == 1}}",
-                    "payload_on": '{"action":"set_ghz2_4_enabled","value":true}',
-                    "payload_off": '{"action":"set_ghz2_4_enabled","value":false}',
+                    "payload_on": '{"action":"ghz2_4_Enabled","value":true}',
+                    "payload_off": '{"action":"ghz2_4_Enabled","value":false}',
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -146,8 +146,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ghz5_Enabled == 1}}",
-                    "payload_on": '{"action":"set_ghz5_enabled","value":true}',
-                    "payload_off": '{"action":"set_ghz5_enabled","value":false}',
+                    "payload_on": '{"action":"ghz5_Enabled","value":true}',
+                    "payload_off": '{"action":"ghz5_Enabled","value":false}',
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -161,8 +161,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ghz6_Enabled == 1}}",
-                    "payload_on": '{"action":"set_ghz6_enabled","value":true}',
-                    "payload_off": '{"action":"set_ghz6_enabled","value":false}',
+                    "payload_on": '{"action":"ghz6_Enabled","value":true}',
+                    "payload_off": '{"action":"ghz6_Enabled","value":false}',
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -176,7 +176,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ssidKey }}",
-                    "command_template": '{"action":"set_passphrase","value":{{ value | tojson }}}',
+                    "command_template": '{"action":"ssidKey","value":{{ value | tojson }}}',
                     "device": device
                 }
             ),
@@ -188,8 +188,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ssidSsidHidden == 1}}",
-                    "payload_on": '{"action":"set_ssid_hidden","value":true}',
-                    "payload_off": '{"action":"set_ssid_hidden","value":false}',
+                    "payload_on": '{"action":"ssidSsidHidden","value":true}',
+                    "payload_off": '{"action":"ssidSsidHidden","value":false}',
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -214,7 +214,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ssidName }}",
-                    "command_template": '{"action":"set_ssid_name","value":{{ value | tojson }}}',
+                    "command_template": '{"action":"ssidName","value":{{ value | tojson }}}',
                     "device": device
                 }
             )
@@ -284,7 +284,7 @@ class MqttClient:
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.networkName }}",
                     "options": [network_name],
-                    "command_template": '{"action":"move_network","value":"{{ value }}"}',
+                    "command_template": '{"action":"networkName","value":"{{ value }}"}',
                     "device": device
                 }
             ),
@@ -308,8 +308,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.wireless == 1}}",
                     "command_topic": command_topic,
-                    "payload_on": '{"action":"set_wireless_enabled","value":true}',
-                    "payload_off": '{"action":"set_wireless_enabled","value":false}',
+                    "payload_on": '{"action":"wireless","value":true}',
+                    "payload_off": '{"action":"wireless","value":false}',
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -413,7 +413,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.channel_2_4 | int(0) }}",
-                    "command_template": '{"action":"set_channel_2_4","value":{{ value | int }}}',
+                    "command_template": '{"action":"channel_2_4","value":{{ value | int }}}',
                     "min": 1,
                     "max": 13,
                     "step": 1,
@@ -429,7 +429,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.channel_5 | int(0) }}",
-                    "command_template": '{"action":"set_channel_5","value":{{ value | int }}}',
+                    "command_template": '{"action":"channel_5","value":{{ value | int }}}',
                     "min": 36,
                     "max": 165,
                     "step": 1,
@@ -445,7 +445,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.channel_6 | int(0) }}",
-                    "command_template": '{"action":"set_channel_6","value":{{ value | int }}}',
+                    "command_template": '{"action":"channel_6","value":{{ value | int }}}',
                     "min": 1,
                     "max": 177,
                     "step": 1,
@@ -488,7 +488,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.networkName }}",
-                    "command_template": '{"action":"set_network_name","value":{{ value | tojson }}}',
+                    "command_template": '{"action":"networkName","value":{{ value | tojson }}}',
                     "device": device,
                 }
             ),
@@ -621,7 +621,7 @@ class MqttClient:
     async def _publish_online(self) -> None:
         application_topic = f"{self._interface.topic}/application"
 
-        await self._interface.publish(f"{application_topic}/status", "online", retain=True)
+        await self._interface.publish(f"{application_topic}/status", '{"status": "online"}', retain=True)
         state_topic: str = f"{application_topic}/state"
         command_topic: str = f"{application_topic}/set"
         payload: dict[str, object] = {
@@ -636,7 +636,7 @@ class MqttClient:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
 
     async def _publish_offline(self) -> None:
-        await self._interface.publish(f"{self._interface.topic}/application/status", "offline", retain=True)
+        await self._interface.publish(f"{self._interface.topic}/application/status", '{"status": "offline"}', retain=True)
 
     @property
     def is_connected(self) -> bool:
