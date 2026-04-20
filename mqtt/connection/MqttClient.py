@@ -33,7 +33,7 @@ class MqttClient:
     def _ha_discovery_topic(self, component: str, object_id: str) -> str:
         return f"homeassistant/{component}/{object_id}/config"
 
-    def _generic_ssid_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
+    def _generic_ssid_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
         ssid_id: str = str(payload.get("id"))
         ssid_id_int: int = int(ssid_id)
 
@@ -47,36 +47,48 @@ class MqttClient:
 
         return [
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled"),
+                self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled"),
                 {
                     "name": "Enabled",
                     "unique_id": f"gwn_ssid_{ssid_id}_enabled",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ssidEnable }}",
-                    "payload_on": True,
-                    "payload_off": False,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.ssidEnable == 1}}",
+                    "payload_on": '{"action":"set_enabled","value":true}',
+                    "payload_off": '{"action":"set_enabled","value":false}',
+                    "state_on": True,
+                    "state_off": False,
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_portal"),
+                self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_portal"),
                 {
                     "name": "Captive Portal",
                     "unique_id": f"gwn_ssid_{ssid_id}_portal",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.portalEnabled }}",
-                    "payload_on": True,
-                    "payload_off": False,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.portalEnabled == 1}}",
+                    "payload_on": '{"action":"set_captive_portal_enabled","value":true}',
+                    "payload_off": '{"action":"set_captive_portal_enabled","value":false}',
+                    "state_on": True,
+                    "state_off": False,
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_ssid_{ssid_id}_vlan"),
+                self._ha_discovery_topic("number", f"gwn_ssid_{ssid_id}_vlan"),
                 {
                     "name": "VLAN ID",
                     "unique_id": f"gwn_ssid_{ssid_id}_vlan",
                     "state_topic": state_topic,
+                    "command_topic": command_topic,
                     "value_template": "{{ value_json.ssidVlanid if value_json.get('ssidVlanEnabled') else 'No VLAN' }}",
+                    "command_template": '{"action":"set_vlan","value":{{ value | int }}}',
+                    "min": 0,
+                    "max": 4094,
+                    "step": 1,
+                    "mode": "box",
                     "device": device
                 }
             ),
@@ -91,72 +103,87 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_client_isolation_enabled"),
+                self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_client_isolation_enabled"),
                 {
                     "name": "Client Isolation",
                     "unique_id": f"gwn_ssid_{ssid_id}_client_isolation_enabled",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.clientIsolationEnabled }}",
-                    "payload_on": True,
-                    "payload_off": False,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.clientIsolationEnabled == 1}}",
+                    "payload_on": '{"action":"set_client_isolation_enabled","value":true}',
+                    "payload_off": '{"action":"set_client_isolation_enabled","value":false}',
+                    "state_on": True,
+                    "state_off": False,
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled_2_4"),
+                self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled_2_4"),
                 {
                     "name": "2.4GHz Station",
                     "unique_id": f"gwn_ssid_{ssid_id}_enabled_2_4",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ghz2_4_Enabled }}",
-                    "payload_on": True,
-                    "payload_off": False,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.ghz2_4_Enabled == 1}}",
+                    "payload_on": '{"action":"set_ghz2_4_enabled","value":true}',
+                    "payload_off": '{"action":"set_ghz2_4_enabled","value":false}',
+                    "state_on": True,
+                    "state_off": False,
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled_5"),
+                self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled_5"),
                 {
                     "name": "5GHz Station",
                     "unique_id": f"gwn_ssid_{ssid_id}_enabled_5",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ghz5_Enabled }}",
-                    "payload_on": True,
-                    "payload_off": False,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.ghz5_Enabled == 1}}",
+                    "payload_on": '{"action":"set_ghz5_enabled","value":true}',
+                    "payload_off": '{"action":"set_ghz5_enabled","value":false}',
+                    "state_on": True,
+                    "state_off": False,
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_enabled_6"),
+                self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled_6"),
                 {
                     "name": "6GHz Station",
                     "unique_id": f"gwn_ssid_{ssid_id}_enabled_6",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ghz6_Enabled }}",
-                    "payload_on": True,
-                    "payload_off": False,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.ghz6_Enabled == 1}}",
+                    "payload_on": '{"action":"set_ghz6_enabled","value":true}',
+                    "payload_off": '{"action":"set_ghz6_enabled","value":false}',
+                    "state_on": True,
+                    "state_off": False,
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_ssid_{ssid_id}_passphrase"),
+                self._ha_discovery_topic("text", f"gwn_ssid_{ssid_id}_passphrase"),
                 {
                     "name": "WiFi Passphrase",
                     "unique_id": f"gwn_ssid_{ssid_id}_passphrase",
                     "state_topic": state_topic,
-                     "value_template": "{{ value_json.ssidKey }}",
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.ssidKey }}",
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_ssid_{ssid_id}_hidden"),
+                self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_hidden"),
                 {
                     "name": "WiFi Hidden",
                     "unique_id": f"gwn_ssid_{ssid_id}_hidden",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ssidSsidHidden }}",
-                    "payload_on": True,
-                    "payload_off": False,
+                    "value_template": "{{ value_json.ssidSsidHidden == 1}}",
+                    "payload_on": '{"action":"set_ssid_hidden","value":true}',
+                    "payload_off": '{"action":"set_ssid_hidden","value":false}',
+                    "state_on": True,
+                    "state_off": False,
                     "device": device
                 }
             ),
@@ -173,7 +200,7 @@ class MqttClient:
             )
         ]
 
-    def _generic_device_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
+    def _generic_device_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
         device_mac = str(payload.get("mac"))
         normalised_device_mac = self._strip_mac(device_mac)
 
@@ -192,12 +219,45 @@ class MqttClient:
 
         return [
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_network_name"),
+                self._ha_discovery_topic("button", f"gwn_device_{normalised_device_mac}_reboot"),
+                {
+                    "name": "Reboot",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_reboot",
+                    "payload_press": '{"action": "reboot"}',
+                    "command_topic": command_topic,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("button", f"gwn_device_{normalised_device_mac}_update_firmware"),
+                {
+                    "name": "Update Firmware",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_update_firmware",
+                    "payload_press": '{"action": "update_firmware"}',
+                    "command_topic": command_topic,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("button", f"gwn_device_{normalised_device_mac}_reset"),
+                {
+                    "name": "Reset",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_reset",
+                    "payload_press": '{"action": "reset"}',
+                    "command_topic": command_topic,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("select", f"gwn_device_{normalised_device_mac}_network_name"),
                 {
                     "name": "Network",
                     "unique_id": f"gwn_device_{normalised_device_mac}_network_name",
                     "state_topic": state_topic,
+                    "command_topic": command_topic,
                     "value_template": "{{ value_json.networkName }}",
+                    "options": [network_name],
+                    "command_template": '{"action":"move_network","value":"{{ value }}"}',
                     "device": device
                 }
             ),
@@ -214,14 +274,17 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("binary_sensor", f"gwn_device_{normalised_device_mac}_wireless"),
+                self._ha_discovery_topic("switch", f"gwn_device_{normalised_device_mac}_wireless"),
                 {
-                    "name": "Wireless Status",
+                    "name": "Wireless",
                     "unique_id": f"gwn_device_{normalised_device_mac}_wireless",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.wireless }}",
-                    "payload_on": True,
-                    "payload_off": False,
+                    "value_template": "{{ value_json.wireless == 1}}",
+                    "command_topic": command_topic,
+                    "payload_on": '{"action":"set_wireless_enabled","value":true}',
+                    "payload_off": '{"action":"set_wireless_enabled","value":false}',
+                    "state_on": True,
+                    "state_off": False,
                     "device": device
                 }
             ),
@@ -312,32 +375,50 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_2_4"),
+                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_channel_2_4"),
                 {
                     "name": "2.4Ghz Channel",
                     "unique_id": f"gwn_device_{normalised_device_mac}_channel_2_4",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.channel_2_4 }}",
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.channel_2_4 | int(0) }}",
+                    "command_template": '{"action":"set_channel_2_4","value":{{ value | int }}}',
+                    "min": 1,
+                    "max": 13,
+                    "step": 1,
+                    "mode": "box",
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_5"),
+                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_channel_5"),
                 {
                     "name": "5Ghz Channel",
                     "unique_id": f"gwn_device_{normalised_device_mac}_channel_5",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.channel_5 }}",
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.channel_5 | int(0) }}",
+                    "command_template": '{"action":"set_channel_5","value":{{ value | int }}}',
+                    "min": 36,
+                    "max": 165,
+                    "step": 1,
+                    "mode": "box",
                     "device": device
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_6"),
+                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_channel_6"),
                 {
                     "name": "6Ghz Channel",
                     "unique_id": f"gwn_device_{normalised_device_mac}_channel_6",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.channel_6 }}",
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.channel_6 | int(0) }}",
+                    "command_template": '{"action":"set_channel_6","value":{{ value | int }}}',
+                    "min": 1,
+                    "max": 177,
+                    "step": 1,
+                    "mode": "box",
                     "device": device
                 }
             ),
@@ -367,7 +448,7 @@ class MqttClient:
 
         return [
             (
-                self._ha_discovery_topic("sensor", f"gwn_network_{network_id}_name"),
+                self._ha_discovery_topic("text", f"gwn_network_{network_id}_name"),
                 {
                     "name": "Name",
                     "unique_id": f"gwn_network_{network_id}_name",
@@ -438,9 +519,12 @@ class MqttClient:
             if device_mac not in normalised_macs
             else normalised_macs[device_mac]
         )
-        await self._interface.publish(f"{device_topic}/state",json.dumps(device_payload), retain=True)
+
+        state_topic: str = f"{device_topic}/state"
+        command_topic: str = f"{device_topic}/set"
+        await self._interface.publish(state_topic,json.dumps(device_payload), retain=True)
         if auto_discovery:
-            ha_device_payload = self._generic_device_payload_to_homeassistant(f"{device_topic}/state", device_payload, network_name)
+            ha_device_payload = self._generic_device_payload_to_homeassistant(state_topic, command_topic, device_payload, network_name)
             # now actually publish
             for topic, discovery_payload in ha_device_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
@@ -453,10 +537,11 @@ class MqttClient:
             if gwn_ssid_id_int not in self._config.homeassistant.ssid_autodiscovery 
             else self._config.homeassistant.ssid_autodiscovery[gwn_ssid_id_int]
         )
-
-        await self._interface.publish(f"{ssid_topic}/state",json.dumps(ssid_payload), retain=True)
+        state_topic: str = f"{ssid_topic}/state"
+        command_topic: str = f"{ssid_topic}/set"
+        await self._interface.publish(state_topic,json.dumps(ssid_payload), retain=True)
         if auto_discovery:
-            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(f"{ssid_topic}/state", ssid_payload, network_name)
+            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(state_topic, command_topic, ssid_payload, network_name)
             # now actually publish
             for topic, discovery_payload in ha_ssid_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
