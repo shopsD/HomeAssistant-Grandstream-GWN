@@ -173,6 +173,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.ssidKey }}",
+                    "command_template": '{"action":"set_passphrase","value":{{ value | tojson }}}',
                     "device": device
                 }
             ),
@@ -199,6 +200,18 @@ class MqttClient:
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.onlineDevices | int(0) }}",
                     "state_class": "measurement",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("text", f"gwn_ssid_{ssid_id}_ssid_name"),
+                {
+                    "name": "SSID",
+                    "unique_id": f"gwn_ssid_{ssid_id}_ssid_name",
+                    "state_topic": state_topic,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.ssidName }}",
+                    "command_template": '{"action":"set_ssid_name","value":{{ value | tojson }}}',
                     "device": device
                 }
             )
@@ -267,7 +280,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.networkName }}",
-                    "options": [network_name],
+                    "options": [network_name, "Test"],
                     "command_template": '{"action":"move_network","value":"{{ value }}"}',
                     "device": device
                 }
@@ -472,7 +485,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.networkName }}",
-                    "device": device
+                    "command_template": '{"action":"set_network_name","value":{{ value | tojson }}}',
+                    "device": device,
                 }
             ),
             (

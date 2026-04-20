@@ -40,7 +40,6 @@ class MqttGwnManager:
         self._mqtt_client.set_device_callback(self._handle_device_command)
         self._mqtt_client.set_ssid_callback(self._handle_ssid_command)
         await self._mqtt_client.listen_to_topics()
-        await asyncio.Event().wait()
         _LOGGER.info("Stopped listening to MQTT")
 
     def _build_ssid_assignments(self, devices: list[GwnDevice]) -> dict[str, list[dict[str, str]]]:
