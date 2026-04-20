@@ -189,6 +189,10 @@ class ConfigParser:
             if homeassistant_sub_section is not None:
                 if not isinstance(homeassistant_sub_section, dict):
                     raise ConfigParserError("mqtt.homeassistant is invalid")
+                # mqtt default application autodiscovery
+                application_autodiscovery = homeassistant_sub_section.get("application_autodiscovery")
+                if application_autodiscovery is not None:
+                    mqtt_config.homeassistant.application_autodiscovery = bool(application_autodiscovery)
                 # mqtt default network autodiscovery. Must be evaluated before network_autodiscovery
                 default_network = homeassistant_sub_section.get("default_network_autodiscovery")
                 if default_network is not None:
@@ -225,8 +229,8 @@ class ConfigParser:
                 ssid_name_override = homeassistant_sub_section.get("ssid_name_override")
                 if ssid_name_override is not None:
                     mqtt_config.homeassistant.ssid_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("ssid_name_override"),"ssid_name_override")
-                
-                _LOGGER.debug(f"MQTT.HomeAssistant Config|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
+
+                _LOGGER.debug(f"MQTT.HomeAssistant Config|Application Auto-discovery '{mqtt_config.homeassistant.application_autodiscovery}'|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
 
         _LOGGER.debug(f"MQTT Config|No Publish: '{mqtt_config.no_publish}'|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
         return mqtt_config

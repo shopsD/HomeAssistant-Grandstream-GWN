@@ -9,6 +9,7 @@ mqtt:
   # tls: False # default false
   # verify_tls: True # default true
   homeassistant: # controls support for home assistant auto discovery
+    application_autodiscovery: False # default False. This will prevent this application (GWN to MQTT) from having auto discovery in home assistant. Ne
     default_network_autodiscovery: False # default False. This will not support home assistant auto discovery for networks that are not otherwise specified below
     default_device_autodiscovery: False # default False. This will not support home assistant auto discovery for devices that are not otherwise specified below
     default_ssid_autodiscovery: False # default False. This will not support home assistant auto discovery for ssids that are not otherwise specified below

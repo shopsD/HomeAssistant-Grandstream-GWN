@@ -283,7 +283,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.networkName }}",
-                    "options": [network_name, "Test"],
+                    "options": [network_name],
                     "command_template": '{"action":"move_network","value":"{{ value }}"}',
                     "device": device
                 }
@@ -629,9 +629,11 @@ class MqttClient:
             "newVersion": Constants.APP_VERSION,
             "hostIp": "127.0.0.1"
         }
-        ha_application_payload = self._generic_application_payload_to_homeassistant(state_topic, command_topic, payload)
-        for topic, discovery_payload in ha_application_payload:
-            await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
+        await self._interface.publish(state_topic,json.dumps(payload),retain=True)
+        if self._config.homeassistant.application_autodiscovery:
+            ha_application_payload = self._generic_application_payload_to_homeassistant(state_topic, command_topic, payload)
+            for topic, discovery_payload in ha_application_payload:
+                await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
 
     async def _publish_offline(self) -> None:
         await self._interface.publish(f"{self._interface.topic}/application/status", "offline", retain=True)

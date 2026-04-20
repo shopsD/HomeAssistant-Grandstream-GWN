@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 @dataclass(slots=True)
 class HomeAssistantConfig:
+    application_autodiscovery: bool = False
     default_network_autodiscovery: bool = False
     default_device_autodiscovery: bool = False
     default_ssid_autodiscovery: bool = False
