@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import Any
+from typing import Any, Callable
 
 from gwn.constants import Constants
 from mqtt.config import MqttConfig
@@ -10,8 +10,11 @@ _LOGGER = logging.getLogger(Constants.LOG)
 
 class MqttClient:
     def __init__(self, config: MqttConfig) -> None:
-        self._config = config
-        self._interface = MqttInterface(config)
+        self._config: MqttConfig = config
+        self._interface: MqttInterface = MqttInterface(config)
+        self._network_callback: Callable[[str, dict[str, Any]], None] | None = None
+        self._device_callback: Callable[[str, str, dict[str, Any]], None] | None = None
+        self._ssid_callback: Callable[[str, str, dict[str, Any]], None] | None = None
 
     def _strip_mac(self, mac: str) -> str:
         return mac.replace(":", "").replace("-","").lower()
@@ -498,11 +501,65 @@ class MqttClient:
     def is_connected(self) -> bool:
         return self._interface.is_connected
 
+    def set_network_callback(self, callback: Callable[[str, dict[str, Any]], None]) -> None:
+        self._network_callback = callback
+
+    def set_device_callback(self, callback: Callable[[str, str, dict[str, Any]], None]) -> None:
+        self._device_callback = callback
+
+    def set_ssid_callback(self, callback: Callable[[str, str, dict[str, Any]], None]) -> None:
+        self._ssid_callback = callback
+
     async def connect(self) -> bool:
         return await self._interface.connect()
 
     async def disconnect(self) -> None:
         return await self._interface.disconnect()
+
+    async def listen_to_topics(self) -> None:
+        base = self._interface.topic
+        topics = [
+            f"{base}/networks/+/set",
+            f"{base}/networks/+/devices/+/set",
+            f"{base}/networks/+/ssids/+/set",
+        ]
+
+        for topic in topics:
+            await self._interface.subscribe(topic)
+            _LOGGER.debug("Subscribed to %s", topic)
+
+        async for message in self._interface.messages:
+            try:
+                topic = str(message.topic)
+                payload = message.payload.decode("utf-8")
+                await self._handle_mqtt_command(topic, payload)
+            except Exception as e:
+                _LOGGER.error("Failed to process MQTT command: %s", e)
+
+    async def _handle_mqtt_command(self, topic: str, payload: str) -> None:
+        data = json.loads(payload)
+
+        parts = topic.split("/")
+
+        if len(parts) >= 4 and parts[1] == "networks" and parts[3] == "set":
+            network_id = str(parts[2])
+            _LOGGER.info(f"Network command for {network_id}: {data}")
+            if self._network_callback is not None:
+                self._network_callback(str(network_id), data)
+        elif len(parts) >= 6 and parts[3] == "devices" and parts[5] == "set":
+            network_id = str(parts[2])
+            device_mac = str(parts[4])
+            _LOGGER.info(f"Device command for {device_mac} on Network with ID {network_id}: {data}")
+            if self._device_callback is not None:
+                self._device_callback(device_mac, network_id, data)
+        elif len(parts) >= 6 and parts[3] == "ssids" and parts[5] == "set":
+            network_id = str(parts[2])
+            ssid_id = str(parts[4])
+            _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}: {data}")
+            if self._ssid_callback is not None:
+                self._ssid_callback(ssid_id, network_id, data)
+        else:
+            _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
 
     async def publish_online(self) -> None:
         await self._interface.publish(f"{self._interface.topic}/status", "online", retain=True)
