@@ -36,10 +36,11 @@ class MqttGwnManager:
 
     async def _run_mqtt_interface(self) -> None:
         _LOGGER.info("Listening to MQTT")
+        self._mqtt_client.set_application_callback(self._handle_application_command)
         self._mqtt_client.set_network_callback(self._handle_network_command)
         self._mqtt_client.set_device_callback(self._handle_device_command)
         self._mqtt_client.set_ssid_callback(self._handle_ssid_command)
-        await self._mqtt_client.listen_to_topics()
+        await asyncio.Event().wait()
         _LOGGER.info("Stopped listening to MQTT")
 
     def _build_ssid_assignments(self, devices: list[GwnDevice]) -> dict[str, list[dict[str, str]]]:
@@ -171,6 +172,9 @@ class MqttGwnManager:
             "timezone": gwn_network.timezone
         }
 
+    def _handle_application_command(self, data: dict[str, Any]):
+        _LOGGER.info(f"Command {data}")
+
     def _handle_network_command(self, network_id: str, data: dict[str, Any]):
         _LOGGER.info(f"Command {network_id} {data}")
 
@@ -192,8 +196,6 @@ class MqttGwnManager:
                 raise AuthenticationError("Failed to acquire access token from GWN Manager")
             _LOGGER.debug("Connected to GWN Manager")
 
-            await self._mqtt_client.publish_online()
-            _LOGGER.debug("Published Application status")
             _LOGGER.info("Successfully connected to MQTT and GWN Manager")
             return True
         except Exception as e:

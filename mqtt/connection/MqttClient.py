@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import json
 from typing import Any, Callable
@@ -12,9 +13,11 @@ class MqttClient:
     def __init__(self, config: MqttConfig) -> None:
         self._config: MqttConfig = config
         self._interface: MqttInterface = MqttInterface(config)
+        self._application_callback: Callable[[dict[str, Any]], None] | None = None
         self._network_callback: Callable[[str, dict[str, Any]], None] | None = None
         self._device_callback: Callable[[str, str, dict[str, Any]], None] | None = None
         self._ssid_callback: Callable[[str, str, dict[str, Any]], None] | None = None
+        self._listen_task: asyncio.Task[None] | None = None
 
     def _strip_mac(self, mac: str) -> str:
         return mac.replace(":", "").replace("-","").lower()
@@ -511,28 +514,65 @@ class MqttClient:
             )
         ]
 
-    @property
-    def is_connected(self) -> bool:
-        return self._interface.is_connected
+    def _generic_application_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
+        device = self._ha_device_block("gwn_to_mqtt", "GWN to MQTT Bridge", "GWN Manager to MQTT")
+        device["manufacturer"] = "GWNtoMQTT"
+        return [
+            (
+                self._ha_discovery_topic("update", "gwn_to_mqtt_update_version"),
+                {
+                    "name": "Update Application",
+                    "unique_id": "gwn_to_mqtt_update_version",
+                    "value_template": '{{ {"installed_version": value_json.currentVersion,"latest_version": value_json.newVersion} | tojson }}',
+                    "payload_install": '{"action": "update_version"}',
+                    "state_topic": state_topic,
+                    "command_topic": command_topic,
+                    "title": "Application Update",
+                    "enabled_by_default": True,
+                    "entity_category": "config",
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", "gwn_to_mqtt_new_version"),
+                {
+                    "name": "Available Version",
+                    "unique_id": "gwn_to_mqtt_new_version",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.newVersion }}",
+                    "entity_category": "config",
+                    "enabled_by_default": True,
+                    "device": device
+                }
+            ),
+                        (
+                self._ha_discovery_topic("sensor", "gwn_to_mqtt_version"),
+                {
+                    "name": "Current Version",
+                    "unique_id": "gwn_to_mqtt_version",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.currentVersion }}",
+                    "entity_category": "config",
+                    "enabled_by_default": True,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("button", "gwn_to_mqtt_update_restart"),
+                {
+                    "name": "Restart",
+                    "unique_id": "gwn_to_mqtt_update_restart",
+                    "payload_press": '{"action": "restart"}',
+                    "command_topic": command_topic,
+                    "device": device
+                }
+            )
+        ]
 
-    def set_network_callback(self, callback: Callable[[str, dict[str, Any]], None]) -> None:
-        self._network_callback = callback
-
-    def set_device_callback(self, callback: Callable[[str, str, dict[str, Any]], None]) -> None:
-        self._device_callback = callback
-
-    def set_ssid_callback(self, callback: Callable[[str, str, dict[str, Any]], None]) -> None:
-        self._ssid_callback = callback
-
-    async def connect(self) -> bool:
-        return await self._interface.connect()
-
-    async def disconnect(self) -> None:
-        return await self._interface.disconnect()
-
-    async def listen_to_topics(self) -> None:
+    async def _listen_to_topics(self) -> None:
         base = self._interface.topic
         topics = [
+            f"{base}/application/set",
             f"{base}/networks/+/set",
             f"{base}/networks/+/devices/+/set",
             f"{base}/networks/+/ssids/+/set",
@@ -554,8 +594,11 @@ class MqttClient:
         data = json.loads(payload)
 
         parts = topic.split("/")
-
-        if len(parts) >= 4 and parts[1] == "networks" and parts[3] == "set":
+        if len(parts) >= 3 and parts[1] == "application" and parts[2] == "set":
+            _LOGGER.info(f"Application command: {data}")
+            if self._application_callback is not None:
+                self._application_callback(data)
+        elif len(parts) >= 4 and parts[1] == "networks" and parts[3] == "set":
             network_id = str(parts[2])
             _LOGGER.info(f"Network command for {network_id}: {data}")
             if self._network_callback is not None:
@@ -575,8 +618,57 @@ class MqttClient:
         else:
             _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
 
-    async def publish_online(self) -> None:
-        await self._interface.publish(f"{self._interface.topic}/status", "online", retain=True)
+    async def _publish_online(self) -> None:
+        application_topic = f"{self._interface.topic}/application"
+
+        await self._interface.publish(f"{application_topic}/status", "online", retain=True)
+        state_topic: str = f"{application_topic}/state"
+        command_topic: str = f"{application_topic}/set"
+        payload: dict[str, object] = {
+            "currentVersion":Constants.APP_VERSION,
+            "newVersion": Constants.APP_VERSION,
+            "hostIp": "127.0.0.1"
+        }
+        ha_application_payload = self._generic_application_payload_to_homeassistant(state_topic, command_topic, payload)
+        for topic, discovery_payload in ha_application_payload:
+            await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
+
+    async def _publish_offline(self) -> None:
+        await self._interface.publish(f"{self._interface.topic}/application/status", "offline", retain=True)
+
+    @property
+    def is_connected(self) -> bool:
+        return self._interface.is_connected
+
+    def set_application_callback(self, callback: Callable[[dict[str, Any]], None]) -> None:
+        self._application_callback = callback
+
+    def set_network_callback(self, callback: Callable[[str, dict[str, Any]], None]) -> None:
+        self._network_callback = callback
+
+    def set_device_callback(self, callback: Callable[[str, str, dict[str, Any]], None]) -> None:
+        self._device_callback = callback
+
+    def set_ssid_callback(self, callback: Callable[[str, str, dict[str, Any]], None]) -> None:
+        self._ssid_callback = callback
+
+    async def connect(self) -> bool:
+        if await self._interface.connect():
+            self._listen_task = asyncio.create_task(self._listen_to_topics())
+            await self._publish_online()
+            return True
+        return False
+
+    async def disconnect(self) -> None:
+        if self._listen_task is not None:
+            self._listen_task.cancel()
+            try:
+                await self._listen_task
+            except asyncio.CancelledError:
+                pass
+            self._listen_task = None
+        await self._publish_offline()
+        return await self._interface.disconnect()
 
     async def publish_network(self, gwn_network_id: str, gwn_network: dict[str, object]) -> str:
         network_topic = f"{self._interface.topic}/networks/{gwn_network_id}"
