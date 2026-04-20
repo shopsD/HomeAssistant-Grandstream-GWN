@@ -595,9 +595,9 @@ class MqttClient:
         if (topic.startswith(self._interface.topic) and topic.endswith("/set")):
             # only json is allowed
             data = json.loads(payload)
-            # buttons only have an action, no value
-            formatted_data: dict[str, str | None]= {data["action"]: data["value"] or None } # if these are missing its an unsupported message
+            # buttons only have an action, no value and if action is missing its an unsupported message
             # strip the subscription topic and the set portion
+            formatted_data: dict[str, Any]= {data["action"]: data.get("value", None) } 
             sub_topic = topic.removeprefix(f"{self._interface.topic}/").removesuffix("/set")
             parts = sub_topic.split("/")
             parts_count = len(parts)
