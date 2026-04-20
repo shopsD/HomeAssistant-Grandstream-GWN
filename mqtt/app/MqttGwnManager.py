@@ -174,15 +174,41 @@ class MqttGwnManager:
 
     def _handle_application_command(self, data: dict[str, Any]):
         _LOGGER.info(f"Command {data}")
+        update_version = data.get("update_version")
+        restart = data.get("restart")
+        _LOGGER.info(f"Command {update_version} {restart}")
 
     def _handle_network_command(self, network_id: str, data: dict[str, Any]):
         _LOGGER.info(f"Command {network_id} {data}")
+        network_name = data.get("networkName")
+        _LOGGER.info(f"Command {network_name}")
 
     def _handle_device_command(self, device_mac: str, network_id: str, data: dict[str, Any]):
         _LOGGER.info(f"Command {device_mac} {data}")
+        reboot = data.get("reboot")
+        update_firmware = data.get("update_firmware")
+        reset = data.get("reset")
+        network_name = data.get("networkName")
+        wireless = data.get("wireless")
+        channel_2_4 = data.get("channel_2_4")
+        channel_5 = data.get("channel_5")
+        channel_6 = data.get("channel_6")
+        _LOGGER.info(f"Command {reboot} {update_firmware} {reset} {network_name} {wireless} {channel_2_4} {channel_5} {channel_6}")
 
     def _handle_ssid_command(self, ssid_id: str, network_id: str, data: dict[str, Any]):
         _LOGGER.info(f"Command {ssid_id} {data}")
+        ssid_enable = data.get("ssidEnable")
+        portale_enabled = data.get("portalEnabled")
+        vlan_id = data.get("ssidVlanid")
+        vlan_enabled = None if vlan_id is None else int(vlan_id) > 0
+        client_isolation_enabled = data.get("clientIsolationEnabled")
+        ghz2_4_enabled = data.get("ghz2_4_Enabled")
+        ghz5_enabled = data.get("ghz5_Enabled")
+        ghz6_enabled = data.get("ghz6_Enabled")
+        ssid_key = data.get("ssidKey")
+        ssid_hidden = data.get("ssidSsidHidden")
+        ssid_name = data.get("ssidName")
+        _LOGGER.info(f"Command {ssid_enable} {portale_enabled} {vlan_id} {vlan_enabled} {client_isolation_enabled} {ghz2_4_enabled} {ghz5_enabled} {ghz6_enabled} {ssid_key} {ssid_hidden} {ssid_name}")
 
     async def connect(self) -> bool:
         try:

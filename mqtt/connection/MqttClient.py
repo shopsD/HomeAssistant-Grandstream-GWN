@@ -591,32 +591,39 @@ class MqttClient:
                 _LOGGER.error("Failed to process MQTT command: %s", e)
 
     async def _handle_mqtt_command(self, topic: str, payload: str) -> None:
-        data = json.loads(payload)
-
-        parts = topic.split("/")
-        if len(parts) >= 3 and parts[1] == "application" and parts[2] == "set":
-            _LOGGER.info(f"Application command: {data}")
-            if self._application_callback is not None:
-                self._application_callback(data)
-        elif len(parts) >= 4 and parts[1] == "networks" and parts[3] == "set":
-            network_id = str(parts[2])
-            _LOGGER.info(f"Network command for {network_id}: {data}")
-            if self._network_callback is not None:
-                self._network_callback(str(network_id), data)
-        elif len(parts) >= 6 and parts[3] == "devices" and parts[5] == "set":
-            network_id = str(parts[2])
-            device_mac = str(parts[4])
-            _LOGGER.info(f"Device command for {device_mac} on Network with ID {network_id}: {data}")
-            if self._device_callback is not None:
-                self._device_callback(device_mac, network_id, data)
-        elif len(parts) >= 6 and parts[3] == "ssids" and parts[5] == "set":
-            network_id = str(parts[2])
-            ssid_id = str(parts[4])
-            _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}: {data}")
-            if self._ssid_callback is not None:
-                self._ssid_callback(ssid_id, network_id, data)
-        else:
-            _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
+        # only process anything that is a set command and starts with the topic
+        if (topic.startswith(self._interface.topic) and topic.endswith("/set")):
+            # only json is allowed
+            data = json.loads(payload)
+            # buttons only have an action, no value
+            formatted_data: dict[str, str | None]= {data["action"]: data["value"] or None } # if these are missing its an unsupported message
+            # strip the subscription topic and the set portion
+            sub_topic = topic.removeprefix(f"{self._interface.topic}/").removesuffix("/set")
+            parts = sub_topic.split("/")
+            parts_count = len(parts)
+            if parts_count == 1 and parts[0] == "application":
+                _LOGGER.info(f"Application command: {formatted_data}")
+                if self._application_callback is not None:
+                    self._application_callback(formatted_data)
+            elif parts_count == 2 and parts[0] == "networks" :
+                network_id = str(parts[1])
+                _LOGGER.info(f"Network command for {network_id}: {formatted_data}")
+                if self._network_callback is not None:
+                    self._network_callback(str(network_id), formatted_data)
+            elif parts_count == 4 and parts[2] == "devices":
+                network_id = str(parts[1])
+                device_mac = str(parts[3])
+                _LOGGER.info(f"Device command for {device_mac} on Network with ID {network_id}: {formatted_data}")
+                if self._device_callback is not None:
+                    self._device_callback(device_mac, network_id, formatted_data)
+            elif parts_count == 4 and parts[2] == "ssids":
+                network_id = str(parts[1])
+                ssid_id = str(parts[3])
+                _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}: {formatted_data}")
+                if self._ssid_callback is not None:
+                    self._ssid_callback(ssid_id, network_id, formatted_data)
+            else:
+                _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
 
     async def _publish_online(self) -> None:
         application_topic = f"{self._interface.topic}/application"
