@@ -176,7 +176,7 @@ class MqttClient:
             (
                 self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_hidden"),
                 {
-                    "name": "WiFi Hidden",
+                    "name": "Hide WiFi",
                     "unique_id": f"gwn_ssid_{ssid_id}_hidden",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.ssidSsidHidden == 1}}",
@@ -434,7 +434,7 @@ class MqttClient:
             ),
         ]
 
-    def _generic_network_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
+    def _generic_network_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         network_id: str = str(payload.get("id"))
         network_id_int: int = int(network_id)
 
@@ -453,6 +453,7 @@ class MqttClient:
                     "name": "Name",
                     "unique_id": f"gwn_network_{network_id}_name",
                     "state_topic": state_topic,
+                    "command_topic": command_topic,
                     "value_template": "{{ value_json.networkName }}",
                     "device": device
                 }
@@ -500,9 +501,11 @@ class MqttClient:
             if gwn_network_id_int not in self._config.homeassistant.network_autodiscovery
             else self._config.homeassistant.network_autodiscovery[gwn_network_id_int]
         )
-        await self._interface.publish(f"{network_topic}/state",json.dumps(gwn_network),retain=True)
+        state_topic: str = f"{network_topic}/state"
+        command_topic: str = f"{network_topic}/set"
+        await self._interface.publish(state_topic,json.dumps(gwn_network),retain=True)
         if auto_discovery:
-            ha_network_payload = self._generic_network_payload_to_homeassistant(f"{network_topic}/state", gwn_network)
+            ha_network_payload = self._generic_network_payload_to_homeassistant(state_topic, command_topic, gwn_network)
             # now actually publish
             for topic, discovery_payload in ha_network_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
