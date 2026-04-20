@@ -65,12 +65,12 @@ class MqttGwnManager:
             for gwn_device in gwn_network.devices:
                 _LOGGER.debug(f"Publishing Device {gwn_device.mac} to MQTT")
                 device_payload = self._serialise_device(gwn_network, gwn_device)
-                await self._mqtt_client.publish_device(network_topic, gwn_device.mac, device_payload)
+                await self._mqtt_client.publish_device(network_topic, gwn_network.networkName, device_payload)
                 for gwn_ssid in gwn_device.ssids:
                     if gwn_ssid.id not in published_ssids: 
                         _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
                         ssid_payload = self._serialise_ssid(gwn_ssid, ssid_assignments.get(gwn_ssid.id, []))
-                        await self._mqtt_client.publish_ssid(network_topic, gwn_ssid.id, ssid_payload )
+                        await self._mqtt_client.publish_ssid(network_topic,gwn_network.networkName, gwn_ssid.id, ssid_payload )
                         published_ssids.add(gwn_ssid.id) # dont republish this SSID
 
         _LOGGER.info(f"Published {len(gwn_networks)} Networks over MQTT")

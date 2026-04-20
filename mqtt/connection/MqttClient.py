@@ -33,12 +33,12 @@ class MqttClient:
     def _ha_discovery_topic(self, component: str, object_id: str) -> str:
         return f"homeassistant/{component}/{object_id}/config"
 
-    def _generic_ssid_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
+    def _generic_ssid_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
         ssid_id: str = str(payload.get("id"))
         ssid_id_int: int = int(ssid_id)
 
         ssid_name: str = str(payload.get('ssidName'))
-        ssid_model: str = "GWN SSID"
+        ssid_model: str = network_name if len(network_name) > 0 else "GWN SSID"
         if ssid_id_int in self._config.homeassistant.ssid_name_override:
             ssid_model = ssid_name
             ssid_name = str(self._config.homeassistant.ssid_name_override[ssid_id_int])
@@ -166,13 +166,14 @@ class MqttClient:
                     "name": "Clients Online",
                     "unique_id": f"gwn_ssid_{ssid_id}_client_count",
                     "state_topic": state_topic,
-                     "value_template": "{{ value_json.onlineDevices }}",
+                    "value_template": "{{ value_json.onlineDevices | int(0) }}",
+                    "state_class": "measurement",
                     "device": device
                 }
             )
         ]
 
-    def _generic_device_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
+    def _generic_device_payload_to_homeassistant(self, state_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
         device_mac = str(payload.get("mac"))
         normalised_device_mac = self._strip_mac(device_mac)
 
@@ -180,7 +181,8 @@ class MqttClient:
         device_model: str = device_mac
         device_name: str = str(payload.get("name"))
         if len(device_name) == 0:
-            device_name = str(payload.get("apType", "GWN Device"))
+            device_name = str(payload.get("apType", network_name if len(network_name) > 0 else "GWN Device"))
+
 
         if normalised_device_mac in normalised_name_override_macs:
             device_model = device_name if len(device_name) > 0 else device_mac
@@ -269,7 +271,9 @@ class MqttClient:
                     "name": "CPU Usage",
                     "unique_id": f"gwn_device_{normalised_device_mac}_cpu_usage",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.cpuUsage }}",
+                    "value_template": "{{ value_json.cpuUsage | replace('%', '') | int(0) }}",
+                    "unit_of_measurement": "%",
+                    "state_class": "measurement",
                     "device": device
                 }
             ),
@@ -279,7 +283,9 @@ class MqttClient:
                     "name": "Temperature",
                     "unique_id": f"gwn_device_{normalised_device_mac}_temperature",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.temperature }}",
+                    "value_template": "{{ value_json.temperature | replace('℃', '') | replace('°C', '') | int(0) }}",
+                    "unit_of_measurement": "°C",
+                    "state_class": "measurement",
                     "device": device
                 }
             ),
@@ -299,7 +305,9 @@ class MqttClient:
                     "name": "Up Time",
                     "unique_id": f"gwn_device_{normalised_device_mac}_uptime",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.upTime }}",
+                    "value_template": "{{ value_json.upTime | int(0) }}",
+                    "unit_of_measurement": "s",
+                    "state_class": "measurement",
                     "device": device
                 }
             ),
@@ -420,7 +428,8 @@ class MqttClient:
 
         return network_topic
     
-    async def publish_device(self, network_topic: str, device_mac:str, device_payload: dict[str, object]) -> None:
+    async def publish_device(self, network_topic: str, network_name: str, device_payload: dict[str, object]) -> None:
+        device_mac = str(device_payload.get("mac"))
         device_mac = self._strip_mac(device_mac)
         normalised_macs = self._normalise_macs(self._config.homeassistant.device_autodiscovery)
         device_topic = f"{network_topic}/devices/{device_mac}"
@@ -431,12 +440,12 @@ class MqttClient:
         )
         await self._interface.publish(f"{device_topic}/state",json.dumps(device_payload), retain=True)
         if auto_discovery:
-            ha_device_payload = self._generic_device_payload_to_homeassistant(f"{device_topic}/state", device_payload)
+            ha_device_payload = self._generic_device_payload_to_homeassistant(f"{device_topic}/state", device_payload, network_name)
             # now actually publish
             for topic, discovery_payload in ha_device_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
 
-    async def publish_ssid(self, network_topic: str, gwn_ssid_id: str, ssid_payload: dict[str, object]) -> None:
+    async def publish_ssid(self, network_topic: str, network_name: str, gwn_ssid_id: str, ssid_payload: dict[str, object]) -> None:
         ssid_topic = f"{network_topic}/ssids/{gwn_ssid_id}"
         gwn_ssid_id_int: int = int(gwn_ssid_id)
         
@@ -447,7 +456,7 @@ class MqttClient:
 
         await self._interface.publish(f"{ssid_topic}/state",json.dumps(ssid_payload), retain=True)
         if auto_discovery:
-            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(f"{ssid_topic}/state", ssid_payload)
+            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(f"{ssid_topic}/state", ssid_payload, network_name)
             # now actually publish
             for topic, discovery_payload in ha_ssid_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
