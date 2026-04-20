@@ -58,20 +58,32 @@ class MqttGwnManager:
         for gwn_network in gwn_networks:
             ssid_assignments: dict[str, list[dict[str, str]]] = self._build_ssid_assignments(gwn_network.devices)
             _LOGGER.debug(f"Publishing Network: {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
-            network_topic = await self._mqtt_client.publish_network(gwn_network.id, self._serialise_network(gwn_network))
-
+            network_topic = ""
+            try:
+                network_topic = await self._mqtt_client.publish_network(gwn_network.id, self._serialise_network(gwn_network))
+            except Exception as e:
+                _LOGGER.error(f"Failed to publish Network {gwn_network.networkName} with ID {gwn_network.id} to MQTT: %s", e)
+                continue
             # devices may share an SSID so dont republish it again if it already was published
             published_ssids: set[str] = set()
             for gwn_device in gwn_network.devices:
                 _LOGGER.debug(f"Publishing Device {gwn_device.mac} to MQTT")
-                device_payload = self._serialise_device(gwn_network, gwn_device)
-                await self._mqtt_client.publish_device(network_topic, gwn_network.networkName, device_payload)
+                try:
+                    device_payload = self._serialise_device(gwn_network, gwn_device)
+                    await self._mqtt_client.publish_device(network_topic, gwn_network.networkName, device_payload)
+                except Exception as e:
+                    _LOGGER.error(f"Failed to publish Device {gwn_device.mac} to MQTT: %s", e)
+                    continue
                 for gwn_ssid in gwn_device.ssids:
                     if gwn_ssid.id not in published_ssids: 
                         _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
-                        ssid_payload = self._serialise_ssid(gwn_ssid, ssid_assignments.get(gwn_ssid.id, []))
-                        await self._mqtt_client.publish_ssid(network_topic,gwn_network.networkName, gwn_ssid.id, ssid_payload )
-                        published_ssids.add(gwn_ssid.id) # dont republish this SSID
+                        try:
+                            ssid_payload = self._serialise_ssid(gwn_ssid, ssid_assignments.get(gwn_ssid.id, []))
+                            await self._mqtt_client.publish_ssid(network_topic,gwn_network.networkName, gwn_ssid.id, ssid_payload )
+                            published_ssids.add(gwn_ssid.id) # dont republish this SSID
+                        except Exception as e:
+                            _LOGGER.error(f"Failed to publish SSID {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT: %s", e)
+                            continue
 
         _LOGGER.info(f"Published {len(gwn_networks)} Networks over MQTT")
 

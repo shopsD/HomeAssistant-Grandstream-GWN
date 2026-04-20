@@ -179,6 +179,7 @@ class MqttClient:
                     "name": "Hide WiFi",
                     "unique_id": f"gwn_ssid_{ssid_id}_hidden",
                     "state_topic": state_topic,
+                    "command_topic": command_topic,
                     "value_template": "{{ value_json.ssidSsidHidden == 1}}",
                     "payload_on": '{"action":"set_ssid_hidden","value":true}',
                     "payload_off": '{"action":"set_ssid_hidden","value":false}',
@@ -229,12 +230,17 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("button", f"gwn_device_{normalised_device_mac}_update_firmware"),
+                self._ha_discovery_topic("update", f"gwn_device_{normalised_device_mac}_update_firmware"),
                 {
                     "name": "Update Firmware",
                     "unique_id": f"gwn_device_{normalised_device_mac}_update_firmware",
-                    "payload_press": '{"action": "update_firmware"}',
+                    "value_template": '{{ {"installed_version": value_json.versionFirmware,"latest_version": value_json.newFirmware} | tojson }}',
+                    "payload_install": '{"action": "update_firmware"}',
+                    "state_topic": state_topic,
                     "command_topic": command_topic,
+                    "title": "Device Firmware",
+                    "enabled_by_default": False,
+                    "entity_category": "config",
                     "device": device
                 }
             ),
@@ -245,6 +251,8 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_reset",
                     "payload_press": '{"action": "reset"}',
                     "command_topic": command_topic,
+                    "enabled_by_default": False,
+                    "entity_category": "config",
                     "device": device
                 }
             ),
@@ -315,6 +323,8 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_firmware",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.versionFirmware }}",
+                    "entity_category": "config",
+                    "enabled_by_default": True,
                     "device": device
                 }
             ),
@@ -325,6 +335,8 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_firmware_new",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.newFirmware }}",
+                    "entity_category": "config",
+                    "enabled_by_default": True,
                     "device": device
                 }
             ),
@@ -429,6 +441,8 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_mac",
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.mac }}",
+                    "entity_category": "config",
+                    "enabled_by_default": True,
                     "device": device
                 }
             ),
