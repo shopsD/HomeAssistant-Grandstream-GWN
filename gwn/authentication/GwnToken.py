@@ -9,6 +9,7 @@ class GwnToken:
     expires_in: int
     scope: str
     expires_at: datetime
+    authorisation_key: str | None
 
     @classmethod
     def from_response(cls, data: dict) -> "GwnToken":
@@ -22,6 +23,7 @@ class GwnToken:
             expires_in=expires_in,
             scope=data.get("scope", ""),
             expires_at=expires_at,
+            authorisation_key=None
         )
 
     def is_expired(self) -> bool:
