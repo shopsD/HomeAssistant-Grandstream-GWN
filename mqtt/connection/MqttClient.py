@@ -643,7 +643,7 @@ class MqttClient:
                     return _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
             
             if network_id is None:
-                return _LOGGER.warning(f"No Network ID specified")
+                return _LOGGER.warning("No Network ID specified")
 
             if self._ssid_callback is not None and ssid_id is not None:
                 self._ssid_callback(ssid_id, network_id, formatted_data)
