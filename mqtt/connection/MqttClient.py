@@ -40,10 +40,10 @@ class MqttClient:
         return f"homeassistant/{component}/{object_id}/config"
 
     def _generic_ssid_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
-        ssid_id: str = str(payload.get("id"))
+        ssid_id: str = str(payload.get(Constants.SSID_ID))
         ssid_id_int: int = int(ssid_id)
 
-        ssid_name: str = str(payload.get('ssidName'))
+        ssid_name: str = str(payload.get(Constants.SSID_NAME))
         ssid_model: str = network_name if len(network_name) > 0 else "GWN SSID"
         if ssid_id_int in self._config.homeassistant.ssid_name_override:
             ssid_model = ssid_name
@@ -59,9 +59,9 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_enabled",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.ssidEnable == 1}}",
-                    "payload_on": '{"action":"ssidEnable","value":true}',
-                    "payload_off": '{"action":"ssidEnable","value":false}',
+                    "value_template": "{{ value_json.%s == 1}}" % Constants.SSID_ENABLE,
+                    "payload_on": '{"action":"%s","%s":true}' % (Constants.SSID_ENABLE, Constants.VALUE),
+                    "payload_off": '{"action":"%s","%s":false}' % (Constants.SSID_ENABLE, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -74,9 +74,9 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_portal",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.portalEnabled == 1}}",
-                    "payload_on": '{"action":"portalEnabled","value":true}',
-                    "payload_off": '{"action":"portalEnabled","value":false}',
+                    "value_template": "{{ value_json.%s == 1}}" % Constants.PORTAL_ENABLED,
+                    "payload_on": '{"action":"%s","%s":true}' % (Constants.PORTAL_ENABLED, Constants.VALUE),
+                    "payload_off": '{"action":"%s","%s":false}' % (Constants.PORTAL_ENABLED, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -89,8 +89,8 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_vlan",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.ssidVlanid if value_json.get('ssidVlanEnabled') else 'No VLAN' }}",
-                    "command_template": '{"action":"ssidVlanid","value":{{ value | int }}}',
+                    "value_template": "{{ value_json.%s if value_json.get('%s') else 'No VLAN' }}" % (Constants.SSID_VLAN_ID, Constants.SSID_VLAN_ENABLED),
+                    "command_template": '{"action":"%s","%s":{{ value | int }}}' % (Constants.SSID_VLAN_ID, Constants.VALUE),
                     "min": 0,
                     "max": 4094,
                     "step": 1,
@@ -104,7 +104,14 @@ class MqttClient:
                     "name": "Devices",
                     "unique_id": f"gwn_ssid_{ssid_id}_devices",
                     "state_topic": state_topic,
-                    "value_template": "{% set devices = value_json.get('assignedDevices', []) %}{% if devices %}{% for dev in devices %}{{ dev.name if dev.name else dev.mac }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}None{% endif %}",
+                    "value_template": ("{%% set devices = value_json.get('%s', []) %%}"
+                        "{%% if devices %%}"
+                            "{%% for dev in devices %%}"
+                                "{{ dev.%s if dev.%s else dev.%s }}"
+                                "{%% if not loop.last %%},{%% endif %%}"
+                            "{%% endfor %%}"
+                        "{%% else %%}None"
+                        "{%% endif %%}") % (Constants.ASSIGNED_DEVICES, Constants.NAME, Constants.NAME, Constants.MAC),
                     "device": device
                 }
             ),
@@ -115,9 +122,9 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_client_isolation_enabled",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.clientIsolationEnabled == 1}}",
-                    "payload_on": '{"action":"clientIsolationEnabled","value":true}',
-                    "payload_off": '{"action":"clientIsolationEnabled","value":false}',
+                    "value_template": "{{ value_json.%s == 1}}" % Constants.CLIENT_ISOLATION_ENABLED,
+                    "payload_on": '{"action":"%s","%s":true}' % (Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE),
+                    "payload_off": '{"action":"%s","%s":false}' % (Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -130,9 +137,9 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_enabled_2_4",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.ghz2_4_Enabled == 1}}",
-                    "payload_on": '{"action":"ghz2_4_Enabled","value":true}',
-                    "payload_off": '{"action":"ghz2_4_Enabled","value":false}',
+                    "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ2_4_ENABLED,
+                    "payload_on": '{"action":"%s","%s":true}' % (Constants.GHZ2_4_ENABLED, Constants.VALUE),
+                    "payload_off": '{"action":"%s","%s":false}' % (Constants.GHZ2_4_ENABLED, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -145,9 +152,9 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_enabled_5",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.ghz5_Enabled == 1}}",
-                    "payload_on": '{"action":"ghz5_Enabled","value":true}',
-                    "payload_off": '{"action":"ghz5_Enabled","value":false}',
+                    "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ5_ENABLED,
+                    "payload_on": '{"action":"%s","%s":true}' % (Constants.GHZ5_ENABLED, Constants.VALUE),
+                    "payload_off": '{"action":"%s","%s":false}' % (Constants.GHZ5_ENABLED, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -160,9 +167,9 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_enabled_6",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.ghz6_Enabled == 1}}",
-                    "payload_on": '{"action":"ghz6_Enabled","value":true}',
-                    "payload_off": '{"action":"ghz6_Enabled","value":false}',
+                    "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ6_ENABLED,
+                    "payload_on": '{"action":"%s","%s":true}' % (Constants.GHZ6_ENABLED, Constants.VALUE),
+                    "payload_off": '{"action":"%s","%s":false}' % (Constants.GHZ6_ENABLED, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -175,8 +182,8 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_passphrase",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.ssidKey }}",
-                    "command_template": '{"action":"ssidKey","value":{{ value | tojson }}}',
+                    "value_template": "{{ value_json.%s }}" % Constants.SSID_KEY,
+                    "command_template": '{"action":"%s","%s":{{ value | tojson }}}' % (Constants.SSID_KEY, Constants.VALUE),
                     "device": device
                 }
             ),
@@ -187,9 +194,9 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_hidden",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.ssidSsidHidden == 1}}",
-                    "payload_on": '{"action":"ssidSsidHidden","value":true}',
-                    "payload_off": '{"action":"ssidSsidHidden","value":false}',
+                    "value_template": "{{ value_json.%s == 1}}" % Constants.SSID_HIDDEN,
+                    "payload_on": '{"action":"%s","%s":true}' % (Constants.SSID_HIDDEN, Constants.VALUE),
+                    "payload_off": '{"action":"%s","%s":false}' % (Constants.SSID_HIDDEN, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -201,7 +208,7 @@ class MqttClient:
                     "name": "Clients Online",
                     "unique_id": f"gwn_ssid_{ssid_id}_client_count",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.onlineDevices | int(0) }}",
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CLIENT_COUNT,
                     "state_class": "measurement",
                     "device": device
                 }
@@ -213,22 +220,22 @@ class MqttClient:
                     "unique_id": f"gwn_ssid_{ssid_id}_ssid_name",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.ssidName }}",
-                    "command_template": '{"action":"ssidName","value":{{ value | tojson }}}',
+                    "value_template": "{{ value_json.%s }}" % Constants.SSID_NAME,
+                    "command_template": '{"action":"%s","%s":{{ value | tojson }}}' % (Constants.SSID_NAME, Constants.VALUE),
                     "device": device
                 }
             )
         ]
 
     def _generic_device_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
-        device_mac = str(payload.get("mac"))
+        device_mac = str(payload.get(Constants.MAC))
         normalised_device_mac = self._strip_mac(device_mac)
 
         normalised_name_override_macs = self._normalise_macs(self._config.homeassistant.device_name_override)
         device_model: str = device_mac
-        device_name: str = str(payload.get("name"))
+        device_name: str = str(payload.get(Constants.NAME))
         if len(device_name) == 0:
-            device_name = str(payload.get("apType", network_name if len(network_name) > 0 else "GWN Device"))
+            device_name = str(payload.get(Constants.AP_TYPE, network_name if len(network_name) > 0 else "GWN Device"))
 
 
         if normalised_device_mac in normalised_name_override_macs:
@@ -243,7 +250,7 @@ class MqttClient:
                 {
                     "name": "Reboot",
                     "unique_id": f"gwn_device_{normalised_device_mac}_reboot",
-                    "payload_press": '{"action": "reboot"}',
+                    "payload_press": '{"action": "%s"}' % Constants.REBOOT,
                     "command_topic": command_topic,
                     "device": device
                 }
@@ -253,8 +260,8 @@ class MqttClient:
                 {
                     "name": "Update Firmware",
                     "unique_id": f"gwn_device_{normalised_device_mac}_update_firmware",
-                    "value_template": '{{ {"installed_version": value_json.versionFirmware,"latest_version": value_json.newFirmware} | tojson }}',
-                    "payload_install": '{"action": "update_firmware"}',
+                    "value_template": '{{ {"installed_version": value_json.%s,"latest_version": value_json.%s} | tojson }}' % (Constants.CURRENT_FIRMWARE, Constants.NEW_FIRMWARE),
+                    "payload_install": '{"action": "%s"}' % Constants.UPDATE_FIRMWARE,
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "title": "Device Firmware",
@@ -268,7 +275,7 @@ class MqttClient:
                 {
                     "name": "Reset",
                     "unique_id": f"gwn_device_{normalised_device_mac}_reset",
-                    "payload_press": '{"action": "reset"}',
+                    "payload_press": '{"action": "%s"}' % Constants.RESET,
                     "command_topic": command_topic,
                     "enabled_by_default": False,
                     "entity_category": "config",
@@ -282,9 +289,9 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_network_name",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.networkName }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.NETWORK_NAME,
                     "options": [network_name],
-                    "command_template": '{"action":"networkName","value":"{{ value }}"}',
+                    "command_template": '{"action":"%s","%s":"{{ value }}"}'% (Constants.NETWORK_NAME, Constants.VALUE),
                     "device": device
                 }
             ),
@@ -294,7 +301,7 @@ class MqttClient:
                     "name": "Status",
                     "unique_id": f"gwn_device_{normalised_device_mac}_status",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.status }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.STATUS,
                     "payload_on": True,
                     "payload_off": False,
                     "device": device
@@ -306,10 +313,10 @@ class MqttClient:
                     "name": "Wireless",
                     "unique_id": f"gwn_device_{normalised_device_mac}_wireless",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.wireless == 1}}",
+                    "value_template": "{{ value_json.%s == 1}}" % Constants.WIRELESS,
                     "command_topic": command_topic,
-                    "payload_on": '{"action":"wireless","value":true}',
-                    "payload_off": '{"action":"wireless","value":false}',
+                    "payload_on": '{"action":"%s","%s":true}' % (Constants.WIRELESS, Constants.VALUE),
+                    "payload_off": '{"action":"%s","%s":false}' % (Constants.WIRELESS, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -321,7 +328,7 @@ class MqttClient:
                     "name": "IPv4",
                     "unique_id": f"gwn_device_{normalised_device_mac}_ipv4",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ip }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.IPV4,
                     "device": device
                 }
             ),
@@ -331,7 +338,7 @@ class MqttClient:
                     "name": "IPv6",
                     "unique_id": f"gwn_device_{normalised_device_mac}_ipv6",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ipv6 }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.IPV6,
                     "device": device
                 }
             ),
@@ -353,7 +360,7 @@ class MqttClient:
                     "name": "Available Firmware",
                     "unique_id": f"gwn_device_{normalised_device_mac}_firmware_new",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.newFirmware }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.NEW_FIRMWARE,
                     "entity_category": "config",
                     "enabled_by_default": True,
                     "device": device
@@ -365,7 +372,7 @@ class MqttClient:
                     "name": "CPU Usage",
                     "unique_id": f"gwn_device_{normalised_device_mac}_cpu_usage",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.cpuUsage | replace('%', '') | int(0) }}",
+                    "value_template": "{{ value_json.%s | replace('%%', '') | int(0) }}" % Constants.CPU_USAGE,
                     "unit_of_measurement": "%",
                     "state_class": "measurement",
                     "device": device
@@ -377,7 +384,7 @@ class MqttClient:
                     "name": "Temperature",
                     "unique_id": f"gwn_device_{normalised_device_mac}_temperature",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.temperature | replace('℃', '') | replace('°C', '') | int(0) }}",
+                    "value_template": "{{ value_json.%s | replace('℃', '') | replace('°C', '') | int(0) }}" % Constants.TEMPERATURE,
                     "unit_of_measurement": "°C",
                     "state_class": "measurement",
                     "device": device
@@ -389,7 +396,7 @@ class MqttClient:
                     "name": "SSIDs",
                     "unique_id": f"gwn_device_{normalised_device_mac}_ssid_names",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.ssids | map(attribute='ssidName') | join(', ') }}",
+                    "value_template": "{{ value_json.%s | map(attribute='%s') | join(', ') }}" % (Constants.SSIDS, Constants.SSID_NAME),
                     "device": device
                 }
             ),
@@ -399,7 +406,7 @@ class MqttClient:
                     "name": "Up Time",
                     "unique_id": f"gwn_device_{normalised_device_mac}_uptime",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.upTime | int(0) }}",
+                    "value_template": "{{ value_json%s. | int(0) }}" % Constants.UP_TIME,
                     "unit_of_measurement": "s",
                     "state_class": "measurement",
                     "device": device
@@ -412,8 +419,8 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_channel_2_4",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.channel_2_4 | int(0) }}",
-                    "command_template": '{"action":"channel_2_4","value":{{ value | int }}}',
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_2_4,
+                    "command_template": '{"action":"%s","%s":{{ value | int }}}' % (Constants.CHANNEL_2_4, Constants.VALUE),
                     "min": 1,
                     "max": 13,
                     "step": 1,
@@ -428,8 +435,8 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_channel_5",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.channel_5 | int(0) }}",
-                    "command_template": '{"action":"channel_5","value":{{ value | int }}}',
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_5,
+                    "command_template": '{"action":"%s","%s":{{ value | int }}}' % (Constants.CHANNEL_5, Constants.VALUE),
                     "min": 36,
                     "max": 165,
                     "step": 1,
@@ -444,8 +451,8 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_channel_6",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.channel_6 | int(0) }}",
-                    "command_template": '{"action":"channel_6","value":{{ value | int }}}',
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_6,
+                    "command_template": '{"action":"%s","%s":{{ value | int }}}' % (Constants.CHANNEL_6, Constants.VALUE),
                     "min": 1,
                     "max": 177,
                     "step": 1,
@@ -459,7 +466,7 @@ class MqttClient:
                     "name": "MAC",
                     "unique_id": f"gwn_device_{normalised_device_mac}_mac",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.mac }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.MAC,
                     "entity_category": "config",
                     "enabled_by_default": True,
                     "device": device
@@ -471,7 +478,7 @@ class MqttClient:
         network_id: str = str(payload.get("id"))
         network_id_int: int = int(network_id)
 
-        network_name: str = str(payload.get('networkName'))
+        network_name: str = str(payload.get(Constants.NETWORK_NAME))
         network_model: str = "GWN Network"
         if network_id_int in self._config.homeassistant.network_name_override:
             network_model = network_name
@@ -487,8 +494,8 @@ class MqttClient:
                     "unique_id": f"gwn_network_{network_id}_name",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.networkName }}",
-                    "command_template": '{"action":"networkName","value":{{ value | tojson }}}',
+                    "value_template": "{{ value_json.%s }}" % Constants.NETWORK_NAME,
+                    "command_template": '{"action":"%s","%s":{{ value | tojson }}}' % (Constants.NETWORK_NAME, Constants.VALUE),
                     "device": device,
                 }
             ),
@@ -498,7 +505,7 @@ class MqttClient:
                     "name": "Country",
                     "unique_id": f"gwn_network_{network_id}_country",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.countryDisplay }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.COUNTRY_DISPLAY,
                     "device": device
                 }
             ),
@@ -508,7 +515,7 @@ class MqttClient:
                     "name": "Timezone",
                     "unique_id": f"gwn_network_{network_id}_timezone",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.timezone }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.TIMEZONE,
                     "device": device
                 }
             )
@@ -523,8 +530,8 @@ class MqttClient:
                 {
                     "name": "Update Application",
                     "unique_id": "gwn_to_mqtt_update_version",
-                    "value_template": '{{ {"installed_version": value_json.currentVersion,"latest_version": value_json.newVersion} | tojson }}',
-                    "payload_install": '{"action": "update_version"}',
+                    "value_template": '{{ {"installed_version": value_json.%s,"latest_version": value_json.%s} | tojson }}'  % (Constants.CURRENT_VERSION, Constants.NEW_VERSION),
+                    "payload_install": '{"action": "%s"}' % Constants.UPDATE_VERSION,
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "title": "Application Update",
@@ -539,7 +546,7 @@ class MqttClient:
                     "name": "Available Version",
                     "unique_id": "gwn_to_mqtt_new_version",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.newVersion }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.NEW_VERSION,
                     "entity_category": "config",
                     "enabled_by_default": True,
                     "device": device
@@ -551,7 +558,7 @@ class MqttClient:
                     "name": "Current Version",
                     "unique_id": "gwn_to_mqtt_version",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.currentVersion }}",
+                    "value_template": "{{ value_json.%s }}" % Constants.CURRENT_VERSION,
                     "entity_category": "config",
                     "enabled_by_default": True,
                     "device": device
@@ -562,7 +569,7 @@ class MqttClient:
                 {
                     "name": "Restart",
                     "unique_id": "gwn_to_mqtt_update_restart",
-                    "payload_press": '{"action": "restart"}',
+                    "payload_press": '{"action": "%s"}' % Constants.CURRENT_VERSION,
                     "command_topic": command_topic,
                     "device": device
                 }
@@ -608,15 +615,15 @@ class MqttClient:
             formatted_data: dict[str, Any] = {}
             if parts_count == 1 and parts[0] == "gwn":
                 _LOGGER.info(f"Multi Data command: {formatted_data}")
-                network_id = str(data["network_id"])
-                device_mac = str(data["mac"])
-                ssid_id = str(data["ssid_id"])
+                network_id = data.get(Constants.NETWORK_ID)
+                device_mac = data.get(Constants.MAC)
+                ssid_id = data.get(Constants.SSID_ID)
                 if network_id is not None and device_mac is not None and ssid_id is not None:
-                    return _LOGGER.warning(f"Only 1 of 'network_id' ({network_id}), 'mac' ({device_mac}), 'ssid_id' ({ssid_id}) can be specified")
+                    return _LOGGER.warning(f"Only 1 of '{Constants.NETWORK_ID}' ({network_id}), '{Constants.MAC}' ({device_mac}), '{Constants.SSID_ID}' ({ssid_id}) can be specified")
                 for command_data in data["actions"]:
-                    formatted_data[command_data["action"]] = command_data.get("value", None)
+                    formatted_data[command_data["action"]] = command_data.get(Constants.VALUE, None)
             else:
-                formatted_data = {data["action"]: data.get("value", None) } 
+                formatted_data = {data["action"]: data.get(Constants.VALUE, None) } 
                 if parts_count == 1 and parts[0] == "application":
                     _LOGGER.info(f"Application command: {formatted_data}")
                     if self._application_callback is not None:
