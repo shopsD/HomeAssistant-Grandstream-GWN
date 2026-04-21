@@ -86,10 +86,4 @@ class Constants:
     SSID_ID: ClassVar[str] = "ssid_id"
     TOGGLE_DEVICE: ClassVar[str] = "toggle_device"
     DEVICE_MACS: ClassVar[str] = "device_macs"
-    
-
-
-
-
-
 
