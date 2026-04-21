@@ -96,7 +96,7 @@ class MqttGwnManager:
 
     def _serialise_ssid(self, gwn_ssid: GwnSSID, assigned_devices: list[dict[str, str]]) -> dict[str, object]:
         return {
-            "id": gwn_ssid.id,
+            Constants.SSID_ID: gwn_ssid.id,
             Constants.SSID_NAME: gwn_ssid.ssidName,
             Constants.WIFI_ENABLED: gwn_ssid.wifiEnabled,
             Constants.CLIENT_COUNT: gwn_ssid.onlineDevices,
@@ -155,7 +155,7 @@ class MqttGwnManager:
             Constants.SSIDS: [
                 {
                     Constants.SSID_ID: ssid.id,
-                    Constants.SSID_VLAN_ID: ssid.ssidName,
+                    Constants.SSID_NAME: ssid.ssidName,
                 }
                 for ssid in gwn_device.ssids
             ]

@@ -59,7 +59,7 @@ class Constants:
     CHANNEL_LOAD_2G4: ClassVar[str] = "channelload_2g4"
     CHANNEL_LOAD_6G: ClassVar[str] = "channelload_6g"
     CPU_USAGE: ClassVar[str] = "cpuUsage"
-    CHANNEL_LOAD_5G: ClassVar[str] = "channelload_2g4"
+    CHANNEL_LOAD_5G: ClassVar[str] = "channelload_5g"
     # NETWORK_NAME (In Network)
     SSIDS: ClassVar[str] = "ssids"
     # buttons/commands (no GWN Inputs)

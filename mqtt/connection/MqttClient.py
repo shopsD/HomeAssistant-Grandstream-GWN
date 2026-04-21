@@ -406,7 +406,7 @@ class MqttClient:
                     "name": "Up Time",
                     "unique_id": f"gwn_device_{normalised_device_mac}_uptime",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json%s. | int(0) }}" % Constants.UP_TIME,
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.UP_TIME,
                     "unit_of_measurement": "s",
                     "state_class": "measurement",
                     "device": device
@@ -569,7 +569,7 @@ class MqttClient:
                 {
                     "name": "Restart",
                     "unique_id": "gwn_to_mqtt_update_restart",
-                    "payload_press": '{"action": "%s"}' % Constants.CURRENT_VERSION,
+                    "payload_press": '{"action": "%s"}' % Constants.RESTART,
                     "command_topic": command_topic,
                     "device": device
                 }
@@ -618,8 +618,8 @@ class MqttClient:
                 network_id = data.get(Constants.NETWORK_ID)
                 device_mac = data.get(Constants.MAC)
                 ssid_id = data.get(Constants.SSID_ID)
-                if network_id is not None and device_mac is not None and ssid_id is not None:
-                    return _LOGGER.warning(f"Only 1 of '{Constants.NETWORK_ID}' ({network_id}), '{Constants.MAC}' ({device_mac}), '{Constants.SSID_ID}' ({ssid_id}) can be specified")
+                if device_mac is not None and ssid_id is not None:
+                    return _LOGGER.warning(f"Only 1 of '{Constants.MAC}' ({device_mac}) and '{Constants.SSID_ID}' ({ssid_id}) can be specified")
                 for command_data in data["actions"]:
                     formatted_data[command_data["action"]] = command_data.get(Constants.VALUE, None)
             else:
@@ -641,12 +641,15 @@ class MqttClient:
                     _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}: {formatted_data}")
                 else:
                     return _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
+            
+            if network_id is None:
+                return _LOGGER.warning(f"No Network ID specified")
 
             if self._ssid_callback is not None and ssid_id is not None:
                 self._ssid_callback(ssid_id, network_id, formatted_data)
             elif self._device_callback is not None and device_mac is not None:
                 self._device_callback(device_mac, network_id, formatted_data)
-            elif self._network_callback is not None and network_id is not None:
+            elif self._network_callback is not None:
                 self._network_callback(network_id, formatted_data)
             
     async def _publish_online(self) -> None:
