@@ -129,11 +129,23 @@ class ConfigParser:
             if not isinstance(gwn_exclude_ssid, list):
                 raise ConfigParserError("gwn.exclude_ssid must be a list of SSID IDs")
             gwn_config.exclude_ssid = [int(ssid_id) for ssid_id in gwn_exclude_ssid]
-        # mqtt verify tls
+        # gwn username
+        gwn_username = gwn_section.get("username")
+        if gwn_username:
+            gwn_config.username = str(gwn_username)
+        # gwn password
+        gwn_password = gwn_section.get("password")
+        if gwn_password:
+            gwn_config.password = GwnConfig.hash_password(gwn_password)
+        if gwn_config.username and not gwn_config.password:
+            raise ConfigParserError("gwn.username specified but gwn.password is missing")
+        if gwn_config.password and not gwn_config.username:
+            raise ConfigParserError("gwn.password specified but gwn.username is missing")
+        # gwn no publish
         no_publish = gwn_section.get("no_publish")
         if no_publish is not None:
             gwn_config.no_publish = bool(no_publish)
-        _LOGGER.debug(f"GWN Config|No Publish: '{gwn_config.no_publish}'|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
+        _LOGGER.debug(f"GWN Config|User/Password Provided: '{bool(gwn_config.username and gwn_config.password)}'|No Publish: '{gwn_config.no_publish}'|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
 
         return gwn_config
 
@@ -189,6 +201,10 @@ class ConfigParser:
             if homeassistant_sub_section is not None:
                 if not isinstance(homeassistant_sub_section, dict):
                     raise ConfigParserError("mqtt.homeassistant is invalid")
+                # mqtt default application autodiscovery
+                application_autodiscovery = homeassistant_sub_section.get("application_autodiscovery")
+                if application_autodiscovery is not None:
+                    mqtt_config.homeassistant.application_autodiscovery = bool(application_autodiscovery)
                 # mqtt default network autodiscovery. Must be evaluated before network_autodiscovery
                 default_network = homeassistant_sub_section.get("default_network_autodiscovery")
                 if default_network is not None:
@@ -225,8 +241,8 @@ class ConfigParser:
                 ssid_name_override = homeassistant_sub_section.get("ssid_name_override")
                 if ssid_name_override is not None:
                     mqtt_config.homeassistant.ssid_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("ssid_name_override"),"ssid_name_override")
-                
-                _LOGGER.debug(f"MQTT.HomeAssistant Config|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
+
+                _LOGGER.debug(f"MQTT.HomeAssistant Config|Application Auto-discovery '{mqtt_config.homeassistant.application_autodiscovery}'|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
 
         _LOGGER.debug(f"MQTT Config|No Publish: '{mqtt_config.no_publish}'|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
         return mqtt_config

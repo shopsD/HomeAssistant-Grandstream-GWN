@@ -3,6 +3,7 @@ import json
 import logging
 import time
 from typing import Any
+from urllib.parse import urlsplit
 
 import aiohttp
 
@@ -39,46 +40,70 @@ class GwnInterface:
 
     async def _ensure_token_valid(self) -> None:
         if self._token is None or self._token.is_expired():
-            if not await self.authenticate():
-                self._token = None
+            self._token = await self._headless_login()
+        if self._token is not None and self._config.username is not None and self._config.password is not None:
+            if self._token.authorisation_key is not None:
+                response = await self._do_post("app/ssid/device/list",{},"",{
+                    "Content-Type": "application/json",
+                    "authorization": self._token.authorisation_key
+                })
+                if response is None:
+                    _LOGGER.warning("Access Expired. Attempting to login again")
+                    self._token.authorisation_key = None
+            if self._token.authorisation_key is None:
+                self._token.authorisation_key = await self._user_password_login()
 
-    async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any] | None:
+
+    async def _post(self, path: str, body: dict[str, Any], bearer: bool = False) -> dict[str, Any] | None:
+        
         await self._ensure_token_valid()
-
+        body_json = json.dumps(body, separators=(",", ":"))
+        headers={"Content-Type": "application/json"}
+        params: dict[str, str] = {}
         if self._token is None:
             _LOGGER.error("No access token available")
             return None
+        if bearer and self._token.authorisation_key is None:
+            _LOGGER.error("No authorisation token available")
+            return None
+        elif bearer:
+            if self._token.authorisation_key is not None:
+                headers["authorization"] = self._token.authorisation_key
+        else:
+            timestamp_ms = int(time.time() * 1000)
+            
+            signature = self._build_signature(
+                body=body_json,
+                access_token=self._token.access_token,
+                timestamp_ms=timestamp_ms,
+            )
+            params = {
+                "access_token": self._token.access_token,
+                "appID": self._config.app_id,
+                "timestamp": str(timestamp_ms),
+                "signature": signature,
+            }
+        return await self._do_post(path,params,body_json,headers)
 
-        timestamp_ms = int(time.time() * 1000)
-        body_json = json.dumps(body, separators=(",", ":"))
-        signature = self._build_signature(
-            body=body_json,
-            access_token=self._token.access_token,
-            timestamp_ms=timestamp_ms,
-        )
-
+    async def _do_post(self, path: str, params: dict[str, str], body: str, headers: dict[str,str]) -> dict[str,Any] | None:
         url = f"{self._config.base_url.rstrip('/')}/{path.lstrip('/')}"
-        params = {
-            "access_token": self._token.access_token,
-            "appID": self._config.app_id,
-            "timestamp": str(timestamp_ms),
-            "signature": signature,
-        }
-
-        async with self._session.post(url, params=params, data=body_json,headers={"Content-Type": "application/json"} ) as response:
+        async with self._session.post(url, params=params, data=body,headers=headers ) as response:
             data = await response.json(content_type=None)
 
             if response.status != 200:
                 _LOGGER.warning(f"Request to '{url}' failed with status {response.status}: {data}")
                 return None
             retCode = data.get("retCode")
-            if retCode and int(retCode) != 0:
+            if retCode is not None and int(retCode) != 0:
                 _LOGGER.warning(f"Request to '{url}' failed with code {retCode}: {data.get('msg')}")
                 return None
             _LOGGER.debug(f"Request to '{url}' succeeded")
+            authorisation = response.headers.get("authorization",None)
+            if authorisation:
+                data["authorisation"] = authorisation
             return data
 
-    async def _post_paginated(self, path: str, body: dict[str, Any]) -> list[dict[str, Any]] | None:
+    async def _post_paginated(self, path: str, body: dict[str, Any], bearer: bool = False) -> list[dict[str, Any]] | None:
         page_num = 1
         results: list[dict[str, Any]] = []
         page_count = 0
@@ -88,7 +113,7 @@ class GwnInterface:
             page_body["pageNum"] = page_num
             page_body["pageSize"] = page_size
 
-            response = await self._post(path, page_body)
+            response = await self._post(path, page_body, bearer)
             if response is None:
                 return None
             data = response.get("data", {})
@@ -102,20 +127,12 @@ class GwnInterface:
 
             if len(page_results) != page_size:
                 break
-
             page_num += 1
             page_count += 1
             
         return results
 
-    @property
-    def refresh_period(self) -> int:
-        return self._config.refresh_period_s
-
-    async def close(self) -> None:
-        await self._session.close()
-
-    async def authenticate(self) -> bool:
+    async def _headless_login(self) -> GwnToken | None:
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
 
         params = {
@@ -129,14 +146,49 @@ class GwnInterface:
 
             if response.status != 200:
                 _LOGGER.error(f"Token request failed with status {response.status}: {data}")
-                return False
+                return None
 
             if "access_token" not in data:
                 _LOGGER.error(f"Token response missing access_token: {data}")
-                return False
+                return None
 
-            self._token = GwnToken.from_response(data)
-            return self._token is not None
+            return GwnToken.from_response(data)
+
+    async def _user_password_login(self) -> str | None:
+        parts = urlsplit(self._config.base_url)
+        body = {
+            "userName": self._config.username,
+            "userPwd": self._config.password,
+            "serverId": "",
+            "code": "",
+            "checkCode":"",
+            "codeToken":"",
+            "lang":"en",
+            "browserDomain": parts.netloc or parts.path,
+            "checkMFACodeFirst":1
+        }
+        response = await self._do_post("/user/app/login",{},json.dumps(body),{"Content-Type": "application/json"})
+        if response is None:
+            _LOGGER.warning("Username/Password Login failed")
+            return None
+        return response.get("authorisation", None)
+
+    @property
+    def refresh_period(self) -> int:
+        return self._config.refresh_period_s
+
+    async def close(self) -> None:
+        await self._session.close()
+
+    async def authenticate(self) -> bool:
+        gwn_token = await self._headless_login()
+        if gwn_token is not None:
+            if self._config.username is not None and self._config.password is not None:
+                gwn_token.authorisation_key = await self._user_password_login()
+                if gwn_token.authorisation_key is None:
+                    return False
+            self._token = gwn_token
+        return self._token is not None
 
     async def get_all_networks(self) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})
@@ -150,6 +202,20 @@ class GwnInterface:
             return None
         data = response.get("data", {})
         return data.get("configuration", {})
+
+    async def get_ssid_devices(self, ssid_id: int) -> list[dict[str, Any]] | None:
+        if self._config.username is None or self._config.password is None:
+            return [] # dont return None as an error and dont try requesting. Return empty to trigger fallback
+        return await self._post_paginated("app/ssid/device/list",{
+                "id":ssid_id,
+                "search":"",
+                "order":"",
+                "type":"all",
+                "filter":{
+                    "deviceType":"all",
+                    "siteId":"all"
+                }
+            },True)
 
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
@@ -183,3 +249,6 @@ class GwnInterface:
             return None
         data = response.get("data", {})
         return data.get("result", [])
+    
+    async def set_ssid_data(self, payload: dict[str, Any] ) -> bool:
+        return await self._post("oapi/v1.0.0/ssid/update",payload) is not None

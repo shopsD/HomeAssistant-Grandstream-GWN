@@ -9,6 +9,7 @@ mqtt:
   # tls: False # default false
   # verify_tls: True # default true
   homeassistant: # controls support for home assistant auto discovery
+    application_autodiscovery: False # default False. This will prevent this application (GWN to MQTT) from having auto discovery in home assistant. Ne
     default_network_autodiscovery: False # default False. This will not support home assistant auto discovery for networks that are not otherwise specified below
     default_device_autodiscovery: False # default False. This will not support home assistant auto discovery for devices that are not otherwise specified below
     default_ssid_autodiscovery: False # default False. This will not support home assistant auto discovery for ssids that are not otherwise specified below
@@ -36,6 +37,8 @@ gwn: # required
   url: https://localhost:8443 # default https://localhost:8443
   app_id: CHANGE_ME # required
   secret_key: CHANGE_ME # required
+  # username: CHANGE_ME # optional (required if password is specified) This is the username for logging into GWN Manager. Required for associating SSIDs to Devices
+  # password: CHANGE_ME # optional (required if username is specified) This is the password for logging into GWN Manager. Required for associating SSIDs to Devices
   # page_size: 5 # default 10
   # max_pages: 100 # default 100 (set to 0 for unlimited)
   # refresh_period_s: 30 # the rate to poll the GWN Manager for all data

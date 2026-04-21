@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from gwn.request_data.GwnDevice import GwnDevice
 
 class SecurityMode(Enum):
     WEP64 = 0
@@ -8,8 +9,9 @@ class SecurityMode(Enum):
     WPA_WPA2 = 2
     WPA2 = 3
     OPEN = 4
-    WPA3 = 5
-    WPA2_WPA3 = 6
+    WPA3 = 7
+    WPA2_WPA3 = 5
+    WPA3_192 = 8
     
 class MacFiltering(Enum):
     Disabled = 0
@@ -50,3 +52,4 @@ class GwnSSID:
     ghz5_Enabled: bool
     ghz6_Enabled: bool
 
+    devices: list[GwnDevice]

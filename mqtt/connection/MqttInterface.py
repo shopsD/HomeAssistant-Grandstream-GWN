@@ -10,9 +10,9 @@ _LOGGER = logging.getLogger(Constants.LOG)
 
 class MqttInterface:
     def __init__(self, config: MqttConfig) -> None:
-        self._config = config
+        self._config: MqttConfig = config
         self._client: Client | None = None
-        self._connected = False
+        self._connected: bool = False
 
     @property
     def is_connected(self) -> bool:
@@ -27,6 +27,10 @@ class MqttInterface:
     @property
     def topic(self) -> str:
         return self._config.topic
+
+    @property
+    def messages(self):
+        return self.client.messages
 
     async def connect(self) -> bool:
         _LOGGER.info("Connecting to MQTT")
@@ -66,3 +70,6 @@ class MqttInterface:
     async def publish(self, topic: str, payload: str, retain: bool = False) -> None:
         if not self._config.no_publish:
             await self.client.publish(topic, payload, retain=retain)
+
+    async def subscribe(self, topic: str) -> None:
+        await self.client.subscribe(topic)
