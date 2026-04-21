@@ -28,7 +28,6 @@ async def async_main(config_path: Path) -> None:
     if await app_manager.connect():
         await app_manager.run()
 
-
 def main() -> None:
     logging.basicConfig(level=logging.DEBUG, force=True)
     logging.getLogger(Constants.LOG).setLevel(logging.DEBUG)

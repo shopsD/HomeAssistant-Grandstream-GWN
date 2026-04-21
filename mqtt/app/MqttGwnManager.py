@@ -175,14 +175,14 @@ class MqttGwnManager:
         restart = data.get(Constants.RESTART)
         _LOGGER.info(f"Command {update_version} {restart}")
 
-    def _handle_network_command(self, network_id: str, data: dict[str, Any]) -> None:
-        await _gwn_client.set_network_data(network_id, data)
+    async def _handle_network_command(self, network_id: str, data: dict[str, Any]) -> None:
+        await self._gwn_client.set_network_data(network_id, data)
     
-    def _handle_device_command(self, device_mac: str, network_id: str, data: dict[str, Any]) -> None:
-        await _gwn_client.set_device_data(device_mac, network_id, data)
+    async def _handle_device_command(self, device_mac: str, data: dict[str, Any], network_id: str) -> None:
+        await self._gwn_client.set_device_data(device_mac, network_id, data)
 
-    def _handle_ssid_command(self, ssid_id: str, data: dict[str, Any], network_id: str) -> None:
-        await _gwn_client.set_ssid_data(ssid_id, device_macs, data, network_id)
+    async def _handle_ssid_command(self, ssid_id: str, device_macs:list[str], network_id: str, data: dict[str, Any]) -> None:
+        await self._gwn_client.set_ssid_data(ssid_id, device_macs, data, network_id)
     
     async def connect(self) -> bool:
         try:
@@ -196,7 +196,6 @@ class MqttGwnManager:
             if not await self._mqtt_client.connect():
                 raise AuthenticationError("Failed to connect to MQTT Broker")
             _LOGGER.debug("Connected to MQTT Server")
-
 
             _LOGGER.debug("Connecting to GWN Manager")
             if not await self._gwn_client.authenticate():

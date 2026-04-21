@@ -15,8 +15,8 @@ class MqttClient:
         self._interface: MqttInterface = MqttInterface(config)
         self._application_callback: Callable[[dict[str, Any]], None] | None = None
         self._network_callback: Callable[[str, dict[str, Any]], None] | None = None
-        self._device_callback: Callable[[str, str, dict[str, Any]], None] | None = None
-        self._ssid_callback: Callable[[str, str, dict[str, Any]], None] | None = None
+        self._device_callback: Callable[[str, dict[str, Any], str], None] | None = None
+        self._ssid_callback: Callable[[str, list[str], str, dict[str, Any]], None] | None = None
         self._listen_task: asyncio.Task[None] | None = None
 
     def _strip_mac(self, mac: str) -> str:
@@ -53,8 +53,10 @@ class MqttClient:
         assigned_devices = payload.get(Constants.ASSIGNED_DEVICES)
 
         device = self._ha_device_block(f"gwn_ssid_{ssid_id}", ssid_name, ssid_model)
-        
-        for raw_device_mac in assigned_devices:
+        assigned_macs: list[str] = []
+        for device_data in assigned_devices:
+            raw_device_mac = device_data.get(Constants.MAC)
+            assigned_macs.append(raw_device_mac)
             device_mac = self._strip_mac(raw_device_mac)
             device_assignment.append(
                 (
@@ -65,8 +67,8 @@ class MqttClient:
                         "state_topic": state_topic,
                         "command_topic": command_topic,
                         "value_template": "{{ value_json.%s == 1}}" % Constants.TOGGLE_DEVICE,
-                        "payload_on": '{"action":"%s","%s":true, "%s": %s}' % (Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.MAC, raw_device_mac),
-                        "payload_off": '{"action":"%s","%s":false, "%s": %s}' % (Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.MAC, raw_device_mac),
+                        "payload_on": '"%s":{"%s":"%s","%s":true}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
+                        "payload_off": '"%s":{"%s":"%s","%s":false}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
                         "state_on": True,
                         "state_off": False,
                         "device": device
@@ -74,8 +76,8 @@ class MqttClient:
                 )
             )
 
-
-        return [raw_device_mac,
+        assigned_devices_json = json.dumps(assigned_devices)
+        return [device_assignment,
             (
                 self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled"),
                 {
@@ -84,8 +86,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.SSID_ENABLE,
-                    "payload_on": '{"action":"%s","%s":true, "%s":%o}' % (Constants.SSID_ENABLE, Constants.VALUE, Constants.MAC, assigned_devices),
-                    "payload_off": '{"action":"%s","%s":false}' % (Constants.SSID_ENABLE, Constants.VALUE),
+                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_ENABLE, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_ENABLE, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -99,8 +101,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.PORTAL_ENABLED,
-                    "payload_on": '{"action":"%s","%s":true}' % (Constants.PORTAL_ENABLED, Constants.VALUE),
-                    "payload_off": '{"action":"%s","%s":false}' % (Constants.PORTAL_ENABLED, Constants.VALUE),
+                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.PORTAL_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.PORTAL_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -114,28 +116,11 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s if value_json.get('%s') else 'No VLAN' }}" % (Constants.SSID_VLAN_ID, Constants.SSID_VLAN_ENABLED),
-                    "command_template": '{"action":"%s","%s":{{ value | int }}}' % (Constants.SSID_VLAN_ID, Constants.VALUE),
+                    "command_template": '"%s":{"%s":"%s","%s":{{ value | int }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_VLAN_ID, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "min": 0,
                     "max": 4094,
                     "step": 1,
                     "mode": "box",
-                    "device": device
-                }
-            ),
-            (
-                self._ha_discovery_topic("sensor", f"gwn_ssid_{ssid_id}_assigned_names"),
-                {
-                    "name": "Devices",
-                    "unique_id": f"gwn_ssid_{ssid_id}_devices",
-                    "state_topic": state_topic,
-                    "value_template": ("{%% set devices = value_json.get('%s', []) %%}"
-                        "{%% if devices %%}"
-                            "{%% for dev in devices %%}"
-                                "{{ dev.%s if dev.%s else dev.%s }}"
-                                "{%% if not loop.last %%},{%% endif %%}"
-                            "{%% endfor %%}"
-                        "{%% else %%}None"
-                        "{%% endif %%}") % (Constants.ASSIGNED_DEVICES, Constants.NAME, Constants.NAME, Constants.MAC),
                     "device": device
                 }
             ),
@@ -147,8 +132,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.CLIENT_ISOLATION_ENABLED,
-                    "payload_on": '{"action":"%s","%s":true}' % (Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE),
-                    "payload_off": '{"action":"%s","%s":false}' % (Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE),
+                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -162,8 +147,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ2_4_ENABLED,
-                    "payload_on": '{"action":"%s","%s":true}' % (Constants.GHZ2_4_ENABLED, Constants.VALUE),
-                    "payload_off": '{"action":"%s","%s":false}' % (Constants.GHZ2_4_ENABLED, Constants.VALUE),
+                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ2_4_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ2_4_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -177,8 +162,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ5_ENABLED,
-                    "payload_on": '{"action":"%s","%s":true}' % (Constants.GHZ5_ENABLED, Constants.VALUE),
-                    "payload_off": '{"action":"%s","%s":false}' % (Constants.GHZ5_ENABLED, Constants.VALUE),
+                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ5_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ5_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -192,8 +177,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ6_ENABLED,
-                    "payload_on": '{"action":"%s","%s":true}' % (Constants.GHZ6_ENABLED, Constants.VALUE),
-                    "payload_off": '{"action":"%s","%s":false}' % (Constants.GHZ6_ENABLED, Constants.VALUE),
+                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ6_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ6_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -207,7 +192,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s }}" % Constants.SSID_KEY,
-                    "command_template": '{"action":"%s","%s":{{ value | tojson }}}' % (Constants.SSID_KEY, Constants.VALUE),
+                    "command_template": '"%s":{"%s":"%s","%s":{{ value | tojson }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_KEY, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "device": device
                 }
             ),
@@ -219,8 +204,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.SSID_HIDDEN,
-                    "payload_on": '{"action":"%s","%s":true}' % (Constants.SSID_HIDDEN, Constants.VALUE),
-                    "payload_off": '{"action":"%s","%s":false}' % (Constants.SSID_HIDDEN, Constants.VALUE),
+                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_HIDDEN, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_HIDDEN, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -245,7 +230,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s }}" % Constants.SSID_NAME,
-                    "command_template": '{"action":"%s","%s":{{ value | tojson }}}' % (Constants.SSID_NAME, Constants.VALUE),
+                    "command_template": '"%s":{"%s":"%s","%s":{{ value | tojson }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_NAME, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "device": device
                 }
             )
@@ -274,7 +259,7 @@ class MqttClient:
                 {
                     "name": "Reboot",
                     "unique_id": f"gwn_device_{normalised_device_mac}_reboot",
-                    "payload_press": '{"action": "%s"}' % Constants.REBOOT,
+                    "payload_press": '{"%s": "%s"}' % (Constants.ACTION, Constants.REBOOT),
                     "command_topic": command_topic,
                     "device": device
                 }
@@ -285,7 +270,7 @@ class MqttClient:
                     "name": "Update Firmware",
                     "unique_id": f"gwn_device_{normalised_device_mac}_update_firmware",
                     "value_template": '{{ {"installed_version": value_json.%s,"latest_version": value_json.%s} | tojson }}' % (Constants.CURRENT_FIRMWARE, Constants.NEW_FIRMWARE),
-                    "payload_install": '{"action": "%s"}' % Constants.UPDATE_FIRMWARE,
+                    "payload_install": '{"%s": "%s"}' % (Constants.ACTION, Constants.UPDATE_FIRMWARE),
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "title": "Device Firmware",
@@ -299,7 +284,7 @@ class MqttClient:
                 {
                     "name": "Reset",
                     "unique_id": f"gwn_device_{normalised_device_mac}_reset",
-                    "payload_press": '{"action": "%s"}' % Constants.RESET,
+                    "payload_press": '{"%s": "%s"}' % (Constants.ACTION, Constants.RESET),
                     "command_topic": command_topic,
                     "enabled_by_default": False,
                     "entity_category": "config",
@@ -315,7 +300,7 @@ class MqttClient:
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s }}" % Constants.NETWORK_NAME,
                     "options": [network_name],
-                    "command_template": '{"action":"%s","%s":"{{ value }}"}'% (Constants.NETWORK_NAME, Constants.VALUE),
+                    "command_template": '{"%s":"%s","%s":"{{ value }}"}'% (Constants.ACTION, Constants.NETWORK_NAME, Constants.VALUE),
                     "device": device
                 }
             ),
@@ -339,8 +324,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.WIRELESS,
                     "command_topic": command_topic,
-                    "payload_on": '{"action":"%s","%s":true}' % (Constants.WIRELESS, Constants.VALUE),
-                    "payload_off": '{"action":"%s","%s":false}' % (Constants.WIRELESS, Constants.VALUE),
+                    "payload_on": '{"%s":"%s","%s":true}' % (Constants.ACTION, Constants.WIRELESS, Constants.VALUE),
+                    "payload_off": '{"%s":"%s","%s":false}' % (Constants.ACTION, Constants.WIRELESS, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -444,7 +429,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_2_4,
-                    "command_template": '{"action":"%s","%s":{{ value | int }}}' % (Constants.CHANNEL_2_4, Constants.VALUE),
+                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.CHANNEL_2_4, Constants.VALUE),
                     "min": 1,
                     "max": 13,
                     "step": 1,
@@ -460,7 +445,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_5,
-                    "command_template": '{"action":"%s","%s":{{ value | int }}}' % (Constants.CHANNEL_5, Constants.VALUE),
+                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.CHANNEL_5, Constants.VALUE),
                     "min": 36,
                     "max": 165,
                     "step": 1,
@@ -476,7 +461,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_6,
-                    "command_template": '{"action":"%s","%s":{{ value | int }}}' % (Constants.CHANNEL_6, Constants.VALUE),
+                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.CHANNEL_6, Constants.VALUE),
                     "min": 1,
                     "max": 177,
                     "step": 1,
@@ -519,7 +504,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s }}" % Constants.NETWORK_NAME,
-                    "command_template": '{"action":"%s","%s":{{ value | tojson }}}' % (Constants.NETWORK_NAME, Constants.VALUE),
+                    "command_template": '{"%s":"%s","%s":{{ value | tojson }}}' % (Constants.ACTION, Constants.NETWORK_NAME, Constants.VALUE),
                     "device": device,
                 }
             ),
@@ -555,7 +540,7 @@ class MqttClient:
                     "name": "Update Application",
                     "unique_id": "gwn_to_mqtt_update_version",
                     "value_template": '{{ {"installed_version": value_json.%s,"latest_version": value_json.%s} | tojson }}'  % (Constants.CURRENT_VERSION, Constants.NEW_VERSION),
-                    "payload_install": '{"action": "%s"}' % Constants.UPDATE_VERSION,
+                    "payload_install": '{"%s": "%s"}' % (Constants.ACTION, Constants.UPDATE_VERSION),
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "title": "Application Update",
@@ -593,7 +578,7 @@ class MqttClient:
                 {
                     "name": "Restart",
                     "unique_id": "gwn_to_mqtt_update_restart",
-                    "payload_press": '{"action": "%s"}' % Constants.RESTART,
+                    "payload_press": '{"%s": "%s"}' % (Constants.ACTION, Constants.RESTART),
                     "command_topic": command_topic,
                     "device": device
                 }
@@ -636,18 +621,34 @@ class MqttClient:
             network_id: str | None = None
             device_mac: str | None = None
             ssid_id: str | None = None
+            device_macs: list[str] | None = None
             formatted_data: dict[str, Any] = {}
             if parts_count == 1 and parts[0] == "gwn":
                 _LOGGER.info(f"Multi Data command: {formatted_data}")
                 network_id = data.get(Constants.NETWORK_ID)
                 device_mac = data.get(Constants.MAC)
                 ssid_id = data.get(Constants.SSID_ID)
+                
                 if device_mac is not None and ssid_id is not None:
                     return _LOGGER.warning(f"Only 1 of '{Constants.MAC}' ({device_mac}) and '{Constants.SSID_ID}' ({ssid_id}) can be specified")
-                for command_data in data["actions"]:
-                    formatted_data[command_data["action"]] = command_data.get(Constants.VALUE, None)
+                
+                if ssid_id is None:
+                    action_data = data
+                else:
+                    device_macs = data.get(Constants.DEVICE_MACS)
+                    action_data = data.get(Constants.ACTION)
+
+                for command_data in action_data:
+                    formatted_data[command_data[Constants.ACTION]] = command_data.get(Constants.VALUE, None)
+
             else:
-                formatted_data = {data["action"]: data.get(Constants.VALUE, None) } 
+                if ssid_id is None:
+                    action_data = data
+                else:
+                    device_macs = data.get(Constants.DEVICE_MACS)
+                    action_data = data.get(Constants.ACTION)
+                formatted_data = {action_data[Constants.ACTION]: action_data.get(Constants.VALUE, None) }
+
                 if parts_count == 1 and parts[0] == "application":
                     _LOGGER.info(f"Application command: {formatted_data}")
                     if self._application_callback is not None:
@@ -670,9 +671,9 @@ class MqttClient:
                 return _LOGGER.warning("No Network ID specified")
 
             if self._ssid_callback is not None and ssid_id is not None:
-                self._ssid_callback(ssid_id, network_id, formatted_data)
+                self._ssid_callback(ssid_id, device_macs, network_id, formatted_data)
             elif self._device_callback is not None and device_mac is not None:
-                self._device_callback(device_mac, network_id, formatted_data)
+                self._device_callback(device_mac, formatted_data, network_id)
             elif self._network_callback is not None:
                 self._network_callback(network_id, formatted_data)
             
@@ -706,10 +707,10 @@ class MqttClient:
     def set_network_callback(self, callback: Callable[[str, dict[str, Any]], None]) -> None:
         self._network_callback = callback
 
-    def set_device_callback(self, callback: Callable[[str, str, dict[str, Any]], None]) -> None:
+    def set_device_callback(self, callback: Callable[[str, dict[str, Any], str], None]) -> None:
         self._device_callback = callback
 
-    def set_ssid_callback(self, callback: Callable[[str, str, dict[str, Any]], None]) -> None:
+    def set_ssid_callback(self, callback: Callable[[str, list[str], str, dict[str, Any]], None]) -> None:
         self._ssid_callback = callback
 
     async def connect(self) -> bool:

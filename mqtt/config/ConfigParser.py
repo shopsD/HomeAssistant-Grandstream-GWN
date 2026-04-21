@@ -129,11 +129,23 @@ class ConfigParser:
             if not isinstance(gwn_exclude_ssid, list):
                 raise ConfigParserError("gwn.exclude_ssid must be a list of SSID IDs")
             gwn_config.exclude_ssid = [int(ssid_id) for ssid_id in gwn_exclude_ssid]
-        # mqtt verify tls
+        # gwn username
+        gwn_username = gwn_section.get("username")
+        if gwn_username:
+            gwn_config.username = str(gwn_username)
+        # gwn password
+        gwn_password = gwn_section.get("password")
+        if gwn_password:
+            gwn_config.password = GwnConfig.hash_password(gwn_password)
+        if gwn_config.username and not gwn_config.password:
+            raise ConfigParserError("gwn.username specified but gwn.password is missing")
+        if gwn_config.password and not gwn_config.username:
+            raise ConfigParserError("gwn.password specified but gwn.username is missing")
+        # gwn no publish
         no_publish = gwn_section.get("no_publish")
         if no_publish is not None:
             gwn_config.no_publish = bool(no_publish)
-        _LOGGER.debug(f"GWN Config|No Publish: '{gwn_config.no_publish}'|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
+        _LOGGER.debug(f"GWN Config|User/Password Provided: '{bool(gwn_config.username and gwn_config.password)}'|No Publish: '{gwn_config.no_publish}'|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
 
         return gwn_config
 
