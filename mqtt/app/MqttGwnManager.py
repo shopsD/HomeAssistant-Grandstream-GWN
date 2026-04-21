@@ -163,7 +163,7 @@ class MqttGwnManager:
 
     def _serialise_network(self, gwn_network: GwnNetwork) -> dict[str, object]:
         return {
-            "id": gwn_network.id,
+            Constants.NETWORK_ID: gwn_network.id,
             Constants.NETWORK_NAME: gwn_network.networkName,
             Constants.COUNTRY_DISPLAY: gwn_network.countryDisplay,
             Constants.TIMEZONE: gwn_network.timezone

@@ -475,7 +475,7 @@ class MqttClient:
         ]
 
     def _generic_network_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
-        network_id: str = str(payload.get("id"))
+        network_id: str = str(payload.get(Constants.NETWORK_ID))
         network_id_int: int = int(network_id)
 
         network_name: str = str(payload.get(Constants.NETWORK_NAME))
@@ -723,7 +723,7 @@ class MqttClient:
         return network_topic
     
     async def publish_device(self, network_topic: str, network_name: str, device_payload: dict[str, object]) -> None:
-        device_mac = str(device_payload.get("mac"))
+        device_mac = str(device_payload.get(Constants.MAC))
         device_mac = self._strip_mac(device_mac)
         normalised_macs = self._normalise_macs(self._config.homeassistant.device_autodiscovery)
         device_topic = f"{network_topic}/devices/{device_mac}"
