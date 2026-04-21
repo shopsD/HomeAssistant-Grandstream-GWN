@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import json
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from gwn.constants import Constants
 from mqtt.config import MqttConfig
@@ -14,9 +14,9 @@ class MqttClient:
         self._config: MqttConfig = config
         self._interface: MqttInterface = MqttInterface(config)
         self._application_callback: Callable[[dict[str, Any]], None] | None = None
-        self._network_callback: Callable[[str, dict[str, Any]], None] | None = None
-        self._device_callback: Callable[[str, dict[str, Any], str], None] | None = None
-        self._ssid_callback: Callable[[str, list[str], str, dict[str, Any]], None] | None = None
+        self._network_callback: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None
+        self._device_callback: Callable[[str, dict[str, Any], str], Awaitable[None]] | None = None
+        self._ssid_callback: Callable[[str, list[str], str, dict[str, Any]], Awaitable[None]] | None = None
         self._listen_task: asyncio.Task[None] | None = None
 
     def _strip_mac(self, mac: str) -> str:
@@ -50,34 +50,35 @@ class MqttClient:
             ssid_name = str(self._config.homeassistant.ssid_name_override[ssid_id_int])
         
         device_assignment: list[tuple[str, dict[str, object]]] = []
-        assigned_devices = payload.get(Constants.ASSIGNED_DEVICES)
-
+        raw_assigned_devices = payload.get(Constants.ASSIGNED_DEVICES)
+        assigned_devices: list[dict[str, str]] = raw_assigned_devices if isinstance(raw_assigned_devices, list) else []
         device = self._ha_device_block(f"gwn_ssid_{ssid_id}", ssid_name, ssid_model)
         assigned_macs: list[str] = []
         for device_data in assigned_devices:
             raw_device_mac = device_data.get(Constants.MAC)
-            assigned_macs.append(raw_device_mac)
-            device_mac = self._strip_mac(raw_device_mac)
-            device_assignment.append(
-                (
-                    self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_{device_mac}_device_enable"),
-                    {
-                        "name": "Enabled",
-                        "unique_id": f"gwn_ssid_{ssid_id}_{device_mac}_device_enable",
-                        "state_topic": state_topic,
-                        "command_topic": command_topic,
-                        "value_template": "{{ value_json.%s == 1}}" % Constants.TOGGLE_DEVICE,
-                        "payload_on": '"%s":{"%s":"%s","%s":true}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
-                        "payload_off": '"%s":{"%s":"%s","%s":false}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
-                        "state_on": True,
-                        "state_off": False,
-                        "device": device
-                    }
+            if raw_device_mac is not None:
+                assigned_macs.append(raw_device_mac)
+                device_mac = self._strip_mac(raw_device_mac)
+                device_assignment.append(
+                    (
+                        self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_{device_mac}_device_enable"),
+                        {
+                            "name": "Enabled",
+                            "unique_id": f"gwn_ssid_{ssid_id}_{device_mac}_device_enable",
+                            "state_topic": state_topic,
+                            "command_topic": command_topic,
+                            "value_template": "{{ value_json.%s == 1}}" % Constants.TOGGLE_DEVICE,
+                            "payload_on": '"%s":{"%s":"%s","%s":true}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
+                            "payload_off": '"%s":{"%s":"%s","%s":false}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
+                            "state_on": True,
+                            "state_off": False,
+                            "device": device
+                        }
+                    )
                 )
-            )
 
         assigned_devices_json = json.dumps(assigned_devices)
-        return [device_assignment,
+        return device_assignment + [
             (
                 self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled"),
                 {
@@ -621,7 +622,7 @@ class MqttClient:
             network_id: str | None = None
             device_mac: str | None = None
             ssid_id: str | None = None
-            device_macs: list[str] | None = None
+            device_macs: list[str] = []
             formatted_data: dict[str, Any] = {}
             if parts_count == 1 and parts[0] == "gwn":
                 _LOGGER.info(f"Multi Data command: {formatted_data}")
@@ -704,13 +705,13 @@ class MqttClient:
     def set_application_callback(self, callback: Callable[[dict[str, Any]], None]) -> None:
         self._application_callback = callback
 
-    def set_network_callback(self, callback: Callable[[str, dict[str, Any]], None]) -> None:
+    def set_network_callback(self, callback: Callable[[str, dict[str, Any]], Awaitable[None]]) -> None:
         self._network_callback = callback
 
-    def set_device_callback(self, callback: Callable[[str, dict[str, Any], str], None]) -> None:
+    def set_device_callback(self, callback: Callable[[str, dict[str, Any], str], Awaitable[None]]) -> None:
         self._device_callback = callback
 
-    def set_ssid_callback(self, callback: Callable[[str, list[str], str, dict[str, Any]], None]) -> None:
+    def set_ssid_callback(self, callback: Callable[[str, list[str], str, dict[str, Any]], Awaitable[None]]) -> None:
         self._ssid_callback = callback
 
     async def connect(self) -> bool:

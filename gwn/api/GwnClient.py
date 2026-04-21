@@ -1,5 +1,5 @@
+import json
 import logging
-
 from typing import Any
 
 from gwn.api.GwnInterface import GwnInterface
@@ -245,6 +245,8 @@ class GwnClient:
         ssid_name = data.get(Constants.SSID_NAME, None)
         # first fetch existing data
         config_info = await self._interface.get_ssid_configuration(int(ssid_id))
+        if config_info is None:
+            return _LOGGER.error(f"Failed to fetch existing SSID config for ID {ssid_id}. Update will not be applied")
         payload: dict[str, Any] = {
             # required keys
             "id": int(ssid_id),
@@ -252,13 +254,13 @@ class GwnClient:
             "ssidSsid": str(config_info.get("ssidSsid")),
             "ssidWepKey": str(config_info.get("ssidWepKey",None)),
             "ssidWpaKey": str(config_info.get("ssidWpaKey",None)),
-            "bindMacs": [(f'"{device_macs.join()}"')],
+            "bindMacs": json.dumps(device_macs),
             "ssidTimedClientPolicy": str(config_info.get("ssidTimedClientPolicy",None)),
             # optional keys
             "ssidNewSsidBand": str(config_info.get("ssidNewSsidBand"))
         }
         ssid_bands = payload["ssidNewSsidBand"]
-        if vlan_enabled is not None:
+        if ssid_enable is not None:
             payload["ssidEnable"] = int(ssid_enable)
         if portal_enabled is not None:
             payload["ssidPortalEnable"] = int(portal_enabled)
