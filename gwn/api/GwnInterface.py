@@ -217,8 +217,6 @@ class GwnInterface:
                 }
             },True)
 
-        
-
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
             "networkId": network_id,
