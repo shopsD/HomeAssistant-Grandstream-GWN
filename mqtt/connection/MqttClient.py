@@ -576,6 +576,7 @@ class MqttClient:
             f"{base}/networks/+/set",
             f"{base}/networks/+/devices/+/set",
             f"{base}/networks/+/ssids/+/set",
+            f"{base}/gwn/set"
         ]
 
         for topic in topics:
@@ -597,34 +598,50 @@ class MqttClient:
             data = json.loads(payload)
             # buttons only have an action, no value and if action is missing its an unsupported message
             # strip the subscription topic and the set portion
-            formatted_data: dict[str, Any]= {data["action"]: data.get("value", None) } 
             sub_topic = topic.removeprefix(f"{self._interface.topic}/").removesuffix("/set")
             parts = sub_topic.split("/")
             parts_count = len(parts)
-            if parts_count == 1 and parts[0] == "application":
-                _LOGGER.info(f"Application command: {formatted_data}")
-                if self._application_callback is not None:
-                    self._application_callback(formatted_data)
-            elif parts_count == 2 and parts[0] == "networks" :
-                network_id = str(parts[1])
-                _LOGGER.info(f"Network command for {network_id}: {formatted_data}")
-                if self._network_callback is not None:
-                    self._network_callback(str(network_id), formatted_data)
-            elif parts_count == 4 and parts[2] == "devices":
-                network_id = str(parts[1])
-                device_mac = str(parts[3])
-                _LOGGER.info(f"Device command for {device_mac} on Network with ID {network_id}: {formatted_data}")
-                if self._device_callback is not None:
-                    self._device_callback(device_mac, network_id, formatted_data)
-            elif parts_count == 4 and parts[2] == "ssids":
-                network_id = str(parts[1])
-                ssid_id = str(parts[3])
-                _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}: {formatted_data}")
-                if self._ssid_callback is not None:
-                    self._ssid_callback(ssid_id, network_id, formatted_data)
-            else:
-                _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
 
+            network_id: str | None = None
+            device_mac: str | None = None
+            ssid_id: str | None = None
+            formatted_data: dict[str, Any] = {}
+            if parts_count == 1 and parts[0] == "gwn":
+                _LOGGER.info(f"Multi Data command: {formatted_data}")
+                network_id = str(data["network_id"])
+                device_mac = str(data["mac"])
+                ssid_id = str(data["ssid_id"])
+                if network_id is not None and device_mac is not None and ssid_id is not None:
+                    return _LOGGER.warning(f"Only 1 of 'network_id' ({network_id}), 'mac' ({device_mac}), 'ssid_id' ({ssid_id}) can be specified")
+                for command_data in data["actions"]:
+                    formatted_data[command_data["action"]] = command_data.get("value", None)
+            else:
+                formatted_data = {data["action"]: data.get("value", None) } 
+                if parts_count == 1 and parts[0] == "application":
+                    _LOGGER.info(f"Application command: {formatted_data}")
+                    if self._application_callback is not None:
+                        return self._application_callback(formatted_data)
+                if parts_count == 2 and parts[0] == "networks" :
+                    network_id = str(parts[1])
+                    _LOGGER.info(f"Network command for {network_id}: {formatted_data}")
+                elif parts_count == 4 and parts[2] == "devices":
+                    network_id = str(parts[1])
+                    device_mac = str(parts[3])
+                    _LOGGER.info(f"Device command for {device_mac} on Network with ID {network_id}: {formatted_data}")
+                elif parts_count == 4 and parts[2] == "ssids":
+                    network_id = str(parts[1])
+                    ssid_id = str(parts[3])
+                    _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}: {formatted_data}")
+                else:
+                    return _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
+
+            if self._ssid_callback is not None and ssid_id is not None:
+                self._ssid_callback(ssid_id, network_id, formatted_data)
+            elif self._device_callback is not None and device_mac is not None:
+                self._device_callback(device_mac, network_id, formatted_data)
+            elif self._network_callback is not None and network_id is not None:
+                self._network_callback(network_id, formatted_data)
+            
     async def _publish_online(self) -> None:
         application_topic = f"{self._interface.topic}/application"
 

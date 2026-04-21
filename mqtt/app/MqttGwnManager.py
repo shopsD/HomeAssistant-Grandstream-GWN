@@ -36,10 +36,7 @@ class MqttGwnManager:
 
     async def _run_mqtt_interface(self) -> None:
         _LOGGER.info("Listening to MQTT")
-        self._mqtt_client.set_application_callback(self._handle_application_command)
-        self._mqtt_client.set_network_callback(self._handle_network_command)
-        self._mqtt_client.set_device_callback(self._handle_device_command)
-        self._mqtt_client.set_ssid_callback(self._handle_ssid_command)
+        
         await asyncio.Event().wait()
         _LOGGER.info("Stopped listening to MQTT")
 
@@ -171,19 +168,19 @@ class MqttGwnManager:
             "countryDisplay": gwn_network.countryDisplay,
             "timezone": gwn_network.timezone
         }
-
-    def _handle_application_command(self, data: dict[str, Any]):
+    
+    def _handle_application_command(self, data: dict[str, Any]) -> None:
         _LOGGER.info(f"Command {data}")
         update_version = data.get("update_version")
         restart = data.get("restart")
         _LOGGER.info(f"Command {update_version} {restart}")
 
-    def _handle_network_command(self, network_id: str, data: dict[str, Any]):
+    def _handle_network_command(self, network_id: str, data: dict[str, Any]) -> None:
         _LOGGER.info(f"Command {network_id} {data}")
         network_name = data.get("networkName")
         _LOGGER.info(f"Command {network_name}")
 
-    def _handle_device_command(self, device_mac: str, network_id: str, data: dict[str, Any]):
+    def _handle_device_command(self, device_mac: str, network_id: str, data: dict[str, Any]) -> None:
         _LOGGER.info(f"Command {device_mac} {data}")
         reboot = data.get("reboot")
         update_firmware = data.get("update_firmware")
@@ -195,7 +192,7 @@ class MqttGwnManager:
         channel_6 = data.get("channel_6")
         _LOGGER.info(f"Command {reboot} {update_firmware} {reset} {network_name} {wireless} {channel_2_4} {channel_5} {channel_6}")
 
-    def _handle_ssid_command(self, ssid_id: str, network_id: str, data: dict[str, Any]):
+    def _handle_ssid_command(self, ssid_id: str, network_id: str, data: dict[str, Any]) -> None:
         _LOGGER.info(f"Command {ssid_id} {data}")
         ssid_enable = data.get("ssidEnable")
         portale_enabled = data.get("portalEnabled")
@@ -209,13 +206,18 @@ class MqttGwnManager:
         ssid_hidden = data.get("ssidSsidHidden")
         ssid_name = data.get("ssidName")
         _LOGGER.info(f"Command {ssid_enable} {portale_enabled} {vlan_id} {vlan_enabled} {client_isolation_enabled} {ghz2_4_enabled} {ghz5_enabled} {ghz6_enabled} {ssid_key} {ssid_hidden} {ssid_name}")
-
+    
     async def connect(self) -> bool:
         try:
             _LOGGER.info("Connecting to MQTT")
             if not await self._mqtt_client.connect():
                 raise AuthenticationError("Failed to connect to MQTT Broker")
             _LOGGER.debug("Connected to MQTT Server")
+            self._mqtt_client.set_application_callback(self._handle_application_command)
+            self._mqtt_client.set_network_callback(self._handle_network_command)
+            self._mqtt_client.set_device_callback(self._handle_device_command)
+            self._mqtt_client.set_ssid_callback(self._handle_ssid_command)
+            _LOGGER.debug("Registered MQTT Handlers")
 
             _LOGGER.debug("Connecting to GWN Manager")
             if not await self._gwn_client.authenticate():
