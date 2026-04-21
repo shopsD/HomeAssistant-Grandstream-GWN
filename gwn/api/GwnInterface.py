@@ -186,7 +186,7 @@ class GwnInterface:
             if self._config.username is not None and self._config.password is not None:
                 gwn_token.authorisation_key = await self._user_password_login()
                 if gwn_token.authorisation_key is None:
-                    return None
+                    return False
             self._token = gwn_token
         return self._token is not None
 
