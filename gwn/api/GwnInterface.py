@@ -204,7 +204,9 @@ class GwnInterface:
         return data.get("configuration", {})
 
     async def get_ssid_devices(self, ssid_id: int) -> list[dict[str, Any]] | None:
-       return await self._post_paginated("app/ssid/device/list",{
+        if self._config.username is None or self._config.password is None:
+            return [] # dont return None as an error and dont try requesting. Return empty to trigger fallback
+        return await self._post_paginated("app/ssid/device/list",{
                 "id":ssid_id,
                 "search":"",
                 "order":"",

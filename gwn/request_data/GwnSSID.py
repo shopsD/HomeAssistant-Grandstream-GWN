@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from gwn.request_data.GwnDevice import GwnDevice
 
 class SecurityMode(Enum):
     WEP64 = 0
@@ -51,3 +52,4 @@ class GwnSSID:
     ghz5_Enabled: bool
     ghz6_Enabled: bool
 
+    devices: list[GwnDevice]
