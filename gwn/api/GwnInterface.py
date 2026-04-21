@@ -183,3 +183,6 @@ class GwnInterface:
             return None
         data = response.get("data", {})
         return data.get("result", [])
+    
+    async def set_ssid_data(self, payload: dict[str, Any] ) -> bool:
+        return await self._post("oapi/v1.0.0/ssid/update",payload) is not None

@@ -49,9 +49,33 @@ class MqttClient:
             ssid_model = ssid_name
             ssid_name = str(self._config.homeassistant.ssid_name_override[ssid_id_int])
         
-        device = self._ha_device_block(f"gwn_ssid_{ssid_id}", ssid_name, ssid_model)
+        device_assignment: list[tuple[str, dict[str, object]]] = []
+        assigned_devices = payload.get(Constants.ASSIGNED_DEVICES)
 
-        return [
+        device = self._ha_device_block(f"gwn_ssid_{ssid_id}", ssid_name, ssid_model)
+        
+        for raw_device_mac in assigned_devices:
+            device_mac = self._strip_mac(raw_device_mac)
+            device_assignment.append(
+                (
+                    self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_{device_mac}_device_enable"),
+                    {
+                        "name": "Enabled",
+                        "unique_id": f"gwn_ssid_{ssid_id}_{device_mac}_device_enable",
+                        "state_topic": state_topic,
+                        "command_topic": command_topic,
+                        "value_template": "{{ value_json.%s == 1}}" % Constants.TOGGLE_DEVICE,
+                        "payload_on": '{"action":"%s","%s":true, "%s": %s}' % (Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.MAC, raw_device_mac),
+                        "payload_off": '{"action":"%s","%s":false, "%s": %s}' % (Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.MAC, raw_device_mac),
+                        "state_on": True,
+                        "state_off": False,
+                        "device": device
+                    }
+                )
+            )
+
+
+        return [raw_device_mac,
             (
                 self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled"),
                 {
@@ -60,7 +84,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.SSID_ENABLE,
-                    "payload_on": '{"action":"%s","%s":true}' % (Constants.SSID_ENABLE, Constants.VALUE),
+                    "payload_on": '{"action":"%s","%s":true, "%s":%o}' % (Constants.SSID_ENABLE, Constants.VALUE, Constants.MAC, assigned_devices),
                     "payload_off": '{"action":"%s","%s":false}' % (Constants.SSID_ENABLE, Constants.VALUE),
                     "state_on": True,
                     "state_off": False,

@@ -84,6 +84,7 @@ class Constants:
     ACTIONS: ClassVar[str] = "actions"
     NETWORK_ID: ClassVar[str] = "network_id"
     SSID_ID: ClassVar[str] = "ssid_id"
+    TOGGLE_DEVICE: ClassVar[str] = "toggle_device"
 
 
 

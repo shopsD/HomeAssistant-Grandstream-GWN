@@ -232,3 +232,84 @@ class GwnClient:
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
+    async def set_ssid_data(self, ssid_id: str, device_macs: list[str], data: dict[str, Any], network_id: str) -> None:
+        ssid_enable = data.get(Constants.SSID_ENABLE, None)
+        portal_enabled = data.get(Constants.PORTAL_ENABLED, None)
+        vlan_id = data.get(Constants.SSID_VLAN_ID, None)
+        vlan_enabled = None if vlan_id is None else int(vlan_id) > 0
+        ghz2_4_enabled = data.get(Constants.GHZ2_4_ENABLED, None)
+        ghz5_enabled = data.get(Constants.GHZ5_ENABLED, None)
+        ghz6_enabled = data.get(Constants.GHZ6_ENABLED, None)
+        ssid_key = data.get(Constants.SSID_KEY, None)
+        ssid_hidden = data.get(Constants.SSID_HIDDEN, None)
+        ssid_name = data.get(Constants.SSID_NAME, None)
+        # first fetch existing data
+        config_info = await self._interface.get_ssid_configuration(int(ssid_id))
+        payload: dict[str, Any] = {
+            # required keys
+            "id": int(ssid_id),
+            "networkId": network_id,
+            "ssidSsid": str(config_info.get("ssidSsid")),
+            "ssidWepKey": str(config_info.get("ssidWepKey",None)),
+            "ssidWpaKey": str(config_info.get("ssidWpaKey",None)),
+            "bindMacs": [(f'"{device_macs.join()}"')],
+            "ssidTimedClientPolicy": str(config_info.get("ssidTimedClientPolicy",None)),
+            # optional keys
+            "ssidNewSsidBand": str(config_info.get("ssidNewSsidBand"))
+        }
+        ssid_bands = payload["ssidNewSsidBand"]
+        if vlan_enabled is not None:
+            payload["ssidEnable"] = int(ssid_enable)
+        if portal_enabled is not None:
+            payload["ssidPortalEnable"] = int(portal_enabled)
+        if vlan_id is not None and vlan_enabled:
+            payload["ssidVlanid"] = int(vlan_id)
+        if vlan_enabled is not None:
+            payload["ssidVlan"] = int(vlan_enabled)
+        if ghz2_4_enabled is not None:
+            if ghz2_4_enabled and "2" not in ssid_bands:
+                ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}2"
+            elif not ghz2_4_enabled:
+                ssid_bands = ssid_bands.replace("2","")
+        if ghz5_enabled is not None:
+            if ghz5_enabled and "5" not in ssid_bands:
+                ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}5"
+            elif not ghz5_enabled:
+                ssid_bands = ssid_bands.replace("5","")
+        if ghz6_enabled is not None:
+            if ghz6_enabled and "6" not in ssid_bands:
+                ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}6"
+            elif not ghz6_enabled:
+                ssid_bands = ssid_bands.replace("6","")
+        payload["ssidNewSsidBand"] = ssid_bands
+        
+        if ssid_key is not None and int(config_info["ssidEncryption"]) < 2:
+            payload["ssidWepKey"] = ssid_key
+        if ssid_key is not None and int(config_info["ssidEncryption"]) > 1:
+            payload["ssidWpaKey"] = ssid_key
+        if ssid_hidden is not None:
+            payload["ssidSsidHidden"] = int(ssid_hidden)
+        if ssid_name is not None:
+            payload["ssidSsid"] = str(ssid_name)
+        
+        if self._interface.set_ssid_data(payload):
+            _LOGGER.debug(f"Successfully updated SSID {ssid_id}")
+        else:
+            _LOGGER.error(f"Failed to update SSID {ssid_id}")
+
+    async def set_device_data(self, device_mac: str, network_id: str, data: dict[str, Any]) -> None:
+        _LOGGER.info(f"Command {device_mac} {data}")
+        reboot = data.get(Constants.REBOOT)
+        update_firmware = data.get(Constants.UPDATE_FIRMWARE)
+        reset = data.get(Constants.RESET)
+        network_name = data.get(Constants.NETWORK_NAME)
+        wireless = data.get(Constants.WIRELESS)
+        channel_2_4 = data.get(Constants.CHANNEL_2_4)
+        channel_5 = data.get(Constants.CHANNEL_5)
+        channel_6 = data.get(Constants.CHANNEL_6)
+        _LOGGER.info(f"Command {reboot} {update_firmware} {reset} {network_name} {wireless} {channel_2_4} {channel_5} {channel_6}")
+
+    async def set_network_data(self, network_id: str, data: dict[str, Any]) -> None:
+        _LOGGER.info(f"Command {network_id} {data}")
+        network_name = data.get(Constants.NETWORK_NAME)
+        _LOGGER.info(f"Command {network_name}")

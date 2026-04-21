@@ -48,9 +48,9 @@ class MqttGwnManager:
                     ssid_assignments[gwn_ssid.id] = []
                 ssid_assignments[gwn_ssid.id].append(
                     {
-                        "mac": gwn_device.mac,
-                        "name": gwn_device.name,
-                        "apType": gwn_device.apType,
+                        Constants.MAC: gwn_device.mac,
+                        Constants.NAME: gwn_device.name,
+                        Constants.AP_TYPE: gwn_device.apType,
                     }
                 )
         return ssid_assignments
@@ -176,36 +176,13 @@ class MqttGwnManager:
         _LOGGER.info(f"Command {update_version} {restart}")
 
     def _handle_network_command(self, network_id: str, data: dict[str, Any]) -> None:
-        _LOGGER.info(f"Command {network_id} {data}")
-        network_name = data.get(Constants.NETWORK_NAME)
-        _LOGGER.info(f"Command {network_name}")
-
+        await _gwn_client.set_network_data(network_id, data)
+    
     def _handle_device_command(self, device_mac: str, network_id: str, data: dict[str, Any]) -> None:
-        _LOGGER.info(f"Command {device_mac} {data}")
-        reboot = data.get(Constants.REBOOT)
-        update_firmware = data.get(Constants.UPDATE_FIRMWARE)
-        reset = data.get(Constants.RESET)
-        network_name = data.get(Constants.NETWORK_NAME)
-        wireless = data.get(Constants.WIRELESS)
-        channel_2_4 = data.get(Constants.CHANNEL_2_4)
-        channel_5 = data.get(Constants.CHANNEL_5)
-        channel_6 = data.get(Constants.CHANNEL_6)
-        _LOGGER.info(f"Command {reboot} {update_firmware} {reset} {network_name} {wireless} {channel_2_4} {channel_5} {channel_6}")
+        await _gwn_client.set_device_data(device_mac, network_id, data)
 
-    def _handle_ssid_command(self, ssid_id: str, network_id: str, data: dict[str, Any]) -> None:
-        _LOGGER.info(f"Command {ssid_id} {data}")
-        ssid_enable = data.get(Constants.SSID_ENABLE)
-        portale_enabled = data.get(Constants.PORTAL_ENABLED)
-        vlan_id = data.get(Constants.SSID_VLAN_ID)
-        vlan_enabled = None if vlan_id is None else int(vlan_id) > 0
-        client_isolation_enabled = data.get(Constants.CLIENT_ISOLATION_ENABLED)
-        ghz2_4_enabled = data.get(Constants.GHZ2_4_ENABLED)
-        ghz5_enabled = data.get(Constants.GHZ5_ENABLED)
-        ghz6_enabled = data.get(Constants.GHZ6_ENABLED)
-        ssid_key = data.get(Constants.SSID_KEY)
-        ssid_hidden = data.get(Constants.SSID_HIDDEN)
-        ssid_name = data.get(Constants.SSID_NAME)
-        _LOGGER.info(f"Command {ssid_enable} {portale_enabled} {vlan_id} {vlan_enabled} {client_isolation_enabled} {ghz2_4_enabled} {ghz5_enabled} {ghz6_enabled} {ssid_key} {ssid_hidden} {ssid_name}")
+    def _handle_ssid_command(self, ssid_id: str, data: dict[str, Any], network_id: str) -> None:
+        await _gwn_client.set_ssid_data(ssid_id, device_macs, data, network_id)
     
     async def connect(self) -> bool:
         try:
