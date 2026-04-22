@@ -359,14 +359,48 @@ class GwnClient:
 
     async def set_device_data(self, device_mac: str, network_id: str, data: dict[str, Any]) -> None:
         _LOGGER.info(f"Command {device_mac} {data}")
-        reboot = data.get(Constants.REBOOT)
-        update_firmware = data.get(Constants.UPDATE_FIRMWARE)
-        reset = data.get(Constants.RESET)
-        network_name = data.get(Constants.NETWORK_NAME)
-        wireless = data.get(Constants.WIRELESS)
-        channel_2_4 = data.get(Constants.CHANNEL_2_4)
-        channel_5 = data.get(Constants.CHANNEL_5)
-        channel_6 = data.get(Constants.CHANNEL_6)
+        device_mac: str = GwnConfig.normalise_mac(device_mac)
+        reboot = data.get(Constants.REBOOT, None)
+        update_firmware = data.get(Constants.UPDATE_FIRMWARE, None)
+        reset = data.get(Constants.RESET, None)
+        network_name = data.get(Constants.NETWORK_NAME, None)
+        wireless = data.get(Constants.WIRELESS, None)
+        channel_2_4 = data.get(Constants.CHANNEL_2_4, None)
+        channel_5 = data.get(Constants.CHANNEL_5, None)
+        channel_6 = data.get(Constants.CHANNEL_6, None)
+
+        # first fetch existing data
+        device_info_port = await self._interface.get_device_info_port(int(network_id),device_mac)
+        device_info_client = await self._interface.get_device_info_client(device_mac)
+        if device_info_port is None or device_info_client is None:
+            _LOGGER.error(f"Failed to fetch existing Device config for device with MAC {device_mac}. Update will not be applied")
+            return False
+
+        device_info_port["result"] = self._normalise_dictionary_data(device_info_port["result"])
+        device_info_client["g24"] = self._normalise_dictionary_data(device_info_client["g24"])
+        device_info_client["g5"] = self._normalise_dictionary_data(device_info_client["g5"])
+        device_info_client["g6"] = self._normalise_dictionary_data(device_info_client["g6"])
+
+        # these keys are required as a basic list of the payload
+        payload: dict[str, Any] = {
+            "ap_2g4_channel": int(ssid_id),
+            "ap_2g4_power": network_id,
+            "ap_2g4_ratelimit_enable": str(config_info.get("ssidSsid")),
+            "ap_2g4_rssi": config_info.get("ssidWepKey",None),
+            "ap_2g4_rssi_enable": config_info.get("ssidWpaKey",None),
+            "ap_2g4_tag": json.dumps(original_bind_macs),
+            "ap_2g4_width": json.dumps(original_bind_macs),
+            "ap_5g_channel": json.dumps(original_bind_macs),
+            "ap_5g_power": json.dumps(original_bind_macs),
+            "ap_5g_ratelimit_enable": json.dumps(original_bind_macs),
+            "ap_5g_rssi": json.dumps(original_bind_macs),
+            "ap_5g_rssi_enable": json.dumps(original_bind_macs),
+            "ap_5g_tag": config_info.get("ssidTimedClientPolicy",None),
+            "ap_5g_width": config_info.get("ssidTimedClientPolicy",None),
+            "ap_alternate_dns": config_info.get("ssidTimedClientPolicy",None),
+            "ap_band_steering": config_info.get("ssidTimedClientPolicy",None),
+            "ap_mac": device_mac
+        }
         _LOGGER.info(f"Command {reboot} {update_firmware} {reset} {network_name} {wireless} {channel_2_4} {channel_5} {channel_6}")
 
     async def set_network_data(self, network_id: str, data: dict[str, Any]) -> None:
