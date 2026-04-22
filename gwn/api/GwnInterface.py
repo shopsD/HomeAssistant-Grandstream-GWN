@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(Constants.LOG)
 
 class GwnInterface:
     def __init__(self, config: GwnConfig) -> None:
-        self._config:GwnConfig = config
+        self._config: GwnConfig = config
         self._session: aiohttp.ClientSession = aiohttp.ClientSession()
         self._token: GwnToken | None = None
 
@@ -43,10 +43,10 @@ class GwnInterface:
             self._token = await self._headless_login()
         if self._token is not None and self.user_password_login:
             if self._token.authorisation_key is not None:
-                response = await self._do_post("app/ssid/device/list",{},"",{
+                response = await self._do_post("app/ssid/device/list",{},json.dumps({"lang":"en","requestDomain":self._config.base_url}),{
                     "Content-Type": "application/json",
                     "authorization": self._token.authorisation_key
-                })
+                }, False)
                 if response is None:
                     self._token.authorisation_key = None
             if self._token.authorisation_key is None:
@@ -84,19 +84,22 @@ class GwnInterface:
             }
         return await self._do_post(path,params,body_json,headers)
 
-    async def _do_post(self, path: str, params: dict[str, str], body: str, headers: dict[str,str]) -> dict[str,Any] | None:
+    async def _do_post(self, path: str, params: dict[str, str], body: str, headers: dict[str,str], do_log: bool = True) -> dict[str,Any] | None:
         url = f"{self._config.base_url.rstrip('/')}/{path.lstrip('/')}"
         async with self._session.post(url, params=params, data=body,headers=headers ) as response:
             data = await response.json(content_type=None)
 
             if response.status != 200:
-                _LOGGER.warning(f"Request to '{url}' failed with status {response.status}: {data}")
+                if do_log: # for authentication checking
+                    _LOGGER.warning(f"Request to '{url}' failed with status {response.status}: {data}")
                 return None
             retCode = data.get("retCode")
             if retCode is not None and int(retCode) != 0:
-                _LOGGER.warning(f"Request to '{url}' failed with code {retCode}: {data.get('msg')}")
+                if do_log: # for authentication checking
+                    _LOGGER.warning(f"Request to '{url}' failed with code {retCode}: {data.get('msg')}")
                 return None
-            _LOGGER.debug(f"Request to '{url}' succeeded")
+            if do_log: # for authentication checking
+                _LOGGER.debug(f"Request to '{url}' succeeded")
             authorisation = response.headers.get("authorization",None)
             if authorisation:
                 data["authorisation"] = authorisation
