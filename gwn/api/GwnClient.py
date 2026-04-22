@@ -293,20 +293,17 @@ class GwnClient:
                         flattened_stored_macs.append(mac)
                 original_bind_macs = flattened_stored_macs
                 
-        
+        # these keys are required as a basic list of the payload
         payload: dict[str, Any] = {
-            # required keys
             "id": int(ssid_id),
             "networkId": network_id,
             "ssidSsid": str(config_info.get("ssidSsid")),
-            "ssidWepKey": str(config_info.get("ssidWepKey",None)),
-            "ssidWpaKey": str(config_info.get("ssidWpaKey",None)),
+            "ssidWepKey": config_info.get("ssidWepKey",None),
+            "ssidWpaKey": config_info.get("ssidWpaKey",None),
             "bindMacs": json.dumps(original_bind_macs),
-            "ssidTimedClientPolicy": str(config_info.get("ssidTimedClientPolicy",None)),
-            # optional keys
-            "ssidNewSsidBand": str(config_info.get("ssidNewSsidBand"))
+            "ssidTimedClientPolicy": config_info.get("ssidTimedClientPolicy",None),
         }
-        ssid_bands = payload["ssidNewSsidBand"]
+        ssid_bands = str(config_info.get("ssidNewSsidBand"))
         if ssid_enable is not None:
             payload["ssidEnable"] = int(ssid_enable)
         if portal_enabled is not None:
@@ -320,17 +317,19 @@ class GwnClient:
                 ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}2"
             elif not ghz2_4_enabled:
                 ssid_bands = ssid_bands.replace("2","")
+            payload["ssidNewSsidBand"] = ssid_bands
         if ghz5_enabled is not None:
             if ghz5_enabled and "5" not in ssid_bands:
                 ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}5"
             elif not ghz5_enabled:
                 ssid_bands = ssid_bands.replace("5","")
+            payload["ssidNewSsidBand"] = ssid_bands
         if ghz6_enabled is not None:
             if ghz6_enabled and "6" not in ssid_bands:
                 ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}6"
             elif not ghz6_enabled:
                 ssid_bands = ssid_bands.replace("6","")
-        payload["ssidNewSsidBand"] = ssid_bands
+            payload["ssidNewSsidBand"] = ssid_bands
         
         if ssid_key is not None and int(config_info["ssidEncryption"]) < 2:
             payload["ssidWepKey"] = ssid_key
@@ -346,9 +345,11 @@ class GwnClient:
             removed_macs = [mac for mac in normalised_device_macs if mac not in bind_macs]
             final_bind_macs = [mac for mac in original_bind_macs if mac not in removed_macs]
             final_bind_macs.extend([mac for mac in added_macs if mac not in final_bind_macs])
-            payload["bindMacs"] = json.dumps(final_bind_macs)
+            payload["bindMacs"] = final_bind_macs
+            if len(removed_macs) > 0:
+                payload["removeMacs"] = removed_macs
 
-        if self._interface.set_ssid_data(payload):
+        if await self._interface.set_ssid_data(payload):
             _LOGGER.debug(f"Successfully updated SSID {ssid_id}")
         else:
             _LOGGER.error(f"Failed to update SSID {ssid_id}")

@@ -187,9 +187,7 @@ class GwnInterface:
 
     async def authenticate(self) -> bool:
         await self._ensure_token_valid()
-        return (self._token is not None and
-                (self.user_password_login or self._token.authorisation_key is not None)
-        )
+        return (self._token is not None and (not self.user_password_login or self._token.authorisation_key is not None))
 
     async def get_all_networks(self) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})
