@@ -12,6 +12,3 @@ class GwnNetwork:
     timezone: str
     devices: list[GwnDevice]
     ssids: list[GwnSSID]
-
-    
-

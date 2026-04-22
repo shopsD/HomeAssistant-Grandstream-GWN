@@ -26,4 +26,4 @@ class MqttConfig:
     verify_tls: bool = True
     no_publish: bool = False
     homeassistant: HomeAssistantConfig = field(default_factory=HomeAssistantConfig)
-    
+

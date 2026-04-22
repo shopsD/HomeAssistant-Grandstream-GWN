@@ -9,8 +9,9 @@ class SecurityMode(Enum):
     WPA_WPA2 = 2
     WPA2 = 3
     OPEN = 4
-    WPA3 = 6 # documentation implies it is 7
-    WPA2_WPA3 = 5
+    WPA = 5 # undocumented and unconfirmed
+    WPA2_WPA3 = 6
+    WPA3 = 7
     WPA3_192 = 8
     
 class MacFiltering(Enum):

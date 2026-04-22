@@ -40,4 +40,3 @@ class GwnDevice:
     channelload_6g: str
     cpuUsage: str
     channelload_5g: str
-
