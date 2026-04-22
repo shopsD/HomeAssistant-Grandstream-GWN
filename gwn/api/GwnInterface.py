@@ -48,7 +48,6 @@ class GwnInterface:
                     "authorization": self._token.authorisation_key
                 })
                 if response is None:
-                    _LOGGER.warning("Access Expired. Attempting to login again")
                     self._token.authorisation_key = None
             if self._token.authorisation_key is None:
                 self._token.authorisation_key = await self._user_password_login()
@@ -133,6 +132,7 @@ class GwnInterface:
         return results
 
     async def _headless_login(self) -> GwnToken | None:
+        _LOGGER.info("Performing headless authentication")
         url = f"{self._config.base_url.rstrip('/')}/oauth/token"
 
         params = {
@@ -155,6 +155,7 @@ class GwnInterface:
             return GwnToken.from_response(data)
 
     async def _user_password_login(self) -> str | None:
+        _LOGGER.info("Performing username/password authentication")
         parts = urlsplit(self._config.base_url)
         body = {
             "userName": self._config.username,
@@ -181,14 +182,11 @@ class GwnInterface:
         await self._session.close()
 
     async def authenticate(self) -> bool:
-        gwn_token = await self._headless_login()
-        if gwn_token is not None:
-            if self._config.username is not None and self._config.password is not None:
-                gwn_token.authorisation_key = await self._user_password_login()
-                if gwn_token.authorisation_key is None:
-                    return False
-            self._token = gwn_token
-        return self._token is not None
+        await self._ensure_token_valid()
+        return (self._token is not None and
+                ((self._config.username is None and self._config.password is None) or self._token.authorisation_key is not None)
+        )
+
 
     async def get_all_networks(self) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})

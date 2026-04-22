@@ -79,7 +79,6 @@ class GwnClient:
                         cpuUsage=config_info_client["cpuUsage"],
                         channelload_6g=config_info_client["channelload_6g"],
                         channelload_5g=config_info_client["channelload_5g"],
-                        ssids=[]
                     )
                     _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
                     device_list[mac] = gwn_device
@@ -88,8 +87,8 @@ class GwnClient:
         _LOGGER.info(f"Processed {len(device_list)} Devices")
         return device_list
 
-    def _build_ssid_data(self, ssid_info: dict[str, Any], devices: dict[str, GwnDevice]) -> dict[str,GwnSSID]:
-        ssid_list: dict[str,GwnSSID] = {}
+    def _build_ssid_data(self, ssid_info: dict[str, Any], devices: dict[str, GwnDevice]) -> dict[str | int, GwnSSID]:
+        ssid_list: dict[str | int,GwnSSID] = {}
         _LOGGER.info(f"Processing {len(ssid_info)} SSIDs")
         for id in ssid_info:
             if int(id) in self._config.exclude_ssid:
@@ -137,10 +136,9 @@ class GwnClient:
                         mac = GwnConfig.normalise_mac(str(device_info.get("mac")))
                         gwn_device = devices[mac]
                         if gwn_device and bool(device_info.get("checked")):
-                            gwn_device.ssids.append(gwn_ssid)
                             gwn_ssid.devices.append(gwn_device)
 
-                ssid_dictionary_key = gwn_ssid.id if has_device_info else gwn_ssid.ssidName
+                ssid_dictionary_key = int(gwn_ssid.id) if has_device_info else str(gwn_ssid.ssidName)
                 if not has_device_info and ssid_dictionary_key in ssid_list:
                     _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
                 else:
@@ -188,7 +186,7 @@ class GwnClient:
             firmware_data[mac] = firmware
         return firmware_data
 
-    async def _associated_ssids_with_devices(self, ssids: dict[str, GwnSSID], devices: dict[str, GwnDevice], device_info: list[list[dict[str, Any]]]):
+    async def _associated_ssids_with_devices(self, ssids: dict[str | int, GwnSSID], devices: dict[str, GwnDevice], device_info: list[list[dict[str, Any]]]):
         for device in device_info:
             try: # use a try catch so that only an individual device failure is ignored
                 basic_info: dict[str, Any] = device[0]
@@ -199,9 +197,10 @@ class GwnClient:
                     # map SSIDs to the device using SSID name
                     # ideally SSID name will not be used
                     for ssid in config_info_client["ssid"]:
-                        ssid_key = list(ssid.keys())[0]
+                        # only find ssid if it was a string as this is the ssid name. If its an int, then it is the internal ssid ID
+                        ssid_key = str(list(ssid.keys())[0])
                         if ssid_key in ssids: # will be false if it matched via SSID rather than device
-                            gwn_device.ssids.append(ssids[ssid_key])
+                            ssids[ssid_key].devices.append(gwn_device)
             except Exception as e:
                 _LOGGER.error("Failed to match Device to SSID: %s", e)
 
