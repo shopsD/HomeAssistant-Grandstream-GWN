@@ -71,7 +71,7 @@ class MqttClient:
             if len(device_info) == 2:
                 device_info.append("")
             device_info[2] = "True" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else "False"
-            if device_info[2]:
+            if bool(device_info[2]):
                 raw_device_mac_list.append(raw_device_mac)
 
         assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
@@ -95,7 +95,7 @@ class MqttClient:
                         "unique_id": f"gwn_ssid_{ssid_id}_{normalised_device_mac}_device_enable",
                         "state_topic": state_topic,
                         "command_topic": command_topic,
-                        "value_template": "{{ %s }}" % is_assigned,
+                        "value_template": "{{ %s == 1 }}" % int(is_assigned),
                         "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, assigned_devices_json, Constants.DEVICE_MACS, assigned_devices_json),
                         "payload_off": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps([mac for mac in raw_device_mac_list if mac != raw_device_mac]), Constants.DEVICE_MACS, assigned_devices_json),
                         "state_on": True,
@@ -250,13 +250,13 @@ class MqttClient:
                     "device": device
                 }
             ),
-                        (
+            (
                 self._ha_discovery_topic("sensor", f"gwn_ssid_{ssid_id}_network_name"),
                 {
                     "name": "Network",
                     "unique_id": f"gwn_ssid_{ssid_id}_network_name",
                     "state_topic": state_topic,
-                    "value_template": "{{ %s }}" % network_name,
+                    "value_template": "{{ %s }}" % json.dumps(network_name),
                     "device": device
                 }
             ),
@@ -352,15 +352,12 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("select", f"gwn_device_{normalised_device_mac}_network_name"),
+                self._ha_discovery_topic("sensor", f"gwn_ssid_{normalised_device_mac}_network_name"),
                 {
                     "name": "Network",
-                    "unique_id": f"gwn_device_{normalised_device_mac}_network_name",
+                    "unique_id": f"gwn_ssid_{normalised_device_mac}_network_name",
                     "state_topic": state_topic,
-                    "command_topic": command_topic,
-                    "value_template": "{{ value_json.%s }}" % Constants.NETWORK_NAME,
-                    "options": [network_name],
-                    "command_template": '{"%s":"%s","%s":"{{ value }}"}'% (Constants.ACTION, Constants.NETWORK_NAME, Constants.VALUE),
+                    "value_template": "{{ %s }}" % json.dumps(network_name),
                     "device": device
                 }
             ),
