@@ -41,7 +41,7 @@ class GwnInterface:
     async def _ensure_token_valid(self) -> None:
         if self._token is None or self._token.is_expired():
             self._token = await self._headless_login()
-        if self._token is not None and self._config.username is not None and self._config.password is not None:
+        if self._token is not None and self.user_password_login:
             if self._token.authorisation_key is not None:
                 response = await self._do_post("app/ssid/device/list",{},"",{
                     "Content-Type": "application/json",
@@ -178,15 +178,18 @@ class GwnInterface:
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
 
+    @property
+    def user_password_login(self) -> bool:
+        return self._config.username is not None and self._config.password is not None
+
     async def close(self) -> None:
         await self._session.close()
 
     async def authenticate(self) -> bool:
         await self._ensure_token_valid()
         return (self._token is not None and
-                ((self._config.username is None and self._config.password is None) or self._token.authorisation_key is not None)
+                (self.user_password_login or self._token.authorisation_key is not None)
         )
-
 
     async def get_all_networks(self) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})
@@ -202,18 +205,21 @@ class GwnInterface:
         return data.get("configuration", {})
 
     async def get_ssid_devices(self, ssid_id: int) -> list[dict[str, Any]] | None:
-        if self._config.username is None or self._config.password is None:
-            return [] # dont return None as an error and dont try requesting. Return empty to trigger fallback
-        return await self._post_paginated("app/ssid/device/list",{
-                "id":ssid_id,
-                "search":"",
-                "order":"",
-                "type":"all",
-                "filter":{
-                    "deviceType":"all",
-                    "siteId":"all"
-                }
-            },True)
+        if self.user_password_login:
+            return await self._post_paginated("app/ssid/device/list",{
+                    "id":ssid_id,
+                    "search":"",
+                    "order":"",
+                    "type":"all",
+                    "filter":{
+                        "deviceType":"all",
+                        "siteId":"all"
+                    }
+                },True)
+        # if username/password login is not available then dont return None as an error
+        # and dont try requesting. Return an empty array to trigger fallback behaviour
+        return []
+            
 
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{

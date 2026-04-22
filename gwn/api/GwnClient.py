@@ -272,10 +272,28 @@ class GwnClient:
         ssid_key = data.get(Constants.SSID_KEY, None)
         ssid_hidden = data.get(Constants.SSID_HIDDEN, None)
         ssid_name = data.get(Constants.SSID_NAME, None)
+        bind_macs = data.get(Constants.TOGGLE_DEVICE, None)
         # first fetch existing data
         config_info = await self._interface.get_ssid_configuration(int(ssid_id))
         if config_info is None:
             return _LOGGER.error(f"Failed to fetch existing SSID config for ID {ssid_id}. Update will not be applied")
+        
+        # normalise the macs for processing and for transport in the payload
+        normalised_device_macs: list[str] = [GwnConfig.normalise_mac(mac) for mac in device_macs]
+        original_bind_macs: list[str] = normalised_device_macs
+
+        # try to update the snapshot in case the provided one is stale
+        if self._interface.user_password_login:
+            stored_macs = await self._interface.get_ssid_devices(int(ssid_id))
+            if stored_macs is not None:
+                flattened_stored_macs: list[str] = []
+                for device_info in stored_macs:
+                    mac = GwnConfig.normalise_mac(str(device_info.get("mac")))
+                    if bool(device_info.get("checked")):
+                        flattened_stored_macs.append(mac)
+                original_bind_macs = flattened_stored_macs
+                
+        
         payload: dict[str, Any] = {
             # required keys
             "id": int(ssid_id),
@@ -283,7 +301,7 @@ class GwnClient:
             "ssidSsid": str(config_info.get("ssidSsid")),
             "ssidWepKey": str(config_info.get("ssidWepKey",None)),
             "ssidWpaKey": str(config_info.get("ssidWpaKey",None)),
-            "bindMacs": json.dumps(device_macs),
+            "bindMacs": json.dumps(original_bind_macs),
             "ssidTimedClientPolicy": str(config_info.get("ssidTimedClientPolicy",None)),
             # optional keys
             "ssidNewSsidBand": str(config_info.get("ssidNewSsidBand"))
@@ -322,7 +340,14 @@ class GwnClient:
             payload["ssidSsidHidden"] = int(ssid_hidden)
         if ssid_name is not None:
             payload["ssidSsid"] = str(ssid_name)
-        
+        if bind_macs is not None:
+            bind_macs = [GwnConfig.normalise_mac(mac) for mac in bind_macs]
+            added_macs = [mac for mac in bind_macs if mac not in normalised_device_macs]
+            removed_macs = [mac for mac in normalised_device_macs if mac not in bind_macs]
+            final_bind_macs = [mac for mac in original_bind_macs if mac not in removed_macs]
+            final_bind_macs.extend([mac for mac in added_macs if mac not in final_bind_macs])
+            payload["bindMacs"] = json.dumps(final_bind_macs)
+
         if self._interface.set_ssid_data(payload):
             _LOGGER.debug(f"Successfully updated SSID {ssid_id}")
         else:
