@@ -261,7 +261,7 @@ class GwnClient:
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
-    async def set_ssid_data(self, ssid_id: str, device_macs: list[str], data: dict[str, Any], network_id: str) -> None:
+    async def set_ssid_data(self, ssid_id: str, device_macs: list[str], data: dict[str, Any], network_id: str) -> bool:
         ssid_enable = data.get(Constants.SSID_ENABLE, None)
         portal_enabled = data.get(Constants.PORTAL_ENABLED, None)
         vlan_id = data.get(Constants.SSID_VLAN_ID, None)
@@ -276,7 +276,8 @@ class GwnClient:
         # first fetch existing data
         config_info = await self._interface.get_ssid_configuration(int(ssid_id))
         if config_info is None:
-            return _LOGGER.error(f"Failed to fetch existing SSID config for ID {ssid_id}. Update will not be applied")
+            _LOGGER.error(f"Failed to fetch existing SSID config for ID {ssid_id}. Update will not be applied")
+            return False
         
         # normalise the macs for processing and for transport in the payload
         normalised_device_macs: list[str] = [GwnConfig.normalise_mac(mac) for mac in device_macs]
@@ -349,10 +350,12 @@ class GwnClient:
             if len(removed_macs) > 0:
                 payload["removeMacs"] = removed_macs
 
-        if await self._interface.set_ssid_data(payload):
+        result: bool = await self._interface.set_ssid_data(payload)
+        if result:
             _LOGGER.debug(f"Successfully updated SSID {ssid_id}")
         else:
             _LOGGER.error(f"Failed to update SSID {ssid_id}")
+        return result
 
     async def set_device_data(self, device_mac: str, network_id: str, data: dict[str, Any]) -> None:
         _LOGGER.info(f"Command {device_mac} {data}")

@@ -20,18 +20,22 @@ class MqttGwnManager:
     def __init__(self, mqtt_client: MqttClient, gwn_client: GwnClient) -> None:
         self._mqtt_client = mqtt_client
         self._gwn_client = gwn_client
+        self._poll_trigger = asyncio.Event()
 
     async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
         while True:
             try:
                 networks = await self._gwn_client.get_gwn_data()
-                
                 await self._publish_network(networks)
             except Exception as e:
                 _LOGGER.error("Error retreiving GWN Data: %s", e)
             _LOGGER.info(f"Will refresh in {self._gwn_client.refresh_period}s")
-            await asyncio.sleep(self._gwn_client.refresh_period)
+            try:
+                await asyncio.wait_for(self._poll_trigger.wait(), timeout=self._gwn_client.refresh_period)
+                self._poll_trigger.clear()
+            except asyncio.TimeoutError:
+                pass
         _LOGGER.info("Stopped Polling of GWN Manager")
 
     async def _run_mqtt_interface(self) -> None:
@@ -177,7 +181,9 @@ class MqttGwnManager:
         await self._gwn_client.set_device_data(device_mac, network_id, data)
 
     async def _handle_ssid_command(self, ssid_id: str, device_macs:list[str], network_id: str, data: dict[str, Any]) -> None:
-        await self._gwn_client.set_ssid_data(ssid_id, device_macs, data, network_id)
+        if await self._gwn_client.set_ssid_data(ssid_id, device_macs, data, network_id) and not self._poll_trigger.is_set():
+            # immediately refresh/update the data
+            self._poll_trigger.set()
     
     async def connect(self) -> bool:
         try:

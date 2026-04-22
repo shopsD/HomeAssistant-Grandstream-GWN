@@ -68,7 +68,9 @@ class MqttClient:
         # first build a list of assigned devices
         for device_info in device_data:
             raw_device_mac:str = device_info[0]
-            device_info.append("True" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else "False")
+            if len(device_info) == 2:
+                device_info.append("")
+            device_info[2] = "True" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else "False"
             if device_info[2]:
                 raw_device_mac_list.append(raw_device_mac)
 
@@ -93,7 +95,7 @@ class MqttClient:
                         "unique_id": f"gwn_ssid_{ssid_id}_{normalised_device_mac}_device_enable",
                         "state_topic": state_topic,
                         "command_topic": command_topic,
-                        "value_template": "{{ %i == 1}}" % int(is_assigned),
+                        "value_template": "{{ %s }}" % is_assigned,
                         "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, assigned_devices_json, Constants.DEVICE_MACS, assigned_devices_json),
                         "payload_off": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps([mac for mac in raw_device_mac_list if mac != raw_device_mac]), Constants.DEVICE_MACS, assigned_devices_json),
                         "state_on": True,
