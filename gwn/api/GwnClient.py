@@ -143,7 +143,7 @@ class GwnClient:
                     _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
                 else:
                     ssid_list[ssid_dictionary_key] = gwn_ssid
-                _LOGGER.debug(f"Processed SSID: {id}")
+                _LOGGER.debug(f"Processed SSID: {id} - Key: {ssid_dictionary_key}")
         _LOGGER.info(f"Processed {len(ssid_list)} SSIDs")
         return ssid_list
 
@@ -217,6 +217,7 @@ class GwnClient:
         ssids = self._build_ssid_data(ssid_data, devices)
         await self._associated_ssids_with_devices(ssids, devices, device_data)
         _LOGGER.info(f"Found {len(devices)} Devices for Network: {network_id}")
+        _LOGGER.info(f"Found {len(ssids)} SSIDs for Network: {network_id}")
         return list(devices.values()), list(ssids.values())
 
     @property
@@ -254,9 +255,9 @@ class GwnClient:
                                 ssids = ssid_device_data[1]
                             )
                             gwn_networks.append(gwn_network)
-                            _LOGGER.debug(f"Processed Network {gwn_network.networkName} with ID {gwn_network.id}")
+                            _LOGGER.debug(f"Processed Network '{gwn_network.networkName}' with ID {gwn_network.id}")
                 except Exception as e:
-                    _LOGGER.error("Failed to process a network %s", e)
+                    _LOGGER.error("Failed to process a Network: %s", e)
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 

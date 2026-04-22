@@ -22,7 +22,7 @@ class MqttClient:
     def _strip_mac(self, mac: str) -> str:
         return mac.replace(":", "").replace("-","").lower()
 
-    def _normalise_macs(self, macs:dict[int | str, Any] ) -> dict[str, Any]:
+    def _normalise_macs(self, macs: dict[int | str, Any] ) -> dict[str, Any]:
         normalised: dict[str, Any] = {}
         for mac, enabled in macs.items():
             normalised[self._strip_mac(str(mac))] = enabled
@@ -39,37 +39,50 @@ class MqttClient:
     def _ha_discovery_topic(self, component: str, object_id: str) -> str:
         return f"homeassistant/{component}/{object_id}/config"
 
-    def _generic_ssid_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_name: str) -> list[tuple[str, dict[str, object]]]:
+    def _generic_ssid_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_name: str, devices: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         ssid_id: str = str(payload.get(Constants.SSID_ID))
         ssid_id_int: int = int(ssid_id)
-
+        # Use the SSID name and network name as model unless there was an override then use then
+        # use the override as the SSID name and the old SSID name as the model
         ssid_name: str = str(payload.get(Constants.SSID_NAME))
         ssid_model: str = network_name if len(network_name) > 0 else "GWN SSID"
         if ssid_id_int in self._config.homeassistant.ssid_name_override:
             ssid_model = ssid_name
             ssid_name = str(self._config.homeassistant.ssid_name_override[ssid_id_int])
         
+        # now create the device assignment options
         device_assignment: list[tuple[str, dict[str, object]]] = []
         raw_assigned_devices = payload.get(Constants.ASSIGNED_DEVICES)
         assigned_devices: list[dict[str, str]] = raw_assigned_devices if isinstance(raw_assigned_devices, list) else []
         device = self._ha_device_block(f"gwn_ssid_{ssid_id}", ssid_name, ssid_model)
-        assigned_macs: list[str] = []
-        for device_data in assigned_devices:
+
+        normalised_name_override_macs = self._normalise_macs(self._config.homeassistant.device_name_override)
+        raw_device_mac_list: list[str] = []
+        for device_data in devices:
             raw_device_mac = device_data.get(Constants.MAC)
             if raw_device_mac is not None:
-                assigned_macs.append(raw_device_mac)
-                device_mac = self._strip_mac(raw_device_mac)
+                # see if the device has a custom name assigned in GWN Manager
+                device_name: str = str(device_data.get(Constants.NAME))
+                if len(device_name) == 0: # No custom name so use the MAC
+                    device_name = str(raw_device_mac)
+                # Last check, see if the config overrides the name and always use this override in display
+                # otherwise use whatever was found previously
+                device_name = str(normalised_name_override_macs.get(normalised_device_mac, device_name))
+
+                raw_device_mac_list.append(raw_device_mac)
+                normalised_device_mac = self._strip_mac(raw_device_mac)
+                
                 device_assignment.append(
                     (
-                        self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_{device_mac}_device_enable"),
+                        self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_{normalised_device_mac}_device_enable"),
                         {
-                            "name": "Enabled",
-                            "unique_id": f"gwn_ssid_{ssid_id}_{device_mac}_device_enable",
+                            "name": f"Assign {device_name}",
+                            "unique_id": f"gwn_ssid_{ssid_id}_{normalised_device_mac}_device_enable",
                             "state_topic": state_topic,
                             "command_topic": command_topic,
                             "value_template": "{{ value_json.%s == 1}}" % Constants.TOGGLE_DEVICE,
-                            "payload_on": '"%s":{"%s":"%s","%s":true}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
-                            "payload_off": '"%s":{"%s":"%s","%s":false}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
+                            "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s": "%s"}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
+                            "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s": "%s"}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
                             "state_on": True,
                             "state_off": False,
                             "device": device
@@ -77,7 +90,7 @@ class MqttClient:
                     )
                 )
 
-        assigned_devices_json = json.dumps(assigned_devices)
+        assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
         return device_assignment + [
             (
                 self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled"),
@@ -87,8 +100,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.SSID_ENABLE,
-                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_ENABLE, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
-                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_ENABLE, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_ENABLE, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_ENABLE, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -102,8 +115,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.PORTAL_ENABLED,
-                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.PORTAL_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
-                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.PORTAL_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.PORTAL_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.PORTAL_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -117,7 +130,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s if value_json.get('%s') else 'No VLAN' }}" % (Constants.SSID_VLAN_ID, Constants.SSID_VLAN_ENABLED),
-                    "command_template": '"%s":{"%s":"%s","%s":{{ value | int }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_VLAN_ID, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "command_template": '{"%s":{"%s":"%s","%s":{{ value | int }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_VLAN_ID, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "min": 0,
                     "max": 4094,
                     "step": 1,
@@ -133,8 +146,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.CLIENT_ISOLATION_ENABLED,
-                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
-                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.CLIENT_ISOLATION_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -148,8 +161,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ2_4_ENABLED,
-                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ2_4_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
-                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ2_4_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ2_4_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ2_4_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -163,8 +176,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ5_ENABLED,
-                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ5_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
-                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ5_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ5_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ5_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -178,8 +191,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.GHZ6_ENABLED,
-                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ6_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
-                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ6_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ6_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.GHZ6_ENABLED, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -193,7 +206,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s }}" % Constants.SSID_KEY,
-                    "command_template": '"%s":{"%s":"%s","%s":{{ value | tojson }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_KEY, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "command_template": '{"%s":{"%s":"%s","%s":{{ value | tojson }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_KEY, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "device": device
                 }
             ),
@@ -205,8 +218,8 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s == 1}}" % Constants.SSID_HIDDEN,
-                    "payload_on": '"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_HIDDEN, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
-                    "payload_off": '"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_HIDDEN, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_HIDDEN, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_HIDDEN, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "state_on": True,
                     "state_off": False,
                     "device": device
@@ -231,7 +244,7 @@ class MqttClient:
                     "state_topic": state_topic,
                     "command_topic": command_topic,
                     "value_template": "{{ value_json.%s }}" % Constants.SSID_NAME,
-                    "command_template": '"%s":{"%s":"%s","%s":{{ value | tojson }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_NAME, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
+                    "command_template": '{"%s":{"%s":"%s","%s":{{ value | tojson }}}, "%s":%s}' % (Constants.ACTION, Constants.ACTION, Constants.SSID_NAME, Constants.VALUE, Constants.DEVICE_MACS, assigned_devices_json),
                     "device": device
                 }
             )
@@ -247,10 +260,18 @@ class MqttClient:
         if len(device_name) == 0:
             device_name = str(payload.get(Constants.AP_TYPE, network_name if len(network_name) > 0 else "GWN Device"))
 
-
         if normalised_device_mac in normalised_name_override_macs:
             device_model = device_name if len(device_name) > 0 else device_mac
             device_name = str(normalised_name_override_macs[normalised_device_mac])
+
+        raw_ssids = payload[Constants.SSIDS]
+        ssids: list[dict[str, str]] = raw_ssids if isinstance(raw_ssids,list) else []
+        ssid_names: list[str] = []
+        for ssid in ssids:
+            ssid_name = ssid.get(Constants.SSID_NAME)
+            ssid_id = ssid.get(Constants.SSID_ID)
+            if ssid_name is not None and ssid_id is not None:
+                ssid_names.append(str(self._config.homeassistant.ssid_name_override.get(ssid_id,ssid_name)))
 
         device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", device_name, device_model)
 
@@ -406,7 +427,7 @@ class MqttClient:
                     "name": "SSIDs",
                     "unique_id": f"gwn_device_{normalised_device_mac}_ssid_names",
                     "state_topic": state_topic,
-                    "value_template": "{{ value_json.%s | map(attribute='%s') | join(', ') }}" % (Constants.SSIDS, Constants.SSID_NAME),
+                    "value_template": "{{ %s | join(', ') if %s else 'No SSIDs' }}" % (json.dumps(ssid_names), json.dumps(ssid_names)),
                     "device": device
                 }
             ),
@@ -771,7 +792,7 @@ class MqttClient:
             for topic, discovery_payload in ha_device_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
 
-    async def publish_ssid(self, network_topic: str, network_name: str, gwn_ssid_id: str, ssid_payload: dict[str, object]) -> None:
+    async def publish_ssid(self, network_topic: str, network_id: int, network_name: str, devices: dict[str, object], gwn_ssid_id: str, ssid_payload: dict[str, object]) -> None:
         ssid_topic = f"{network_topic}/ssids/{gwn_ssid_id}"
         gwn_ssid_id_int: int = int(gwn_ssid_id)
         
@@ -783,7 +804,7 @@ class MqttClient:
         command_topic: str = f"{ssid_topic}/set"
         await self._interface.publish(state_topic,json.dumps(ssid_payload), retain=True)
         if auto_discovery:
-            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(state_topic, command_topic, ssid_payload, network_name)
+            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(state_topic, command_topic, ssid_payload, network_name, devices)
             # now actually publish
             for topic, discovery_payload in ha_ssid_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
