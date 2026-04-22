@@ -70,7 +70,7 @@ class MqttClient:
             raw_device_mac:str = device_info[0]
             if len(device_info) == 2:
                 device_info.append("")
-            device_info[2] = "True" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else "False"
+            device_info[2] = "true" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else ""
             if bool(device_info[2]):
                 raw_device_mac_list.append(raw_device_mac)
 
@@ -80,7 +80,7 @@ class MqttClient:
             # see if the device has a custom name assigned in GWN Manager
             raw_device_mac = device_info[0]
             device_name: str = device_info[1]
-            is_assigned: bool = bool(device_info[2])
+            is_assigned: bool = device_info[2].lower() == "true"
             if len(device_name) == 0: # No custom name so use the MAC
                 device_name = str(raw_device_mac)
             # Last check, see if the config overrides the name and always use this override in display
