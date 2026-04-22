@@ -134,8 +134,8 @@ class GwnClient:
                 if has_device_info:
                     for device_info in ssid_device_info:
                         mac = GwnConfig.normalise_mac(str(device_info.get("mac")))
-                        gwn_device = devices[mac]
-                        if gwn_device and bool(device_info.get("checked")):
+                        gwn_device = devices.get(mac, None)
+                        if gwn_device is not None and bool(device_info.get("checked")):
                             gwn_ssid.devices.append(gwn_device)
 
                 ssid_dictionary_key = int(gwn_ssid.id) if has_device_info else str(gwn_ssid.ssidName)
@@ -170,7 +170,7 @@ class GwnClient:
                     mac = GwnConfig.normalise_mac(mac)
                     device_info_port = await self._interface.get_device_info_port(network_id,mac) or {}
                     device_info_client = await self._interface.get_device_info_client(mac) or {}
-                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data[mac]])
+                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data.get(mac, {})])
                 else:
                     _LOGGER.warning("Found response with missing MAC Address")
         return device_data
