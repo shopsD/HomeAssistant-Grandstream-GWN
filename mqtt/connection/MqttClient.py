@@ -63,19 +63,28 @@ class MqttClient:
         assigned_devices = payload.get(Constants.ASSIGNED_DEVICES)
         assigned_devices = assigned_devices if isinstance(assigned_devices, dict) else {}
         normalised_name_override_macs = self._normalise_macs(self._config.homeassistant.device_name_override)
+        
         raw_device_mac_list: list[str] = []
+        # first build a list of assigned devices
         for device_info in device_data:
-            raw_device_mac = device_info[0]
+            raw_device_mac:str = device_info[0]
+            device_info.append("True" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else "False")
+            if device_info[2]:
+                raw_device_mac_list.append(raw_device_mac)
+
+        assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
+
+        for device_info in device_data:
             # see if the device has a custom name assigned in GWN Manager
+            raw_device_mac = device_info[0]
             device_name: str = device_info[1]
+            is_assigned: bool = bool(device_info[2])
             if len(device_name) == 0: # No custom name so use the MAC
                 device_name = str(raw_device_mac)
             # Last check, see if the config overrides the name and always use this override in display
             # otherwise use whatever was found previously
             normalised_device_mac = self._strip_mac(raw_device_mac)
             device_name = str(normalised_name_override_macs.get(normalised_device_mac, device_name))
-            raw_device_mac_list.append(raw_device_mac)
-            is_assigned: bool = (assigned_devices is not None and raw_device_mac in assigned_devices)
             device_assignment.append(
                 (
                     self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_{normalised_device_mac}_device_enable"),
@@ -85,8 +94,8 @@ class MqttClient:
                         "state_topic": state_topic,
                         "command_topic": command_topic,
                         "value_template": "{{ %i == 1}}" % int(is_assigned),
-                        "payload_on": '{"%s":{"%s":"%s","%s":true}, "%s": "%s"}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
-                        "payload_off": '{"%s":{"%s":"%s","%s":false}, "%s": "%s"}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, Constants.DEVICE_MACS, raw_device_mac),
+                        "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, assigned_devices_json, Constants.DEVICE_MACS, assigned_devices_json),
+                        "payload_off": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps([mac for mac in raw_device_mac_list if mac != raw_device_mac]), Constants.DEVICE_MACS, assigned_devices_json),
                         "state_on": True,
                         "state_off": False,
                         "device": device
@@ -94,7 +103,6 @@ class MqttClient:
                 )
             )
 
-        assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
         return device_assignment + [
             (
                 self._ha_discovery_topic("switch", f"gwn_ssid_{ssid_id}_enabled"),
@@ -673,6 +681,7 @@ class MqttClient:
             ssid_id: str | None = None
             device_macs: list[str] = []
             formatted_data: dict[str, Any] = {}
+            application_command: bool = False
             if parts_count == 1 and parts[0] == Constants.GWN:
                 _LOGGER.info(f"Multi Data command: {formatted_data}")
                 network_id = data.get(Constants.NETWORK_ID)
@@ -692,40 +701,40 @@ class MqttClient:
                     formatted_data[command_data[Constants.ACTION]] = command_data.get(Constants.VALUE, None)
 
             else:
+                if parts_count == 1 and parts[0] == Constants.APPLICATION:
+                    _LOGGER.info("Application command")
+                    application_command = True
+                elif parts_count == 2 and parts[0] == Constants.NETWORKS :
+                    network_id = str(parts[1])
+                    _LOGGER.info(f"Network command for {network_id}")
+                elif parts_count == 4 and parts[2] == Constants.DEVICES:
+                    network_id = str(parts[1])
+                    device_mac = str(parts[3])
+                    _LOGGER.info(f"Device command for {device_mac} on Network with ID {network_id}")
+                elif parts_count == 4 and parts[2] == Constants.SSIDS:
+                    network_id = str(parts[1])
+                    ssid_id = str(parts[3])
+                    _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}")
+                else:
+                    return _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
                 if ssid_id is None:
                     action_data = data
                 else:
                     device_macs = data.get(Constants.DEVICE_MACS)
                     action_data = data.get(Constants.ACTION)
                 formatted_data = {action_data[Constants.ACTION]: action_data.get(Constants.VALUE, None) }
+                _LOGGER.debug("Formatted Payload: %s", formatted_data)
 
-                if parts_count == 1 and parts[0] == Constants.APPLICATION:
-                    _LOGGER.info(f"Application command: {formatted_data}")
-                    if self._application_callback is not None:
-                        return self._application_callback(formatted_data)
-                if parts_count == 2 and parts[0] == Constants.NETWORKS :
-                    network_id = str(parts[1])
-                    _LOGGER.info(f"Network command for {network_id}: {formatted_data}")
-                elif parts_count == 4 and parts[2] == Constants.DEVICES:
-                    network_id = str(parts[1])
-                    device_mac = str(parts[3])
-                    _LOGGER.info(f"Device command for {device_mac} on Network with ID {network_id}: {formatted_data}")
-                elif parts_count == 4 and parts[2] == Constants.SSIDS:
-                    network_id = str(parts[1])
-                    ssid_id = str(parts[3])
-                    _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}: {formatted_data}")
-                else:
-                    return _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
-            
-            if network_id is None:
-                return _LOGGER.warning("No Network ID specified")
-
-            if self._ssid_callback is not None and ssid_id is not None:
-                self._ssid_callback(ssid_id, device_macs, network_id, formatted_data)
+            if application_command and self._application_callback is not None:
+                self._application_callback(formatted_data)
+            elif network_id is None:
+                _LOGGER.warning("No Network ID specified")
+            elif self._ssid_callback is not None and ssid_id is not None:
+                await self._ssid_callback(ssid_id, device_macs, network_id, formatted_data)
             elif self._device_callback is not None and device_mac is not None:
-                self._device_callback(device_mac, formatted_data, network_id)
+                await self._device_callback(device_mac, formatted_data, network_id)
             elif self._network_callback is not None:
-                self._network_callback(network_id, formatted_data)
+                await self._network_callback(network_id, formatted_data)
             
     async def _publish_online(self) -> None:
         application_topic = f"{self._interface.topic}/{Constants.APPLICATION}"
