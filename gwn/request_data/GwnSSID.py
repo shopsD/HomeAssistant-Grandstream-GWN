@@ -9,7 +9,7 @@ class SecurityMode(Enum):
     WPA_WPA2 = 2
     WPA2 = 3
     OPEN = 4
-    WPA3 = 7
+    WPA3 = 6 # documentation implies it is 7
     WPA2_WPA3 = 5
     WPA3_192 = 8
     

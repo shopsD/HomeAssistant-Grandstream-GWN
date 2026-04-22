@@ -62,6 +62,7 @@ class Constants:
     CHANNEL_LOAD_5G: ClassVar[str] = "channelload_5g"
     # NETWORK_NAME (In Network)
     SSIDS: ClassVar[str] = "ssids"
+
     # buttons/commands (no GWN Inputs)
     REBOOT: ClassVar[str] = "reboot"
     UPDATE_FIRMWARE: ClassVar[str] = "update_firmware"
@@ -87,3 +88,10 @@ class Constants:
     TOGGLE_DEVICE: ClassVar[str] = "toggle_device"
     DEVICE_MACS: ClassVar[str] = "device_macs"
 
+    # MQTT Topics
+    APPLICATION: ClassVar[str] = "application"
+    DEVICES: ClassVar[str] = "devices"
+    GWN: ClassVar[str] = "gwn"
+    NETWORKS: ClassVar[str] = "networks"
+    SET: ClassVar[str] = "set"
+    STATE: ClassVar[str] = "state"

@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-from gwn.request_data.GwnSSID import GwnSSID
-
 @dataclass(slots=True)
 class GwnDevice:
     status: bool
@@ -42,6 +40,4 @@ class GwnDevice:
     channelload_6g: str
     cpuUsage: str
     channelload_5g: str
-
-    ssids: list[GwnSSID]
 
