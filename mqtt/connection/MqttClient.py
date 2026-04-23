@@ -304,16 +304,24 @@ class MqttClient:
             if ssid_name is not None and ssid_id is not None:
                 ssid_names.append(str(self._config.homeassistant.ssid_name_override.get(ssid_id,ssid_name)))
 
-        # now see if the network name was overriden in the config. If it was, then use the overridden name otherwise
-        # see if it has a name. If it doesnt, then use the ID
-        if network_id in self._config.homeassistant.network_name_override:
-            network_name = self._config.homeassistant.network_name_override[network_id]
-        if len(network_name) == 0:
-            network_name = f"Network ID: {network_id}"
+       
 
+
+        found_names: list[str] = []
         for id in network_names:
+            new_network_name = network_names[id]
+            # now see if the network name was overriden in the config. If it was, then use the overridden name otherwise
+            # see if it has a name. If it doesnt, then use the normal name
             if id in self._config.homeassistant.network_name_override:
-                network_names[id] = self._config.homeassistant.network_name_override[id]
+                new_network_name = self._config.homeassistant.network_name_override[id]
+            if new_network_name in found_names:
+                new_network_name = f"{new_network_name} - ({id})"
+            else:
+                found_names.append(new_network_name)
+            if network_id == id:
+                network_name = new_network_name
+            network_names[id] = new_network_name
+        
 
         device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", device_name, device_model)
 
@@ -362,7 +370,7 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_network_name",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.%s }}" % Constants.NETWORK_NAME,
+                    "value_template": "{{ %s }}" % json.dumps(network_name),
                     "options": list(network_names.values()),
                     "command_template": '{"%s":"%s","%s":%s[{{ value | tojson }}]}'% (Constants.ACTION, Constants.NETWORK_NAME, Constants.VALUE, json.dumps({name: network_id for network_id, name in network_names.items()})),
                     "entity_category": "config",
