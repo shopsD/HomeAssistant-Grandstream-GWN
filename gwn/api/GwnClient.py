@@ -379,6 +379,12 @@ class GwnClient:
         if info_channel is not None:
             device_info_channel = self._normalise_dictionary_data(info_channel)
 
+        device_info_config: dict[str, Any] | None = None
+        if self._interface.user_password_login and device_info_client is not None:
+            config_device_info = await self._interface.get_app_device_info(payload.ap_mac,device_info_client["apType"])
+            if config_device_info is not None:
+                device_info_config = self._normalise_dictionary_data(config_device_info)
+
         # these keys are required as a basic list of the payload
         if payload.ap_2g4_channel is not None:
             payload.ap_2g4_channel = 0 if device_info_channel is None or str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g24"]["channel"]["value"])
@@ -393,7 +399,7 @@ class GwnClient:
         if payload.ap_6g_power is not None:
             payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
 
-        _ = payload
+        _ = payload, device_info_config
         return True
 
     async def set_network_data(self, network_id: str, data: dict[str, Any]) -> None:

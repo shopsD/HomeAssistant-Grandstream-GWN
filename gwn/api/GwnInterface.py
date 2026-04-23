@@ -267,12 +267,12 @@ class GwnInterface:
             return None
         return response.get("data", {})
 
-    async def get_app_device_info(self, mac: str, apType: str) -> dict[str, Any] | None:
+    async def get_app_device_info(self, mac: str, apType: str) -> list[dict[str, Any]] | None:
         if self.user_password_login:
             response = await self._post("app/ap/configure/configItem",{"mac":mac,"apType":apType},True)
             if response is None:
                 return None
-        return {}
+        return []
 
     async def get_app_timezone_info(self) -> dict[str, Any] | None:
         if self.user_password_login:
