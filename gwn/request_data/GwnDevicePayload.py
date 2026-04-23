@@ -1,34 +1,35 @@
 from dataclasses import dataclass
+from typing import ClassVar
 
-from gwn.constants.MessageEnums import RadioPower,Width2G,Width5G,BandSteering
+from gwn.constants.MessageEnums import RadioPower, Width2G, Width5G, BandSteering
 
 @dataclass(slots=True)
 class GwnDevicePayload:
-    ap_2g4_channel: int | None
-    ap_2g4_power: RadioPower | None
-    ap_2g4_ratelimit_enable: bool | None
-    ap_2g4_rssi: str | None
-    ap_2g4_rssi_enable: bool | None
-    ap_2g4_tag: str | None
-    ap_2g4_width: Width2G | None
-    ap_5g_channel: int | None
-    ap_5g_power: RadioPower | None
-    ap_5g_ratelimit_enable: bool | None
-    ap_5g_rssi: str | None
-    ap_5g_rssi_enable: bool | None
-    ap_5g_tag: str | None
-    ap_5g_width: Width5G | None
-    ap_alternate_dns: str | None
-    ap_band_steering: BandSteering | None
-    ap_ipv4_route: str | None
-    ap_ipv4_static: str | None
-    ap_ipv4_static_mask: str | None
-    ap_mac: str | None
-    ap_name: str | None
-    ap_preferred_dns: str | None
-    ap_static: bool | None
+    ap_mac: str
+    ap_2g4_channel: int | None = None
+    ap_2g4_power: RadioPower | None = None
+    ap_2g4_ratelimit_enable: bool | None = None
+    ap_2g4_rssi: str | None = None
+    ap_2g4_rssi_enable: bool | None = None
+    ap_2g4_tag: str | None = None
+    ap_2g4_width: Width2G | None = None
+    ap_5g_channel: int | None = None
+    ap_5g_power: RadioPower | None = None
+    ap_5g_ratelimit_enable: bool | None = None
+    ap_5g_rssi: str | None = None
+    ap_5g_rssi_enable: bool | None = None
+    ap_5g_tag: str | None = None
+    ap_5g_width: Width5G | None = None
+    ap_alternate_dns: str | None = None
+    ap_band_steering: BandSteering | None = None
+    ap_ipv4_route: str | None = None
+    ap_ipv4_static: str | None = None
+    ap_ipv4_static_mask: str | None = None
+    ap_name: str | None = None
+    ap_preferred_dns: str | None = None
+    ap_static: bool | None = None
 
-    REQUIRED: list[str] = [
+    REQUIRED: ClassVar[list[str]] = [
         "ap_2g4_channel",
         "ap_2g4_power",
         "ap_2g4_ratelimit_enable",

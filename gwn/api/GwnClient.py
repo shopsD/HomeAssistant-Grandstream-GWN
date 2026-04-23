@@ -336,7 +336,7 @@ class GwnClient:
             match ssid_encryption:
                 case SecurityMode.WEP64:
                     payload.ssidWepKey = payload.ssid_key
-                case SecurityMode.WEP64:
+                case SecurityMode.WEP128:
                     payload.ssidWepKey = payload.ssid_key
                 case SecurityMode.OPEN:
                     payload.ssidWepKey = None

@@ -10,7 +10,8 @@ from .MessageEnums import (
     SSID_11W,
     SSID_BMS,
     BandwidthType,
-    SSIDSecurityType
+    SSIDSecurityType,
+    BandSteering
 )
 
 
@@ -27,5 +28,6 @@ __all__ = [
     "SSID_11W",
     "SSID_BMS",
     "BandwidthType",
-    "SSIDSecurityType"
+    "SSIDSecurityType",
+    "BandSteering"
 ]

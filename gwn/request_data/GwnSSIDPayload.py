@@ -1,7 +1,15 @@
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, fields
+from enum import Enum
+from typing import Any, ClassVar
 
-from gwn.constants import SecurityMode,MultiCastToUnicast,MacFiltering,IsolationMode, BandwidthType, SSIDSecurityType, SSID_11W, SSID_BMS
+from gwn.constants import (SecurityMode, 
+                            MultiCastToUnicast, 
+                            MacFiltering, 
+                            IsolationMode, 
+                            BandwidthType, 
+                            SSIDSecurityType, 
+                            SSID_11W, 
+                            SSID_BMS)
 
 @dataclass(slots=True)
 class GwnSSIDPayload:
@@ -58,7 +66,7 @@ class GwnSSIDPayload:
     ssid_key: str | None = None 
     toggled_macs: list[str] | None = None 
 
-    REQUIRED: list[str] = [
+    REQUIRED: ClassVar[list[str]] = [
         "id",
         "ssidSsid",
         "ssidWepKey",
@@ -66,25 +74,29 @@ class GwnSSIDPayload:
         "ssidTimedClientPolicy"
     ]
 
-    NON_SERIALISED: list[str] = [
-        "ghz2_4_Enabled",
-        "ghz5_Enabled",
-        "ghz6_Enabled",
+    NON_SERIALISED: ClassVar[list[str]] = [
+        "ghz2_4_enabled",
+        "ghz5_enabled",
+        "ghz6_enabled",
         "ssid_key",
         "toggled_macs"
     ]
 
     def build_payload(self) -> dict[str, Any]:
         payload: dict[str, Any] = {}
-
-        # if self.ssidEnable is not None:
-        #     payload["ssidEnable"] = int(ssidEnable)
-        # if self.portal_enabled is not None:
-        #     payload["ssidPortalEnable"] = int(self.portal_enabled)
-        # if self.vlan_id is not None and vlan_enabled:
-        #     payload["ssidVlanid"] = int(self.vlan_id)
-        # if self.vlan_enabled is not None:
-        #     payload["ssidVlan"] = int(self.vlan_enabled)
+        for field_info in fields(self):
+            name = field_info.name
+            if name in self.NON_SERIALISED:
+                continue
+            value = getattr(self, name)
+            if value is None:
+                continue
+            if isinstance(value, bool):
+                payload[name] = int(value)
+            elif isinstance(value, Enum):
+                payload[name] = value.value
+            else:
+                payload[name] = value
 
         ssid_bands = "" if self.ssidNewSsidBand is None else self.ssidNewSsidBand
         if self.ghz2_4_enabled is not None:
@@ -105,7 +117,10 @@ class GwnSSIDPayload:
             elif not self.ghz6_enabled:
                 ssid_bands = ssid_bands.replace("6","")
             payload["ssidNewSsidBand"] = ssid_bands
-        # if ssid_hidden is not None:
-        #     payload["ssidSsidHidden"] = int(ssid_hidden)
+        
+        # if any required item is missing then just abort. The data is invalid
+        for required in REQUIRED:
+            if required not in payload:
+                return {}
 
         return payload

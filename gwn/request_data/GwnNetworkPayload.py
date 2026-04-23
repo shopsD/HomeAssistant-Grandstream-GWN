@@ -1,15 +1,15 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
 
 @dataclass(slots=True)
 class GwnNetworkPayload:
-    id: str | None
-    networkName: str | None
-    country: str | None
-    timezone: str | None
-    networkAdministrators: list[str] | None
+    id: str
+    networkName: str | None = None
+    country: str | None = None
+    timezone: str | None = None
+    networkAdministrators: list[str] | None = None
 
-    REQUIRED: list[str] = [
+    REQUIRED: ClassVar[list[str]] = [
         "id",
         "networkName",
         "country",
