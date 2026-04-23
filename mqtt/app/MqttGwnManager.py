@@ -5,7 +5,7 @@ from typing import Any
 
 from gwn.api import GwnClient
 from gwn.constants import Constants
-from gwn.request_data import  GwnSSIDPayload
+from gwn.request_data import GwnDevicePayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 from mqtt.connection import MqttClient
 
@@ -56,6 +56,7 @@ class MqttGwnManager:
 
     async def _publish_network(self, gwn_networks: list[GwnNetwork]) -> None:
         _LOGGER.info(f"Publishing {len(gwn_networks)} Networks over MQTT")
+        network_names: dict[int,str] = {int(network.id):network.networkName for network in gwn_networks}
         for gwn_network in gwn_networks:
             device_assignments: dict[str, list[GwnSSID]] = self._build_device_assignments(gwn_network.ssids)
             _LOGGER.debug(f"Publishing Network: {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
@@ -73,7 +74,7 @@ class MqttGwnManager:
                 try:
                     assignments: list[GwnSSID] = device_assignments.get(gwn_device.mac, [])
                     device_payload = self._serialise_device(gwn_network, gwn_device, assignments)
-                    await self._mqtt_client.publish_device(network_topic, int(gwn_network.id), gwn_network.networkName, device_payload)
+                    await self._mqtt_client.publish_device(network_topic, network_names, int(gwn_network.id), gwn_network.networkName, device_payload)
                 except Exception as e:
                     _LOGGER.error(f"Failed to publish Device {gwn_device.mac} to MQTT: %s", e)
                     continue
@@ -180,8 +181,19 @@ class MqttGwnManager:
     async def _handle_network_command(self, network_id: str, data: dict[str, Any]) -> None:
         await self._gwn_client.set_network_data(network_id, data)
     
-    async def _handle_device_command(self, device_mac: str, data: dict[str, Any], network_id: str) -> None:
-        await self._gwn_client.set_device_data(device_mac, network_id, data)
+    async def _handle_device_command(self, device_mac: str, data: dict[str, Any], network_id: str) -> None:    
+        payload: GwnDevicePayload = GwnDevicePayload(ap_mac=device_mac, networkId=int(network_id))
+        
+        payload.reboot = Constants.REBOOT in data
+        payload.update = Constants.UPDATE_FIRMWARE in data
+        payload.reset = Constants.RESET in data
+        payload.target_network = data.get(Constants.NETWORK_NAME, None)
+        payload.ap_2g4_channel = data.get(Constants.AP_2G4_CHANNEL, None)
+        payload.ap_5g_channel = data.get(Constants.AP_5G_CHANNEL, None)
+
+        if await self._gwn_client.set_device_data(payload) and not self._poll_trigger.is_set():
+            # immediately refresh/update the data
+            self._poll_trigger.set()
 
     async def _handle_ssid_command(self, ssid_id: str, device_macs:list[str], network_id: str, data: dict[str, Any]) -> None:
         payload: GwnSSIDPayload = GwnSSIDPayload(id=int(ssid_id), networkId=int(network_id))
@@ -196,6 +208,7 @@ class MqttGwnManager:
         payload.ssid_key = data.get(Constants.SSID_KEY, None)
         payload.ssidSsidHidden = data.get(Constants.SSID_HIDDEN, None)
         payload.ssidSsid = data.get(Constants.SSID_NAME, None)
+        payload.ssidIsolation = data.get(Constants.CLIENT_ISOLATION_ENABLED, None)
         payload.toggled_macs = data.get(Constants.TOGGLE_DEVICE, None)
         
         if await self._gwn_client.set_ssid_data(device_macs, payload) and not self._poll_trigger.is_set():

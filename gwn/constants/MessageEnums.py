@@ -21,6 +21,15 @@ class Width5G(Enum):
     MHz_160 = 3 # undocumented
     UseRadioSetting = 4
 
+# 6GHz is undocumented so this cannot be confirmed
+class Width6G(Enum):
+    MHz_20 = 0
+    MHz_40 = 1
+    MHz_80 = 2
+    MHz_160 = 3
+    MHz_320 = 4
+    UseRadioSetting = 5
+
 class BandSteering(Enum):
     Disable = 0
     Priority_2G4 = 1

@@ -263,6 +263,6 @@ class GwnInterface:
 
     async def set_ssid_data(self, payload: dict[str, Any] ) -> bool:
         if self._config.no_publish:
-            _LOGGER.info(f"Publish is disabled. Payload {payload}")
+            _LOGGER.debug(f"Publish is disabled. Payload {payload}")
             return True
         return await self._post("oapi/v1.0.0/ssid/update",payload) is not None

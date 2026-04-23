@@ -274,7 +274,7 @@ class MqttClient:
             )
         ]
 
-    def _generic_device_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str) -> list[tuple[str, dict[str, object]]]:
+    def _generic_device_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
         device_mac = str(payload.get(Constants.MAC))
         normalised_device_mac = self._strip_mac(device_mac)
 
@@ -310,6 +310,10 @@ class MqttClient:
             network_name = self._config.homeassistant.network_name_override[network_id]
         if len(network_name) == 0:
             network_name = f"Network ID: {network_id}"
+
+        for id in network_names:
+            if id in self._config.homeassistant.network_name_override:
+                network_names[id] = self._config.homeassistant.network_name_override[id]
 
         device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", device_name, device_model)
 
@@ -352,12 +356,17 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_ssid_{normalised_device_mac}_network_name"),
+                self._ha_discovery_topic("select", f"gwn_device_{normalised_device_mac}_network_name"),
                 {
                     "name": "Network",
-                    "unique_id": f"gwn_ssid_{normalised_device_mac}_network_name",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_network_name",
                     "state_topic": state_topic,
-                    "value_template": "{{ %s }}" % json.dumps(network_name),
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.%s }}" % Constants.NETWORK_NAME,
+                    "options": list(network_names.values()),
+                    "command_template": '{"%s":"%s","%s":%s[{{ value | tojson }}]}'% (Constants.ACTION, Constants.NETWORK_NAME, Constants.VALUE, json.dumps({name: network_id for network_id, name in network_names.items()})),
+                    "entity_category": "config",
+                    "enabled_by_default": True,
                     "device": device
                 }
             ),
@@ -837,7 +846,7 @@ class MqttClient:
 
         return network_topic
     
-    async def publish_device(self, network_topic: str, network_id: int, network_name: str, device_payload: dict[str, object]) -> None:
+    async def publish_device(self, network_topic: str, network_names: dict[int, str], network_id: int, network_name: str, device_payload: dict[str, object]) -> None:
         device_mac = str(device_payload.get(Constants.MAC))
         device_mac = self._strip_mac(device_mac)
         normalised_macs = self._normalise_macs(self._config.homeassistant.device_autodiscovery)
@@ -852,7 +861,7 @@ class MqttClient:
         command_topic: str = f"{device_topic}/{Constants.SET}"
         await self._interface.publish(state_topic,json.dumps(device_payload), retain=True)
         if auto_discovery:
-            ha_device_payload = self._generic_device_payload_to_homeassistant(state_topic, command_topic, device_payload, network_id, network_name)
+            ha_device_payload = self._generic_device_payload_to_homeassistant(state_topic, command_topic, device_payload, network_id, network_name, network_names)
             # now actually publish
             for topic, discovery_payload in ha_device_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)

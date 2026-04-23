@@ -1,11 +1,13 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+from enum import Enum
 from typing import ClassVar
 
-from gwn.constants.MessageEnums import RadioPower, Width2G, Width5G, BandSteering
+from gwn.constants.MessageEnums import RadioPower, Width2G, Width5G, Width6G, BandSteering
 
 @dataclass(slots=True)
 class GwnDevicePayload:
     ap_mac: str
+    networkId: int
     ap_2g4_channel: int | None = None
     ap_2g4_power: RadioPower | None = None
     ap_2g4_ratelimit_enable: bool | None = None
@@ -29,6 +31,21 @@ class GwnDevicePayload:
     ap_preferred_dns: str | None = None
     ap_static: bool | None = None
 
+    # 6GHz is Undocumented so not sure if this will work
+    ap_6g_channel: int | None = None
+    ap_6g_power: RadioPower | None = None
+    ap_6g_ratelimit_enable: bool | None = None
+    ap_6g_rssi: str | None = None
+    ap_6g_rssi_enable: bool | None = None
+    ap_6g_tag: str | None = None
+    ap_6g_width: Width6G | None = None
+
+    target_network: int | None = None
+    # commands
+    reboot: bool = False
+    reset: bool = False
+    update: bool = False
+
     REQUIRED: ClassVar[list[str]] = [
         "ap_2g4_channel",
         "ap_2g4_power",
@@ -47,9 +64,50 @@ class GwnDevicePayload:
         "ap_alternate_dns",
         "ap_band_steering",
         "ap_mac",
-        "ap_name"
+        "ap_name",
+        # since 6GHz is undocumented it is not 100% this will work but added based on 2.4GHz and 5GHz
+        "ap_6g_channel",
+        "ap_6g_power",
+        "ap_6g_ratelimit_enable",
+        "ap_6g_rssi",
+        "ap_6g_rssi_enable",
+        "ap_6g_tag",
+        "ap_6g_width"
     ]
 
+    NON_SERIALISED: ClassVar[list[str]] = ["networkId", "reboot", "reset", "update", "target_network"]
+
+    @classmethod
+    def validate_metadata(cls) -> None:
+        valid_fields = {field.name for field in fields(cls)}
+        invalid_required = [name for name in cls.REQUIRED if name not in valid_fields]
+        invalid_non_serialised = [name for name in cls.NON_SERIALISED if name not in valid_fields]
+
+        if invalid_required or invalid_non_serialised:
+            raise ValueError(
+                f"{cls.__name__} has invalid metadata: "
+                f"REQUIRED={invalid_required}, "
+                f"NON_SERIALISED={invalid_non_serialised}"
+            )
+
     def build_payload(self) -> dict[str, str]:
-        # serialise everything to strings
-        return {}
+        payload: dict[str, str] = {}
+        for field_info in fields(self):
+            name = field_info.name
+            if name in self.NON_SERIALISED:
+                continue
+            value = getattr(self, name)
+            if value is None and name not in self.REQUIRED: # required can be None, it just has to be sent
+                continue
+            if isinstance(value, bool):
+                payload[name] = "1" if value else "0"
+            elif isinstance(value, Enum):
+                payload[name] = str(value.value)
+            else:
+                payload[name] = str(value)
+
+        # if any required item is missing then just abort. The data is invalid
+        for required in self.REQUIRED:
+            if required not in payload:
+                return {}
+        return payload
