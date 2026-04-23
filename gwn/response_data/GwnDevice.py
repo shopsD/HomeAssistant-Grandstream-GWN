@@ -41,3 +41,6 @@ class GwnDevice:
     cpuUsage: str
     channelload_5g: str
 
+    # channel info
+    ap_2g4_channel: int
+    ap_5g_channel: int

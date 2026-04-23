@@ -141,6 +141,14 @@ class ConfigParser:
             raise ConfigParserError("gwn.username specified but gwn.password is missing")
         if gwn_config.password and not gwn_config.username:
             raise ConfigParserError("gwn.password specified but gwn.username is missing")
+        # gwn ignore failed fetch before update
+        ignore_failed_fetch_before_update = gwn_section.get("ignore_failed_fetch_before_update")
+        if ignore_failed_fetch_before_update is not None:
+            gwn_config.ignore_failed_fetch_before_update = bool(ignore_failed_fetch_before_update)
+        # gwn ssid name to device binding
+        ssid_name_to_device_binding = gwn_section.get("ssid_name_to_device_binding")
+        if ssid_name_to_device_binding is not None:
+            gwn_config.ssid_name_to_device_binding = bool(ssid_name_to_device_binding)
         # gwn no publish
         no_publish = gwn_section.get("no_publish")
         if no_publish is not None:

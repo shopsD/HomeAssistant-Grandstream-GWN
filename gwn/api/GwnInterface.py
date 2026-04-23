@@ -80,7 +80,7 @@ class GwnInterface:
                 "access_token": self._token.access_token,
                 "appID": self._config.app_id,
                 "timestamp": str(timestamp_ms),
-                "signature": signature,
+                "signature": signature
             }
         return await self._do_post(path,params,body_json,headers)
 
@@ -195,6 +195,12 @@ class GwnInterface:
     async def get_all_networks(self) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})
 
+    async def get_network_data(self, network_id: int) -> dict[str, Any] | None:
+        response = await self._post("oapi/v1.0.0/network/detail",{"id": network_id})
+        if response is None:
+            return None
+        return response.get("data", {})
+
     async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ssid/list",{ "networkId": network_id})
 
@@ -220,8 +226,21 @@ class GwnInterface:
         # if username/password login is not available then dont return None as an error
         # and dont try requesting. Return an empty array to trigger fallback behaviour
         return []
-            
 
+    async def get_app_ssid_info(self, ssid_id: int) -> dict[str, Any] | None:
+        if not self.user_password_login:
+            return {}
+        response = await self._post("app/ssid/editItem",{"id":ssid_id},True)
+        if response is None:
+            return None
+        data = response.get("data")
+        if data is None:
+            return None
+        response_data: dict[str, Any] = {}
+        for category in data:
+            response_data[category["name"]] = category["content"]
+        return response_data if len(response_data) > 0 else response_data
+    
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
             "networkId": network_id,
@@ -254,9 +273,71 @@ class GwnInterface:
             return None
         data = response.get("data", {})
         return data.get("result", [])
-    
+
+    async def get_device_channel_info(self, mac: str) -> list[dict[str, Any]] | None:
+        response = await self._post("oapi/v1.0.0/ap/config/channel",{"mac": [mac]})
+        if not response:
+            return None
+        return response.get("data", [])
+
+    async def get_app_device_info(self, mac: str, apType: str) -> list[dict[str, Any]] | None:
+        if not self.user_password_login:
+            return []
+        response = await self._post("app/ap/configure/configItem",{"mac":mac,"apType":apType},True)
+        if response is None:
+            return None
+        return response.get("data",[])
+
+    async def get_app_timezone_info(self) -> dict[str, Any] | None:
+        if not self.user_password_login:
+            return {}
+        response = await self._post("app/timezones?type=0",{},True)
+        if response is None:
+            return None
+        return response
+
     async def set_ssid_data(self, payload: dict[str, Any] ) -> bool:
         if self._config.no_publish:
-            _LOGGER.info(f"Publish is disabled. Payload {payload}")
+            _LOGGER.debug(f"Publish is disabled. SSID not Updated. Payload {payload}")
             return True
         return await self._post("oapi/v1.0.0/ssid/update",payload) is not None
+
+    async def set_device_data(self, payload: dict[str, Any] ) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Device not Updated. Payload {payload}")
+            return True
+        return await self._post("oapi/v1.0.0/ap/config/edit",payload) is not None
+
+    async def reboot_device(self, mac: str) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Reboot not sent. Payload {mac}")
+            return True
+        return await self._post("oapi/v1.0.0/ap/reboot",{"mac":[mac]}) is not None
+    
+    async def reset_device(self, mac: str) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Reset not sent. Payload {mac}")
+            return True
+        return await self._post("oapi/v1.0.0/ap/reset",{"mac":[mac]}) is not None
+
+    async def update_device(self, mac: str) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Update not sent. Payload {mac}")
+            return True
+        response = await self._post("oapi/v1.0.0/upgrade/add",{"mac":[mac]})
+        if response is None:
+            return False
+        data = response.get("data")
+        return data is not None and mac in data.get("success_upgrade_macs", [])
+
+    async def move_device_to_network(self, mac: str, network_id: str) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Device Not Moved. Payload {mac} - {network_id}")
+            return True
+        return await self._post("oapi/v1.0.0/ap/move",{"mac":[mac], "networkId": network_id}) is not None
+       
+    async def set_network_data(self, payload: dict[str, Any] ) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Network not Updated. Payload {payload}")
+            return True
+        return await self._post("oapi/v1.0.0/network/update",payload) is not None

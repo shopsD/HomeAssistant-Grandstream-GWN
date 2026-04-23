@@ -96,7 +96,7 @@ class MqttClient:
                         "state_topic": state_topic,
                         "command_topic": command_topic,
                         "value_template": "{{ %s == 1 }}" % int(is_assigned),
-                        "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, assigned_devices_json, Constants.DEVICE_MACS, assigned_devices_json),
+                        "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps(list(set([raw_device_mac] + raw_device_mac_list))), Constants.DEVICE_MACS, assigned_devices_json),
                         "payload_off": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps([mac for mac in raw_device_mac_list if mac != raw_device_mac]), Constants.DEVICE_MACS, assigned_devices_json),
                         "state_on": True,
                         "state_off": False,
@@ -274,7 +274,7 @@ class MqttClient:
             )
         ]
 
-    def _generic_device_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str) -> list[tuple[str, dict[str, object]]]:
+    def _generic_device_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
         device_mac = str(payload.get(Constants.MAC))
         normalised_device_mac = self._strip_mac(device_mac)
 
@@ -304,12 +304,24 @@ class MqttClient:
             if ssid_name is not None and ssid_id is not None:
                 ssid_names.append(str(self._config.homeassistant.ssid_name_override.get(ssid_id,ssid_name)))
 
-        # now see if the network name was overriden in the config. If it was, then use the overridden name otherwise
-        # see if it has a name. If it doesnt, then use the ID
-        if network_id in self._config.homeassistant.network_name_override:
-            network_name = self._config.homeassistant.network_name_override[network_id]
-        if len(network_name) == 0:
-            network_name = f"Network ID: {network_id}"
+       
+
+
+        found_names: list[str] = []
+        for id in network_names:
+            new_network_name = network_names[id]
+            # now see if the network name was overriden in the config. If it was, then use the overridden name otherwise
+            # see if it has a name. If it doesnt, then use the normal name
+            if id in self._config.homeassistant.network_name_override:
+                new_network_name = self._config.homeassistant.network_name_override[id]
+            if new_network_name in found_names:
+                new_network_name = f"{new_network_name} - ({id})"
+            else:
+                found_names.append(new_network_name)
+            if network_id == id:
+                network_name = new_network_name
+            network_names[id] = new_network_name
+        
 
         device = self._ha_device_block(f"gwn_device_{normalised_device_mac}", device_name, device_model)
 
@@ -352,12 +364,17 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("sensor", f"gwn_ssid_{normalised_device_mac}_network_name"),
+                self._ha_discovery_topic("select", f"gwn_device_{normalised_device_mac}_network_name"),
                 {
                     "name": "Network",
-                    "unique_id": f"gwn_ssid_{normalised_device_mac}_network_name",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_network_name",
                     "state_topic": state_topic,
+                    "command_topic": command_topic,
                     "value_template": "{{ %s }}" % json.dumps(network_name),
+                    "options": list(network_names.values()),
+                    "command_template": '{"%s":"%s","%s":%s[{{ value | tojson }}]}'% (Constants.ACTION, Constants.NETWORK_NAME, Constants.VALUE, json.dumps({name: network_id for network_id, name in network_names.items()})),
+                    "entity_category": "config",
+                    "enabled_by_default": True,
                     "device": device
                 }
             ),
@@ -479,15 +496,45 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_channel_2_4"),
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_2_4"),
                 {
-                    "name": "2.4Ghz Channel",
+                    "name": "Current 2.4GHz Channel",
                     "unique_id": f"gwn_device_{normalised_device_mac}_channel_2_4",
                     "state_topic": state_topic,
-                    "command_topic": command_topic,
                     "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_2_4,
-                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.CHANNEL_2_4, Constants.VALUE),
-                    "min": 1,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_5"),
+                {
+                    "name": "Current 5GHz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_5",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_5,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_6"),
+                {
+                    "name": "Current 6GHz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_6",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_6,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_ap_2g4_channel"),
+                {
+                    "name": "2.4Ghz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_ap_2g4_channel",
+                    "state_topic": state_topic,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.AP_2G4_CHANNEL,
+                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.AP_2G4_CHANNEL, Constants.VALUE),
+                    "min": 0,
                     "max": 13,
                     "step": 1,
                     "mode": "box",
@@ -495,15 +542,15 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_channel_5"),
+                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_ap_5g_channel"),
                 {
                     "name": "5Ghz Channel",
-                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_5",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_ap_5g_channel",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_5,
-                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.CHANNEL_5, Constants.VALUE),
-                    "min": 36,
+                    "value_template": "{{ 0 if value_json.%s | int(0) < 36 else value_json.%s | int(0) }}" % (Constants.AP_5G_CHANNEL, Constants.AP_5G_CHANNEL),
+                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.AP_5G_CHANNEL, Constants.VALUE),
+                    "min": 0,
                     "max": 165,
                     "step": 1,
                     "mode": "box",
@@ -807,7 +854,7 @@ class MqttClient:
 
         return network_topic
     
-    async def publish_device(self, network_topic: str, network_id: int, network_name: str, device_payload: dict[str, object]) -> None:
+    async def publish_device(self, network_topic: str, network_names: dict[int, str], network_id: int, network_name: str, device_payload: dict[str, object]) -> None:
         device_mac = str(device_payload.get(Constants.MAC))
         device_mac = self._strip_mac(device_mac)
         normalised_macs = self._normalise_macs(self._config.homeassistant.device_autodiscovery)
@@ -822,7 +869,7 @@ class MqttClient:
         command_topic: str = f"{device_topic}/{Constants.SET}"
         await self._interface.publish(state_topic,json.dumps(device_payload), retain=True)
         if auto_discovery:
-            ha_device_payload = self._generic_device_payload_to_homeassistant(state_topic, command_topic, device_payload, network_id, network_name)
+            ha_device_payload = self._generic_device_payload_to_homeassistant(state_topic, command_topic, device_payload, network_id, network_name, network_names)
             # now actually publish
             for topic, discovery_payload in ha_device_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)

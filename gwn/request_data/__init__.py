@@ -1,5 +1,5 @@
-from .GwnDevice import GwnDevice
-from .GwnNetwork import GwnNetwork
-from .GwnSSID import GwnSSID, IsolationMode, MacFiltering, SecurityMode
+from .GwnDevicePayload import GwnDevicePayload
+from .GwnNetworkPayload import GwnNetworkPayload
+from .GwnSSIDPayload import GwnSSIDPayload
 
-__all__ = ["GwnDevice", "GwnNetwork", "GwnSSID", "IsolationMode", "MacFiltering", "SecurityMode"]
+__all__ = ["GwnDevicePayload", "GwnNetworkPayload", "GwnSSIDPayload"]
