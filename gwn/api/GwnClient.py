@@ -446,9 +446,9 @@ class GwnClient:
 
         # these keys are required as a basic list of the payload
         _LOGGER.debug(f"Initialising default payload data for device {payload.ap_mac}")
-        if payload.ap_2g4_channel is not None:
+        if payload.ap_2g4_channel is None:
             payload.ap_2g4_channel = 0 if device_info_channel is None or str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g24"]["channel"]["value"])
-        if payload.ap_2g4_power is not None:
+        if payload.ap_2g4_power is None:
             payload.ap_2g4_power = None if device_info_client is None else RadioPower(int(device_info_client["g24"]["power"]))
 
         if payload.ap_2g4_ratelimit_enable is None:
@@ -462,9 +462,9 @@ class GwnClient:
         if payload.ap_2g4_width is None:
             payload.ap_2g4_width = self._config_enum(device_info_config, "ap_2g4_width", Width2G)
 
-        if payload.ap_5g_channel is not None:
+        if payload.ap_5g_channel is None:
             payload.ap_5g_channel = 0 if device_info_channel is None or str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g5"]["channel"]["value"])
-        if payload.ap_5g_power is not None:
+        if payload.ap_5g_power is None:
             payload.ap_5g_power = None if device_info_client is None else RadioPower(int(device_info_client["g5"]["power"]))
         if payload.ap_5g_ratelimit_enable is None:
             payload.ap_5g_ratelimit_enable = self._config_enum(device_info_config, "ap_5g_ratelimit_enable", BooleanEnum)
@@ -477,9 +477,9 @@ class GwnClient:
         if payload.ap_5g_width is None:
             payload.ap_5g_width = self._config_enum(device_info_config, "ap_5g_width", Width5G)
 
-        if payload.ap_6g_power is not None:
+        if payload.ap_6g_power is None:
             payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
-        if payload.ap_6g_power is not None:
+        if payload.ap_6g_power is None:
             payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
         if payload.ap_6g_ratelimit_enable is None:
             payload.ap_6g_ratelimit_enable = self._config_enum(device_info_config, "ap_6g_ratelimit_enable", BooleanEnum)
@@ -526,7 +526,36 @@ class GwnClient:
             _LOGGER.error(f"Failed to update Device {payload.ap_mac}")
         return result
 
-    async def set_network_data(self, payload: GwnNetworkPayload) -> None:
-        _LOGGER.info(f"Command {network_id} {data}")
-        network_name = data.get(Constants.NETWORK_NAME)
-        _LOGGER.info(f"Command {network_name}")
+    async def set_network_data(self, payload: GwnNetworkPayload) -> bool:
+        _LOGGER.debug(f"Fetching current data for network {payload.id}")
+        network_info: dict[str, Any] | None = await self._interface.get_network_data(payload.id)
+        if network_info is None and not self._config.ignore_failed_fetch_before_update:
+            _LOGGER.error(f"Failed to fetch existing Network config for ID {payload.id}. Update will not be applied")
+            return False
+
+        if payload.networkName is None:
+            payload.networkName = None if network_info is None else network_info.get("networkName")
+        if payload.country is None:
+            payload.country = None if network_info is None else network_info.get("country")
+        if payload.timezone is None:
+            payload.timezone = None if network_info is None else network_info.get("timezone")
+        if payload.networkAdministrators is None:
+            payload.networkAdministrators = None if network_info is None else [int(admin.id) for admin in network_info.get("networkAdmins",[])]
+
+        _LOGGER.debug(f"Building Payload for network {payload.id}")
+        payload_dict = payload.build_payload()
+        if len(payload_dict) == 0:
+            absent_list: list[str] = []
+            for required in payload.REQUIRED:
+                if getattr(payload, required) is None:
+                    absent_list.append(required)
+            _LOGGER.error(f"Failed to send payload. Required fields are missing {absent_list}")
+            return False
+        _LOGGER.debug(f"Sending Payload for network {payload.id}")
+        result: bool = await self._interface.set_network_data(payload_dict)
+        if result:
+            _LOGGER.debug(f"Successfully updated Network {payload.id}")
+        else:
+            _LOGGER.error(f"Failed to update Network {payload.id}")
+        return result
+        

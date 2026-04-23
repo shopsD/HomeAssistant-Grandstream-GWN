@@ -195,6 +195,12 @@ class GwnInterface:
     async def get_all_networks(self) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/network/list",{})
 
+    async def get_network_data(self,  network_id: int) -> dict[str, Any] | None:
+        response = await self._post("oapi/v1.0.0/network/detail",{"id": network_id})
+        if response is None:
+            return None
+        return response.get("data", {})
+
     async def get_all_ssids(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ssid/list",{ "networkId": network_id})
 

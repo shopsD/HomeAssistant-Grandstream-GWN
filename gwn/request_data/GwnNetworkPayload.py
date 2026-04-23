@@ -7,7 +7,7 @@ class GwnNetworkPayload:
     networkName: str | None = None
     country: str | None = None
     timezone: str | None = None
-    networkAdministrators: list[str] | None = None
+    networkAdministrators: list[int] | None = None
 
     REQUIRED: ClassVar[list[str]] = [
         "id",

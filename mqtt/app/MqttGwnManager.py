@@ -179,7 +179,7 @@ class MqttGwnManager:
         _LOGGER.info(f"Command {update_version} {restart}")
 
     async def _handle_network_command(self, network_id: str, data: dict[str, Any]) -> None:
-        payload: GwnNetworkPayload = GwnNetworkPayload(id=network_id)
+        payload: GwnNetworkPayload = GwnNetworkPayload(id=int(network_id))
         payload.networkName = data.get(Constants.NETWORK_NAME, None)
         if await self._gwn_client.set_network_data(payload) and not self._poll_trigger.is_set():
             # immediately refresh/update the data
