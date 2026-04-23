@@ -40,7 +40,7 @@ gwn: # required
   # username: CHANGE_ME # optional (required if password is specified) This is the username for logging into GWN Manager. Required for associating SSIDs to Devices
   # password: CHANGE_ME # optional (required if username is specified) This is the password for logging into GWN Manager. Required for associating SSIDs to Devices
   # page_size: 5 # default 10
-  # max_pages: 100 # default 100 (set to 0 for unlimited)
+  # max_pages: 100 # default 0 (set to 0 for unlimited)
   # refresh_period_s: 30 # the rate to poll the GWN Manager for all data
   # exclude_ssid: # list of ssids by ID to exclude
   #   - 1
@@ -55,6 +55,15 @@ gwn: # required
   # exclude_network: # networks that will not be processed or published. default is empty
   #   - 1
   #   - 2
+
+  # Regarding 'ignore_failed_fetch_before_update' When performing an update of SSIDs, Devices and Networks, the application fetches the latest data to build a payload incase some unmodfiied
+  # data is required in the payload. If this is set to True and the pre-update fetch fails, then it will still perform the updating passing None/null to the required fields that have not been
+  # modified. If set to False, then if the pre-update fetch fails, it will cancel the update and log 
+  ignore_failed_fetch_before_update: False # default False. Useful if using an external MQTT message creation application instead of Home Assistant
+  # Regarding 'ssid_name_to_device_binding' If set to true and no username/password credentials are provided, then the system will match SSIDs to devices via SSID name. 
+  # When duplicate SSIDs are found, the last one added to the device is ignored. Has no effect if username and password are provided. If this is false and username and
+  # password is not provided, then updating the SSIDs or Devices will not be possible unless the 'ignore_failed_fetch_before_update' is True
+  ssid_name_to_device_binding: True # default True. Useful if using an external MQTT message creation application instead of Home Assistant
   no_publish: False # default False. Polls for data from GWN Manager but does not send commands. Good for monitoring logs for application data. Primarily a dev/debug setting
 logging:
   level: DEBUG # default INFO

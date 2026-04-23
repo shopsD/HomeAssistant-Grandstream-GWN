@@ -15,6 +15,8 @@ class GwnConfig:
     exclude_ssid: list[int] = field(default_factory=list)
     exclude_device: list[str] = field(default_factory=list)
     exclude_network: list[int] = field(default_factory=list)
+    ignore_failed_fetch_before_update: bool = False
+    ssid_name_to_device_binding: bool = True
     no_publish: bool = False
     
     @staticmethod

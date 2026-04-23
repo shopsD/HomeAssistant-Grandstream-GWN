@@ -201,7 +201,7 @@ class GwnClient:
                 gwn_device = devices.get(mac)
                 if gwn_device:
                     # map SSIDs to the device using SSID name
-                    # ideally SSID name will not be used
+                    # ideally SSID name will not be used but this serves as a fallback if username and password were not supplied
                     for ssid in config_info_client["ssid"]:
                         # only find ssid if it was a string as this is the ssid name. If its an int, then it is the internal ssid ID
                         ssid_key = str(list(ssid.keys())[0])
@@ -221,7 +221,8 @@ class GwnClient:
         
         devices = self._build_device_data(device_data)
         ssids = self._build_ssid_data(ssid_data, devices)
-        await self._associated_ssids_with_devices(ssids, devices, device_data)
+        if self._config.ssid_name_to_device_binding:
+            await self._associated_ssids_with_devices(ssids, devices, device_data)
         _LOGGER.info(f"Found {len(devices)} Devices for Network: {network_id}")
         _LOGGER.info(f"Found {len(ssids)} SSIDs for Network: {network_id}")
         return list(devices.values()), list(ssids.values())
@@ -281,7 +282,7 @@ class GwnClient:
         bind_macs = data.get(Constants.TOGGLE_DEVICE, None)
         # first fetch existing data
         config_info = await self._interface.get_ssid_configuration(int(ssid_id))
-        if config_info is None:
+        if config_info is None and not self._config.ignore_failed_fetch_before_update:
             _LOGGER.error(f"Failed to fetch existing SSID config for ID {ssid_id}. Update will not be applied")
             return False
         
@@ -304,13 +305,13 @@ class GwnClient:
         payload: dict[str, Any] = {
             "id": int(ssid_id),
             "networkId": network_id,
-            "ssidSsid": str(config_info.get("ssidSsid")),
-            "ssidWepKey": config_info.get("ssidWepKey",None),
-            "ssidWpaKey": config_info.get("ssidWpaKey",None),
+            "ssidSsid": None if config_info is None else str(config_info.get("ssidSsid")),
+            "ssidWepKey": None if config_info is None else config_info.get("ssidWepKey",None),
+            "ssidWpaKey": None if config_info is None else config_info.get("ssidWpaKey",None),
             "bindMacs": json.dumps(original_bind_macs),
-            "ssidTimedClientPolicy": config_info.get("ssidTimedClientPolicy",None),
+            "ssidTimedClientPolicy": None if config_info is None else config_info.get("ssidTimedClientPolicy",None),
         }
-        ssid_bands = str(config_info.get("ssidNewSsidBand"))
+        ssid_bands: str = "" if config_info is None else str(config_info.get("ssidNewSsidBand"))
         if ssid_enable is not None:
             payload["ssidEnable"] = int(ssid_enable)
         if portal_enabled is not None:
@@ -338,9 +339,11 @@ class GwnClient:
                 ssid_bands = ssid_bands.replace("6","")
             payload["ssidNewSsidBand"] = ssid_bands
         
-        if ssid_key is not None and int(config_info["ssidEncryption"]) < 2:
+        # config info may have failed but if the source was not from home assistant, 
+        # then ssidEncryption may have been set by another MQTT command
+        if ssid_key is not None and config_info is not None and int(config_info["ssidEncryption"]) < 2:
             payload["ssidWepKey"] = ssid_key
-        if ssid_key is not None and int(config_info["ssidEncryption"]) > 1:
+        if ssid_key is not None and config_info is not None and int(config_info["ssidEncryption"]) > 1:
             payload["ssidWpaKey"] = ssid_key
         if ssid_hidden is not None:
             payload["ssidSsidHidden"] = int(ssid_hidden)
@@ -378,34 +381,37 @@ class GwnClient:
         device_info_port = await self._interface.get_device_info_port(int(network_id),device_mac)
         device_info_client = await self._interface.get_device_info_client(device_mac)
         info_channel = await self._interface.get_device_channel_info(device_mac)
-        if device_info_port is None or device_info_client is None or info_channel is None:
+        if (device_info_port is None or device_info_client is None or info_channel is None) and not self._config.ignore_failed_fetch_before_update:
             _LOGGER.error(f"Failed to fetch existing Device config for device with MAC {device_mac}. Update will not be applied")
             return False
-
-        device_info_port["result"] = self._normalise_dictionary_data(device_info_port["result"])
-        device_info_client["g24"] = self._normalise_dictionary_data(device_info_client["g24"])
-        device_info_client["g5"] = self._normalise_dictionary_data(device_info_client["g5"])
-        device_info_client["g6"] = self._normalise_dictionary_data(device_info_client["g6"])
-        device_info_channel = self._normalise_dictionary_data(info_channel)
+        device_info_channel: dict[str, Any] | None = None
+        if device_info_port is not None:
+            device_info_port["result"] = self._normalise_dictionary_data(device_info_port["result"])
+        if device_info_client is not None:
+            device_info_client["g24"] = self._normalise_dictionary_data(device_info_client["g24"])
+            device_info_client["g5"] = self._normalise_dictionary_data(device_info_client["g5"])
+            device_info_client["g6"] = self._normalise_dictionary_data(device_info_client["g6"])
+        if info_channel is not None:
+            device_info_channel = self._normalise_dictionary_data(info_channel)
 
         # these keys are required as a basic list of the payload
         payload: dict[str, Any] = {
-            "ap_2g4_channel": 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(device_info_client["g24"]["channel"]["value"]),
-            "ap_2g4_power": int(device_info_client["g24"]["power"]),
-            "ap_2g4_ratelimit_enable": str(device_info_client.get("ssidSsid")), # EDIT
-            "ap_2g4_rssi": device_info_client.get("ssidWepKey",None), # EDIT
-            "ap_2g4_rssi_enable": device_info_client.get("ssidWpaKey",None), # EDIT
-            "ap_2g4_tag": json.dumps(device_info_client), # EDIT
-            "ap_2g4_width": json.dumps(device_info_client), # EDIT
-            "ap_5g_channel": 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(device_info_client["g5"]["channel"]["value"]),
-            "ap_5g_power": int(device_info_client["g5"]["power"]),
-            "ap_5g_ratelimit_enable": json.dumps(device_info_client), # EDIT
-            "ap_5g_rssi": json.dumps(device_info_client), # EDIT
-            "ap_5g_rssi_enable": json.dumps(device_info_client), # EDIT
-            "ap_5g_tag": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
-            "ap_5g_width": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
-            "ap_alternate_dns": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
-            "ap_band_steering": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
+            "ap_2g4_channel": 0 if device_info_channel is None or str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g24"]["channel"]["value"]),
+            "ap_2g4_power": None if device_info_client is None else int(device_info_client["g24"]["power"]),
+            "ap_2g4_ratelimit_enable": None if device_info_client is None else str(device_info_client.get("ssidSsid")), # EDIT
+            "ap_2g4_rssi": None if device_info_client is None else device_info_client.get("ssidWepKey",None), # EDIT
+            "ap_2g4_rssi_enable": None if device_info_client is None else device_info_client.get("ssidWpaKey",None), # EDIT
+            "ap_2g4_tag": None if device_info_client is None else json.dumps(device_info_client), # EDIT
+            "ap_2g4_width": None if device_info_client is None else json.dumps(device_info_client), # EDIT
+            "ap_5g_channel": 0 if device_info_channel is None or str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g5"]["channel"]["value"]),
+            "ap_5g_power": None if device_info_client is None else int(device_info_client["g5"]["power"]),
+            "ap_5g_ratelimit_enable": None if device_info_client is None else json.dumps(device_info_client), # EDIT
+            "ap_5g_rssi": None if device_info_client is None else json.dumps(device_info_client), # EDIT
+            "ap_5g_rssi_enable": None if device_info_client is None else json.dumps(device_info_client), # EDIT
+            "ap_5g_tag": None if device_info_client is None else device_info_client.get("ssidTimedClientPolicy",None), # EDIT
+            "ap_5g_width": None if device_info_client is None else device_info_client.get("ssidTimedClientPolicy",None), # EDIT
+            "ap_alternate_dns": None if device_info_client is None else device_info_client.get("ssidTimedClientPolicy",None), # EDIT
+            "ap_band_steering": None if device_info_client is None else device_info_client.get("ssidTimedClientPolicy",None), # EDIT
             "ap_mac": device_mac
         }
         _ = payload, reboot, update_firmware, reset, network_name, wireless, ap_2g4_channel, ap_5g_channel
