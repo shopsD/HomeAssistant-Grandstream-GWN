@@ -479,15 +479,45 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_channel_2_4"),
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_2_4"),
                 {
-                    "name": "2.4Ghz Channel",
+                    "name": "Current 2.4GHz Channel",
                     "unique_id": f"gwn_device_{normalised_device_mac}_channel_2_4",
                     "state_topic": state_topic,
-                    "command_topic": command_topic,
                     "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_2_4,
-                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.CHANNEL_2_4, Constants.VALUE),
-                    "min": 1,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_5"),
+                {
+                    "name": "Current 5GHz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_5",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_5,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("sensor", f"gwn_device_{normalised_device_mac}_channel_6"),
+                {
+                    "name": "Current 6GHz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_6",
+                    "state_topic": state_topic,
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_6,
+                    "device": device
+                }
+            ),
+            (
+                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_ap_2g4_channel"),
+                {
+                    "name": "2.4Ghz Channel",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_ap_2g4_channel",
+                    "state_topic": state_topic,
+                    "command_topic": command_topic,
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.AP_2G4_CHANNEL,
+                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.AP_2G4_CHANNEL, Constants.VALUE),
+                    "min": 0,
                     "max": 13,
                     "step": 1,
                     "mode": "box",
@@ -495,15 +525,15 @@ class MqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_channel_5"),
+                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_ap_5g_channel"),
                 {
                     "name": "5Ghz Channel",
-                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_5",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_ap_5g_channel",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_5,
-                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.CHANNEL_5, Constants.VALUE),
-                    "min": 36,
+                    "value_template": "{{ 0 if value_json.%s | int(0) < 36 else value_json.%s | int(0) }}" % Constants.AP_5G_CHANNEL,
+                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.AP_5G_CHANNEL, Constants.VALUE),
+                    "min": 0,
                     "max": 165,
                     "step": 1,
                     "mode": "box",

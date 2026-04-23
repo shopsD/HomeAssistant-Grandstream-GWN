@@ -254,7 +254,13 @@ class GwnInterface:
             return None
         data = response.get("data", {})
         return data.get("result", [])
-    
+
+    async def get_device_channel_info(self, mac: str) -> list[dict[str, Any]] | None:
+        response = await self._post("oapi/v1.0.0/ap/config/channel",{"mac": [mac]})
+        if not response:
+            return None
+        return response.get("data", {})
+
     async def set_ssid_data(self, payload: dict[str, Any] ) -> bool:
         if self._config.no_publish:
             _LOGGER.info(f"Publish is disabled. Payload {payload}")

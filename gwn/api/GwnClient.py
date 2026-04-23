@@ -32,14 +32,15 @@ class GwnClient:
                 config_info_port: dict[str, Any] = device[1]
                 config_info_client: dict[str, Any] = device[2]
                 device_firmware: dict[str, Any] = device[3]
-                
+                device_info_channel: dict[str, Any] = device[4]
+
                 # the sub tables are json objects with 3 parameters: type, key and value so use "key" as a dictionary key
                 config_info_port["result"] = self._normalise_dictionary_data(config_info_port["result"])
                 config_info_client["g24"] = self._normalise_dictionary_data(config_info_client["g24"])
                 config_info_client["g5"] = self._normalise_dictionary_data(config_info_client["g5"])
                 config_info_client["g6"] = self._normalise_dictionary_data(config_info_client["g6"])
                 
-                mac= GwnConfig.normalise_mac(basic_info["mac"])
+                mac = GwnConfig.normalise_mac(basic_info["mac"])
                 if mac in self._config.exclude_device:
                     _LOGGER.debug(f"Ignoring Device: {mac}")
                 else:
@@ -79,6 +80,9 @@ class GwnClient:
                         cpuUsage=config_info_client["cpuUsage"],
                         channelload_6g=config_info_client["channelload_6g"],
                         channelload_5g=config_info_client["channelload_5g"],
+
+                        channel_info_2_4=device_info_channel["ap_2g4_channel"],
+                        channel_info_5=device_info_channel["ap_5g_channel"]
                     )
                     _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
                     device_list[mac] = gwn_device
@@ -170,7 +174,9 @@ class GwnClient:
                     mac = GwnConfig.normalise_mac(mac)
                     device_info_port = await self._interface.get_device_info_port(network_id,mac) or {}
                     device_info_client = await self._interface.get_device_info_client(mac) or {}
-                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data.get(mac, {})])
+                    device_info_channel = await self._interface.get_device_channel_info(mac) or []
+
+                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data.get(mac, {}), self._normalise_dictionary_data(device_info_channel)])
                 else:
                     _LOGGER.warning("Found response with missing MAC Address")
         return device_data
@@ -357,9 +363,9 @@ class GwnClient:
             _LOGGER.error(f"Failed to update SSID {ssid_id}")
         return result
 
-    async def set_device_data(self, device_mac: str, network_id: str, data: dict[str, Any]) -> None:
+    async def set_device_data(self, device_mac: str, network_id: str, data: dict[str, Any]) -> bool:
         _LOGGER.info(f"Command {device_mac} {data}")
-        device_mac: str = GwnConfig.normalise_mac(device_mac)
+        device_mac = GwnConfig.normalise_mac(device_mac)
         reboot = data.get(Constants.REBOOT, None)
         update_firmware = data.get(Constants.UPDATE_FIRMWARE, None)
         reset = data.get(Constants.RESET, None)
@@ -372,7 +378,8 @@ class GwnClient:
         # first fetch existing data
         device_info_port = await self._interface.get_device_info_port(int(network_id),device_mac)
         device_info_client = await self._interface.get_device_info_client(device_mac)
-        if device_info_port is None or device_info_client is None:
+        info_channel = await self._interface.get_device_channel_info(device_mac)
+        if device_info_port is None or device_info_client is None or info_channel is None:
             _LOGGER.error(f"Failed to fetch existing Device config for device with MAC {device_mac}. Update will not be applied")
             return False
 
@@ -380,28 +387,30 @@ class GwnClient:
         device_info_client["g24"] = self._normalise_dictionary_data(device_info_client["g24"])
         device_info_client["g5"] = self._normalise_dictionary_data(device_info_client["g5"])
         device_info_client["g6"] = self._normalise_dictionary_data(device_info_client["g6"])
+        device_info_channel = self._normalise_dictionary_data(info_channel)
 
         # these keys are required as a basic list of the payload
         payload: dict[str, Any] = {
-            "ap_2g4_channel": int(ssid_id),
-            "ap_2g4_power": network_id,
-            "ap_2g4_ratelimit_enable": str(config_info.get("ssidSsid")),
-            "ap_2g4_rssi": config_info.get("ssidWepKey",None),
-            "ap_2g4_rssi_enable": config_info.get("ssidWpaKey",None),
-            "ap_2g4_tag": json.dumps(original_bind_macs),
-            "ap_2g4_width": json.dumps(original_bind_macs),
-            "ap_5g_channel": json.dumps(original_bind_macs),
-            "ap_5g_power": json.dumps(original_bind_macs),
-            "ap_5g_ratelimit_enable": json.dumps(original_bind_macs),
-            "ap_5g_rssi": json.dumps(original_bind_macs),
-            "ap_5g_rssi_enable": json.dumps(original_bind_macs),
-            "ap_5g_tag": config_info.get("ssidTimedClientPolicy",None),
-            "ap_5g_width": config_info.get("ssidTimedClientPolicy",None),
-            "ap_alternate_dns": config_info.get("ssidTimedClientPolicy",None),
-            "ap_band_steering": config_info.get("ssidTimedClientPolicy",None),
+            "ap_2g4_channel": int(device_info_channel["ap_2g4_channel"]),
+            "ap_2g4_power": int(device_info_client["g24"]["power"]),
+            "ap_2g4_ratelimit_enable": str(device_info_client.get("ssidSsid")), # EDIT
+            "ap_2g4_rssi": device_info_client.get("ssidWepKey",None), # EDIT
+            "ap_2g4_rssi_enable": device_info_client.get("ssidWpaKey",None), # EDIT
+            "ap_2g4_tag": json.dumps(device_info_client), # EDIT
+            "ap_2g4_width": json.dumps(device_info_client), # EDIT
+            "ap_5g_channel": int(device_info_channel["ap_5g_channel"]),
+            "ap_5g_power": int(device_info_client["g5"]["power"]),
+            "ap_5g_ratelimit_enable": json.dumps(device_info_client), # EDIT
+            "ap_5g_rssi": json.dumps(device_info_client), # EDIT
+            "ap_5g_rssi_enable": json.dumps(device_info_client), # EDIT
+            "ap_5g_tag": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
+            "ap_5g_width": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
+            "ap_alternate_dns": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
+            "ap_band_steering": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
             "ap_mac": device_mac
         }
-        _LOGGER.info(f"Command {reboot} {update_firmware} {reset} {network_name} {wireless} {channel_2_4} {channel_5} {channel_6}")
+        _LOGGER.info(f"Command {payload} {reboot} {update_firmware} {reset} {network_name} {wireless} {channel_2_4} {channel_5} {channel_6}")
+        return True
 
     async def set_network_data(self, network_id: str, data: dict[str, Any]) -> None:
         _LOGGER.info(f"Command {network_id} {data}")

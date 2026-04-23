@@ -150,6 +150,8 @@ class MqttGwnManager:
             Constants.CHANNEL_LOAD_6G: gwn_device.channelload_6g,
             Constants.CPU_USAGE: gwn_device.cpuUsage,
             Constants.CHANNEL_LOAD_5G: gwn_device.channelload_5g,
+            Constants.AP_2G4_CHANNEL: gwn_device.ap_5g_channel,
+            Constants.AP_5G_CHANNEL: gwn_device.ap_5g_channel,
             Constants.NETWORK_NAME: gwn_network.networkName,
             Constants.SSIDS: [
                 {
