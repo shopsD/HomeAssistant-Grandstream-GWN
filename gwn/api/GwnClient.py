@@ -317,12 +317,17 @@ class GwnClient:
             _LOGGER.debug(f"Fetching detailed data for SSID {payload.id}")
             stored_macs = await self._interface.get_ssid_devices(payload.id)
             ssid_info = await self._interface.get_app_ssid_info(payload.id)
-            detailed_ssid_info = {}
-            detailed_ssid_info["basic"] = self._normalise_dictionary_data(ssid_info["basic"])
-            detailed_ssid_info["access_security"] = self._normalise_dictionary_data(ssid_info["access_secrity"])
-            detailed_ssid_info["access_control"] = self._normalise_dictionary_data(ssid_info["access_control"])
-            detailed_ssid_info["device_manage"] = self._normalise_dictionary_data(ssid_info["device_manage"])
-            detailed_ssid_info["advanced"] = self._normalise_dictionary_data(ssid_info["advanced"])
+            if ssid_info is not None:
+                detailed_ssid_info = {}
+
+                detailed_ssid_info["basic"] = self._normalise_dictionary_data(ssid_info["basic"])
+                detailed_ssid_info["access_security"] = self._normalise_dictionary_data(ssid_info["access_secrity"])
+                detailed_ssid_info["access_control"] = self._normalise_dictionary_data(ssid_info["access_control"])
+                detailed_ssid_info["device_manage"] = self._normalise_dictionary_data(ssid_info["device_manage"])
+                detailed_ssid_info["advanced"] = self._normalise_dictionary_data(ssid_info["advanced"])
+            elif not self._config.ignore_failed_fetch_before_update:
+                _LOGGER.error(f"Failed to fetch existing detailed SSID config for ID {payload.id}. Update will not be applied")
+                return False
             if stored_macs is not None:
                 flattened_stored_macs: list[str] = []
                 for device_info in stored_macs:
@@ -330,6 +335,9 @@ class GwnClient:
                     if bool(device_info.get("checked")):
                         flattened_stored_macs.append(mac)
                 original_bind_macs = flattened_stored_macs
+            elif not self._config.ignore_failed_fetch_before_update:
+                _LOGGER.error(f"Failed to fetch existing SSID to device mapping for ID {payload.id}. Update will not be applied")
+                return False
         
         _LOGGER.debug(f"Initialising default payload data for SSID {payload.id}")
         # these keys are required as a basic list of the payload so build them up either from the existing payload
@@ -350,7 +358,7 @@ class GwnClient:
         if payload.ssidSsid is None:
             payload.ssidSsid = None if config_info is None else config_info.get("ssidSsid")
         if payload.ssidTimedClientPolicy is None:
-            payload.ssidTimedClientPolicy = self._config_value(detailed_ssid_info["access_control"],"ssid_timed_client_policy")
+            payload.ssidTimedClientPolicy = None if detailed_ssid_info is None else self._config_value(detailed_ssid_info["access_control"],"ssid_timed_client_policy")
 
         # since toggling a single band is supported, any other bands need to be checked to prevent overwritting their values
         if payload.ssidNewSsidBand is None:
@@ -413,8 +421,11 @@ class GwnClient:
             commands = commands+1
         if payload.update:
             commands = commands+1
+        if payload.target_network is not None:
+            commands = commands+1
         if commands > 1:
             _LOGGER.warn("Sending Multiple Commands in a Single Payload is Unsupported")
+            return False
         elif commands > 0: # commands and setting data together is not support. Commands will always override data
             if payload.reboot:
                 _LOGGER.info(f"Sending Reboot to {payload.ap_mac}")
@@ -425,6 +436,9 @@ class GwnClient:
             if payload.update:
                 _LOGGER.info(f"Sending Update to {payload.ap_mac}")
                 return await self._interface.update_device(payload.ap_mac)
+            if payload.target_network is not None:
+                _LOGGER.info(f"Moving device {payload.ap_mac} to {payload.target_network}")
+                return await self._interface.move_device_to_network(payload.ap_mac,str(payload.target_network))
 
 
         # first fetch existing data

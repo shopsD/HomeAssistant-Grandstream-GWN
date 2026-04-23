@@ -275,14 +275,14 @@ class GwnInterface:
         response = await self._post("oapi/v1.0.0/ap/config/channel",{"mac": [mac]})
         if not response:
             return None
-        return response.get("data", {})
+        return response.get("data", [])
 
     async def get_app_device_info(self, mac: str, apType: str) -> list[dict[str, Any]] | None:
         if self.user_password_login:
             response = await self._post("app/ap/configure/configItem",{"mac":mac,"apType":apType},True)
-            if response is None:
-                return None
-        return []
+        if response is None:
+            return None
+        return response.get("data",[])
 
     async def get_app_timezone_info(self) -> dict[str, Any] | None:
         if self.user_password_login:
@@ -319,11 +319,17 @@ class GwnInterface:
         if self._config.no_publish:
             _LOGGER.debug(f"Publish is disabled. Update not sent. Payload {mac}")
             return True
-            response: dict[str, Any] = await self._post("oapi/v1.0.0/upgrade/add",{"mac":[mac]})
-            if response is None:
-                return False
+        response = await self._post("oapi/v1.0.0/upgrade/add",{"mac":[mac]})
+        if response is None:
+            return False
         data = response.get("data")
         return data is not None and mac in data.get("success_upgrade_macs", [])
+
+    async def move_device_to_network(self, mac: str, network_id: str) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Device Not Moved. Payload {mac} - {network_id}")
+            return True
+        return await self._post("oapi/v1.0.0/ap/move",{"mac":[mac], "networkId": network_id}) is not None
        
     async def set_network_data(self, payload: dict[str, Any] ) -> bool:
         if self._config.no_publish:
