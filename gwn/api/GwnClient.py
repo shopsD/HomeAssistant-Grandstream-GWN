@@ -499,8 +499,8 @@ class GwnClient:
         if payload.ap_5g_width is None:
             payload.ap_5g_width = self._config_enum(device_info_config, "ap_5g_width", Width5G)
 
-        if payload.ap_6g_power is None:
-            payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
+        if payload.ap_6g_channel is None:
+            payload.ap_6g_channel = 0 if device_info_channel is None or str(device_info_channel["ap_6g_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g6"]["channel"]["value"])
         if payload.ap_6g_power is None:
             payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
         if payload.ap_6g_ratelimit_enable is None:
