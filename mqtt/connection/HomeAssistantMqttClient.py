@@ -31,7 +31,7 @@ class HomeAssistantMqttClient:
     def _ha_discovery_topic(self, component: str, object_id: str) -> str:
         return f"homeassistant/{component}/{object_id}/config"
     
-    def _generic_ssid_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, device_data: list[list[str]]) -> list[tuple[str, dict[str, object]]]:
+    def _create_device_ssid_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, device_data: list[list[str]]) -> list[tuple[str, dict[str, object]]]:
         ssid_id: str = str(payload.get(Constants.SSID_ID))
         ssid_id_int: int = int(ssid_id)
         # Use the SSID name and network name as model unless there was an override then use then
@@ -266,7 +266,7 @@ class HomeAssistantMqttClient:
             )
         ]
 
-    def _generic_device_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
+    def _create_device_discovery_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
         device_mac = str(payload.get(Constants.MAC))
         normalised_device_mac = self.strip_mac(device_mac)
 
@@ -579,7 +579,7 @@ class HomeAssistantMqttClient:
             ),
         ]
 
-    def _generic_network_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
+    def _create_network_discovery_payload(self, state_topic: str, command_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         network_id: str = str(payload.get(Constants.NETWORK_ID))
         network_id_int: int = int(network_id)
 
@@ -700,7 +700,7 @@ class HomeAssistantMqttClient:
         )
         command_topic: str = f"{network_topic}/{Constants.SET}"
         if auto_discovery:
-            ha_network_payload = self._generic_network_payload_to_homeassistant(state_topic, command_topic, gwn_network)
+            ha_network_payload = self._create_network_discovery_payload(state_topic, command_topic, gwn_network)
             # now actually publish
             for topic, discovery_payload in ha_network_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
@@ -713,7 +713,7 @@ class HomeAssistantMqttClient:
         )
         if auto_discovery:
             command_topic: str = f"{device_topic}/{Constants.SET}"
-            ha_device_payload = self._generic_device_payload_to_homeassistant(state_topic, command_topic, device_payload, network_id, network_name, network_names)
+            ha_device_payload = self._create_device_discovery_payload(state_topic, command_topic, device_payload, network_id, network_name, network_names)
             # now actually publish
             for topic, discovery_payload in ha_device_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
@@ -726,7 +726,7 @@ class HomeAssistantMqttClient:
         
         if auto_discovery:
             command_topic: str = f"{ssid_topic}/{Constants.SET}"
-            ha_ssid_payload = self._generic_ssid_payload_to_homeassistant(state_topic, command_topic, ssid_payload, network_id, network_name, devices)
+            ha_ssid_payload = self._create_device_ssid_payload(state_topic, command_topic, ssid_payload, network_id, network_name, devices)
             # now actually publish
             for topic, discovery_payload in ha_ssid_payload:
                 await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
