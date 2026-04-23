@@ -81,8 +81,8 @@ class GwnClient:
                         channelload_6g=config_info_client["channelload_6g"],
                         channelload_5g=config_info_client["channelload_5g"],
 
-                        ap_2g4_channel= 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]).lower() == "Use Radio Settings" else int(config_info_client["g24"]["channel"]["value"]),
-                        ap_5g_channel= 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]).lower() == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"])
+                        ap_2g4_channel= 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g24"]["channel"]["value"]),
+                        ap_5g_channel= 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"])
                     )
                     _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
                     device_list[mac] = gwn_device
@@ -390,14 +390,14 @@ class GwnClient:
 
         # these keys are required as a basic list of the payload
         payload: dict[str, Any] = {
-            "ap_2g4_channel": int(device_info_channel["ap_2g4_channel"]["defaultValue"]),
+            "ap_2g4_channel": 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g24"]["channel"]["value"]),
             "ap_2g4_power": int(device_info_client["g24"]["power"]),
             "ap_2g4_ratelimit_enable": str(device_info_client.get("ssidSsid")), # EDIT
             "ap_2g4_rssi": device_info_client.get("ssidWepKey",None), # EDIT
             "ap_2g4_rssi_enable": device_info_client.get("ssidWpaKey",None), # EDIT
             "ap_2g4_tag": json.dumps(device_info_client), # EDIT
             "ap_2g4_width": json.dumps(device_info_client), # EDIT
-            "ap_5g_channel": int(device_info_channel["ap_5g_channel"]["defaultValue"]),
+            "ap_5g_channel": 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"]),
             "ap_5g_power": int(device_info_client["g5"]["power"]),
             "ap_5g_ratelimit_enable": json.dumps(device_info_client), # EDIT
             "ap_5g_rssi": json.dumps(device_info_client), # EDIT
