@@ -309,7 +309,7 @@ class GwnInterface:
         if self._config.no_publish:
             _LOGGER.debug(f"Publish is disabled. Update not sent. Payload {mac}")
             return True
-            response = await self._post("oapi/v1.0.0/upgrade/add",{"mac":[mac]})
+            response: dict[str, Any] = await self._post("oapi/v1.0.0/upgrade/add",{"mac":[mac]})
             if response is None:
                 return False
         data = response.get("data")

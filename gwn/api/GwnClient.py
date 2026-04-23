@@ -405,13 +405,13 @@ class GwnClient:
         elif commands > 0: # commands and setting data together is not support. Commands will always override data
             if payload.reboot:
                 _LOGGER.info(f"Sending Reboot to {payload.ap_mac}")
-                return self._interface.reboot_device()
+                return await self._interface.reboot_device(payload.ap_mac)
             if payload.reset:
                 _LOGGER.info(f"Sending Reset to {payload.ap_mac}")
-                return self._interface.reset_device()
+                return await self._interface.reset_device(payload.ap_mac)
             if payload.update:
                 _LOGGER.info(f"Sending Update to {payload.ap_mac}")
-                return self._interface.update_device()
+                return await self._interface.update_device(payload.ap_mac)
 
 
         # first fetch existing data
