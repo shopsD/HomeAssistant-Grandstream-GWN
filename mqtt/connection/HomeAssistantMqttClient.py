@@ -550,15 +550,15 @@ class HomeAssistantMqttClient:
                 }
             ),
             (
-                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_channel_6"),
+                self._ha_discovery_topic("number", f"gwn_device_{normalised_device_mac}_ap_6g_channel"),
                 {
                     "name": "6Ghz Channel",
-                    "unique_id": f"gwn_device_{normalised_device_mac}_channel_6",
+                    "unique_id": f"gwn_device_{normalised_device_mac}_ap_6g_channel",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.CHANNEL_6,
-                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.CHANNEL_6, Constants.VALUE),
-                    "min": 1,
+                    "value_template": "{{ value_json.%s | int(0) }}" % Constants.AP_6G_CHANNEL,
+                    "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.AP_6G_CHANNEL, Constants.VALUE),
+                    "min": 0,
                     "max": 177,
                     "step": 1,
                     "mode": "box",

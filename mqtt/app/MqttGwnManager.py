@@ -194,6 +194,7 @@ class MqttGwnManager:
         payload.target_network = data.get(Constants.NETWORK_NAME, None)
         payload.ap_2g4_channel = data.get(Constants.AP_2G4_CHANNEL, None)
         payload.ap_5g_channel = data.get(Constants.AP_5G_CHANNEL, None)
+        payload.ap_6g_channel = data.get(Constants.AP_6G_CHANNEL, None)
 
         if await self._gwn_client.set_device_data(payload) and not self._poll_trigger.is_set():
             # immediately refresh/update the data
