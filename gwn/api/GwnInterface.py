@@ -228,15 +228,18 @@ class GwnInterface:
         return []
 
     async def get_app_ssid_info(self, ssid_id: int) -> dict[str, Any] | None:
-        if self.user_password_login:
-            response = await self._post("app/ssid/editItem",{"id":ssid_id},True)
-            if response is None:
-                return None
-            data = response.get("data",[])
-            response_data: dict[str, Any] = {}
-            for category in data:
-                response_data[category["name"]] = category["content"]
-        return response_data
+        if not self.user_password_login:
+            return {}
+        response = await self._post("app/ssid/editItem",{"id":ssid_id},True)
+        if response is None:
+            return None
+        data = response.get("data")
+        if data is None:
+            return None
+        response_data: dict[str, Any] = {}
+        for category in data:
+            response_data[category["name"]] = category["content"]
+        return response_data if len(response_data) > 0 else response_data
     
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
@@ -278,18 +281,20 @@ class GwnInterface:
         return response.get("data", [])
 
     async def get_app_device_info(self, mac: str, apType: str) -> list[dict[str, Any]] | None:
-        if self.user_password_login:
-            response = await self._post("app/ap/configure/configItem",{"mac":mac,"apType":apType},True)
+        if not self.user_password_login:
+            return []
+        response = await self._post("app/ap/configure/configItem",{"mac":mac,"apType":apType},True)
         if response is None:
             return None
         return response.get("data",[])
 
     async def get_app_timezone_info(self) -> dict[str, Any] | None:
-        if self.user_password_login:
-            response = await self._post("app/timezones?type=0",{},True)
-            if response is None:
-                return None
-        return {}
+        if not self.user_password_login:
+            return {}
+        response = await self._post("app/timezones?type=0",{},True)
+        if response is None:
+            return None
+        return response
 
     async def set_ssid_data(self, payload: dict[str, Any] ) -> bool:
         if self._config.no_publish:
