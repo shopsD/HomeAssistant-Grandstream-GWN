@@ -119,7 +119,7 @@ class GwnSSIDPayload:
             payload["ssidNewSsidBand"] = ssid_bands
         
         # if any required item is missing then just abort. The data is invalid
-        for required in REQUIRED:
+        for required in self.REQUIRED:
             if required not in payload:
                 return {}
 

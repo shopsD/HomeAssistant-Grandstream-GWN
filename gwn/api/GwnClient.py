@@ -343,8 +343,15 @@ class GwnClient:
                     payload.ssidWpaKey = None
                 case _:
                     payload.ssidWpaKey = payload.ssid_key
-        
-        result: bool = await self._interface.set_ssid_data(payload.build_payload())
+        payload_dict = payload.build_payload()
+        if len(payload_dict) == 0:
+            # dont dump the values below
+            payload.ssidWepKey = None
+            payload.ssidWpaKey = None
+            payload.ssid_key = None
+            _LOGGER.error(f"Failed to send payload. Required fields are missing {payload}")
+            return False
+        result: bool = await self._interface.set_ssid_data(payload_dict)
         if result:
             _LOGGER.debug(f"Successfully updated SSID {payload.id}")
         else:
