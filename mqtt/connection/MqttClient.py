@@ -531,7 +531,7 @@ class MqttClient:
                     "unique_id": f"gwn_device_{normalised_device_mac}_ap_5g_channel",
                     "state_topic": state_topic,
                     "command_topic": command_topic,
-                    "value_template": "{{ 0 if value_json.%s | int(0) < 36 else value_json.%s | int(0) }}" % Constants.AP_5G_CHANNEL,
+                    "value_template": "{{ 0 if value_json.%s | int(0) < 36 else value_json.%s | int(0) }}" % (Constants.AP_5G_CHANNEL, Constants.AP_5G_CHANNEL),
                     "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, Constants.AP_5G_CHANNEL, Constants.VALUE),
                     "min": 0,
                     "max": 165,
