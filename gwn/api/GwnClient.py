@@ -312,9 +312,17 @@ class GwnClient:
         normalised_device_macs: list[str] = [GwnConfig.normalise_mac(mac) for mac in device_macs]
         original_bind_macs: list[str] = normalised_device_macs
         # try to update the snapshot in case the provided one is stale
+        detailed_ssid_info: dict[str, Any] | None = None
         if self._interface.user_password_login:
             _LOGGER.debug(f"Fetching detailed data for SSID {payload.id}")
             stored_macs = await self._interface.get_ssid_devices(payload.id)
+            ssid_info = await self._interface.get_app_ssid_info(payload.id)
+            detailed_ssid_info = {}
+            detailed_ssid_info["basic"] = self._normalise_dictionary_data(ssid_info["basic"])
+            detailed_ssid_info["access_security"] = self._normalise_dictionary_data(ssid_info["access_secrity"])
+            detailed_ssid_info["access_control"] = self._normalise_dictionary_data(ssid_info["access_control"])
+            detailed_ssid_info["device_manage"] = self._normalise_dictionary_data(ssid_info["device_manage"])
+            detailed_ssid_info["advanced"] = self._normalise_dictionary_data(ssid_info["advanced"])
             if stored_macs is not None:
                 flattened_stored_macs: list[str] = []
                 for device_info in stored_macs:
@@ -342,7 +350,7 @@ class GwnClient:
         if payload.ssidSsid is None:
             payload.ssidSsid = None if config_info is None else config_info.get("ssidSsid")
         if payload.ssidTimedClientPolicy is None:
-            payload.ssidTimedClientPolicy = None if config_info is None else config_info.get("ssidTimedClientPolicy")
+            payload.ssidTimedClientPolicy = self._config_value(detailed_ssid_info["access_control"],"ssid_timed_client_policy")
 
         # since toggling a single band is supported, any other bands need to be checked to prevent overwritting their values
         if payload.ssidNewSsidBand is None:

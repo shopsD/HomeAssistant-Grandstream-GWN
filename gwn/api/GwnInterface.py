@@ -232,7 +232,11 @@ class GwnInterface:
             response = await self._post("app/ssid/editItem",{"id":ssid_id},True)
             if response is None:
                 return None
-        return {}
+            data = response.get("data",[])
+            response_data: dict[str, Any] = {}
+            for category in data:
+                response_data[category["name"]] = category["content"]
+        return response_data
     
     async def get_all_devices(self, network_id: str) -> list[dict[str, Any]] | None:
         return await self._post_paginated("oapi/v1.0.0/ap/list",{
