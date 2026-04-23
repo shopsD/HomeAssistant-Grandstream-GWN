@@ -540,7 +540,7 @@ class GwnClient:
         if payload.timezone is None:
             payload.timezone = None if network_info is None else network_info.get("timezone")
         if payload.networkAdministrators is None:
-            payload.networkAdministrators = None if network_info is None else [int(admin.id) for admin in network_info.get("networkAdmins",[])]
+            payload.networkAdministrators = None if network_info is None else [int(admin["id"]) for admin in network_info.get("networkAdmins",[])]
 
         _LOGGER.debug(f"Building Payload for network {payload.id}")
         payload_dict = payload.build_payload()
