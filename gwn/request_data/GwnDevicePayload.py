@@ -2,7 +2,7 @@ from dataclasses import dataclass, fields
 from enum import Enum
 from typing import ClassVar
 
-from gwn.constants.MessageEnums import RadioPower, Width2G, Width5G, Width6G, BandSteering
+from gwn.constants.MessageEnums import RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum
 
 @dataclass(slots=True)
 class GwnDevicePayload:
@@ -10,16 +10,16 @@ class GwnDevicePayload:
     networkId: int
     ap_2g4_channel: int | None = None
     ap_2g4_power: RadioPower | None = None
-    ap_2g4_ratelimit_enable: bool | None = None
-    ap_2g4_rssi: str | None = None
-    ap_2g4_rssi_enable: bool | None = None
+    ap_2g4_ratelimit_enable: BooleanEnum | None = None
+    ap_2g4_rssi: int | None = None
+    ap_2g4_rssi_enable: BooleanEnum | None = None
     ap_2g4_tag: str | None = None
     ap_2g4_width: Width2G | None = None
     ap_5g_channel: int | None = None
     ap_5g_power: RadioPower | None = None
-    ap_5g_ratelimit_enable: bool | None = None
-    ap_5g_rssi: str | None = None
-    ap_5g_rssi_enable: bool | None = None
+    ap_5g_ratelimit_enable: BooleanEnum | None = None
+    ap_5g_rssi: int | None = None
+    ap_5g_rssi_enable: BooleanEnum | None = None
     ap_5g_tag: str | None = None
     ap_5g_width: Width5G | None = None
     ap_alternate_dns: str | None = None
@@ -34,9 +34,9 @@ class GwnDevicePayload:
     # 6GHz is Undocumented so not sure if this will work
     ap_6g_channel: int | None = None
     ap_6g_power: RadioPower | None = None
-    ap_6g_ratelimit_enable: bool | None = None
-    ap_6g_rssi: str | None = None
-    ap_6g_rssi_enable: bool | None = None
+    ap_6g_ratelimit_enable: BooleanEnum | None = None
+    ap_6g_rssi: int | None = None
+    ap_6g_rssi_enable: BooleanEnum | None = None
     ap_6g_tag: str | None = None
     ap_6g_width: Width6G | None = None
 

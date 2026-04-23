@@ -21,6 +21,14 @@ class Width5G(Enum):
     MHz_160 = 3 # undocumented
     UseRadioSetting = 4
 
+class BandSteering(Enum):
+    Disable = 0
+    Priority_2G4 = 1
+    Priority_5G = 2
+    Priority_Balance = 3
+
+# below are undocumented enums
+
 # 6GHz is undocumented so this cannot be confirmed
 class Width6G(Enum):
     MHz_20 = 0
@@ -30,11 +38,10 @@ class Width6G(Enum):
     MHz_320 = 4
     UseRadioSetting = 5
 
-class BandSteering(Enum):
-    Disable = 0
-    Priority_2G4 = 1
-    Priority_5G = 2
-    Priority_Balance = 3
+class BooleanEnum(Enum):
+    Disabled = 0
+    Enabled = 1
+    UseRadioSetting = 2
 
 # SSID Enums
 class SecurityMode(Enum):

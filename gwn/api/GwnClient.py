@@ -1,9 +1,10 @@
 import logging
-from typing import Any
+from enum import Enum
+from typing import Any, TypeVar
 
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
-from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower
+from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum
 from gwn.request_data import GwnDevicePayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 
@@ -11,6 +12,8 @@ from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 _LOGGER = logging.getLogger(Constants.LOG)
 
 class GwnClient:
+    TypedEnum = TypeVar("TypedEnum", bound=Enum)
+
     def __init__(self, config: GwnConfig) -> None:
         self._config = config
         self._interface = GwnInterface(config)
@@ -211,8 +214,6 @@ class GwnClient:
             except Exception as e:
                 _LOGGER.error("Failed to match Device to SSID: %s", e)
 
-                
-
     async def _get_network_data(self, network_id: str) -> tuple[list[GwnDevice], list[GwnSSID]]:
         _LOGGER.info(f"Getting Devices for Network: {network_id}")
         ssid_data = await self._get_ssid_data(network_id)
@@ -228,6 +229,35 @@ class GwnClient:
         _LOGGER.info(f"Found {len(ssids)} SSIDs for Network: {network_id}")
         return list(devices.values()), list(ssids.values())
 
+    def _config_value(self, config: dict[str, Any] | None, key: str) -> str | None:
+        if config is None:
+            return None
+        item = config.get(key)
+        if not isinstance(item, dict):
+            return None
+        value = item.get("defaultValue")
+        return None if value is None else str(value)
+
+    def _config_int(self, config: dict[str, Any] | None, key: str) -> int | None:
+        value = self._config_value(config, key)
+        if value is None or value == "":
+            return None
+        if value == "Use Radio Settings":
+            return 0
+        return int(value)
+
+    def _config_bool(self, config: dict[str, Any] | None, key: str) -> bool | None:
+        value = self._config_value(config, key)
+        if value is None or value == "":
+            return None
+        return value == "1"
+
+    def _config_enum(self, config: dict[str, Any] | None, key: str, enum_type: type[TypedEnum]) -> TypedEnum | None:
+        value = self._config_value(config, key)
+        if value is None or value == "":
+            return None
+        return enum_type(int(value))
+   
     @property
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
@@ -391,15 +421,64 @@ class GwnClient:
         if payload.ap_2g4_power is not None:
             payload.ap_2g4_power = None if device_info_client is None else RadioPower(int(device_info_client["g24"]["power"]))
 
+        if payload.ap_2g4_ratelimit_enable is None:
+            payload.ap_2g4_ratelimit_enable = self._config_enum(device_info_config, "ap_2g4_ratelimit_enable", BooleanEnum)
+        if payload.ap_2g4_rssi is None:
+            payload.ap_2g4_rssi = self._config_int(device_info_config, "ap_2g4_rssi")
+        if payload.ap_2g4_rssi_enable is None:
+            payload.ap_2g4_rssi_enable = self._config_enum(device_info_config, "ap_2g4_rssi_enable", BooleanEnum)
+        if payload.ap_2g4_tag is None:
+            payload.ap_2g4_tag = self._config_value(device_info_config, "ap_2g4_tag")
+        if payload.ap_2g4_width is None:
+            payload.ap_2g4_width = self._config_enum(device_info_config, "ap_2g4_width", Width2G)
+
         if payload.ap_5g_channel is not None:
             payload.ap_5g_channel = 0 if device_info_channel is None or str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g5"]["channel"]["value"])
         if payload.ap_5g_power is not None:
             payload.ap_5g_power = None if device_info_client is None else RadioPower(int(device_info_client["g5"]["power"]))
+        if payload.ap_5g_ratelimit_enable is None:
+            payload.ap_5g_ratelimit_enable = self._config_enum(device_info_config, "ap_5g_ratelimit_enable", BooleanEnum)
+        if payload.ap_5g_rssi is None:
+            payload.ap_5g_rssi = self._config_int(device_info_config, "ap_5g_rssi")
+        if payload.ap_5g_rssi_enable is None:
+            payload.ap_5g_rssi_enable = self._config_enum(device_info_config, "ap_5g_rssi_enable", BooleanEnum)
+        if payload.ap_5g_tag is None:
+            payload.ap_5g_tag = self._config_value(device_info_config, "ap_5g_tag")
+        if payload.ap_5g_width is None:
+            payload.ap_5g_width = self._config_enum(device_info_config, "ap_5g_width", Width5G)
 
         if payload.ap_6g_power is not None:
             payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
+        if payload.ap_6g_power is not None:
+            payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
+        if payload.ap_6g_ratelimit_enable is None:
+            payload.ap_6g_ratelimit_enable = self._config_enum(device_info_config, "ap_6g_ratelimit_enable", BooleanEnum)
+        if payload.ap_6g_rssi is None:
+            payload.ap_6g_rssi = self._config_int(device_info_config, "ap_6g_rssi")
+        if payload.ap_6g_rssi_enable is None:
+            payload.ap_6g_rssi_enable = self._config_enum(device_info_config, "ap_6g_rssi_enable", BooleanEnum)
+        if payload.ap_6g_tag is None:
+            payload.ap_6g_tag = self._config_value(device_info_config, "ap_6g_tag")
+        if payload.ap_6g_width is None:
+            payload.ap_6g_width = self._config_enum(device_info_config, "ap_6g_width", Width6G)
 
-        _ = payload, device_info_config
+        if payload.ap_alternate_dns is None:
+            payload.ap_alternate_dns = self._config_value(device_info_config, "ap_alternate_dns")
+        if payload.ap_band_steering is None:
+            payload.ap_band_steering = self._config_enum(device_info_config, "ap_band_steering", BandSteering)
+        if payload.ap_ipv4_route is None:
+            payload.ap_ipv4_route = self._config_value(device_info_config, "ap_ipv4_route")
+        if payload.ap_ipv4_static is None:
+            payload.ap_ipv4_static = self._config_value(device_info_config, "ap_ipv4_static")
+        if payload.ap_ipv4_static_mask is None:
+            payload.ap_ipv4_static_mask = self._config_value(device_info_config, "ap_ipv4_static_mask")
+        if payload.ap_name is None:
+            payload.ap_name = self._config_value(device_info_config, "ap_name")
+        if payload.ap_preferred_dns is None:
+            payload.ap_preferred_dns = self._config_value(device_info_config, "ap_preferred_dns")
+        if payload.ap_static is None:
+            payload.ap_static = self._config_bool(device_info_config, "ap_static")
+
         return True
 
     async def set_network_data(self, network_id: str, data: dict[str, Any]) -> None:

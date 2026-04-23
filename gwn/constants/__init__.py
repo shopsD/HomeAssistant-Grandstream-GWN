@@ -2,7 +2,8 @@ from .Constants import Constants
 from .MessageEnums import (
     RadioPower, 
     Width2G, 
-    Width5G, 
+    Width5G,
+    Width6G,
     SecurityMode, 
     MacFiltering, 
     IsolationMode,
@@ -11,7 +12,8 @@ from .MessageEnums import (
     SSID_BMS,
     BandwidthType,
     SSIDSecurityType,
-    BandSteering
+    BandSteering,
+    BooleanEnum
 )
 
 
@@ -21,6 +23,7 @@ __all__ = [
     "RadioPower", 
     "Width2G", 
     "Width5G", 
+    "Width6G",
     "SecurityMode", 
     "MacFiltering", 
     "IsolationMode",
@@ -29,5 +32,6 @@ __all__ = [
     "SSID_BMS",
     "BandwidthType",
     "SSIDSecurityType",
-    "BandSteering"
+    "BandSteering",
+    "BooleanEnum"
 ]
