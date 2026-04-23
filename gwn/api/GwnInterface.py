@@ -286,3 +286,33 @@ class GwnInterface:
             _LOGGER.debug(f"Publish is disabled. Payload {payload}")
             return True
         return await self._post("oapi/v1.0.0/ssid/update",payload) is not None
+
+    async def set_device_data(self, payload: dict[str, Any] ) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Payload {payload}")
+            return True
+        return await self._post("oapi/v1.0.0/ap/config/edit",payload) is not None
+
+    async def reboot_device(self, mac: str) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Reboot not sent. Payload {mac}")
+            return True
+        return await self._post("oapi/v1.0.0/ap/reboot",{"mac":[mac]}) is not None
+    
+    async def reset_device(self, mac: str) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Reset not sent. Payload {mac}")
+            return True
+        return await self._post("oapi/v1.0.0/ap/reset",{"mac":[mac]}) is not None
+
+    async def update_device(self, mac: str) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Update not sent. Payload {mac}")
+            return True
+            response = await self._post("oapi/v1.0.0/upgrade/add",{"mac":[mac]})
+            if response is None:
+                return False
+        data = response.get("data")
+        return data is not None and mac in data.get("success_upgrade_macs", [])
+       
+

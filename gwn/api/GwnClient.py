@@ -392,6 +392,28 @@ class GwnClient:
 
     async def set_device_data(self, payload: GwnDevicePayload) -> bool:
         payload.ap_mac = GwnConfig.normalise_mac(payload.ap_mac)
+        # first handle commands
+        commands = 0
+        if payload.reboot:
+            commands = commands+1
+        if payload.reset:
+            commands = commands+1
+        if payload.update:
+            commands = commands+1
+        if commands > 1:
+            _LOGGER.warn("Sending Multiple Commands in a Single Payload is Unsupported")
+        elif commands > 0: # commands and setting data together is not support. Commands will always override data
+            if payload.reboot:
+                _LOGGER.info(f"Sending Reboot to {payload.ap_mac}")
+                return self._interface.reboot_device()
+            if payload.reset:
+                _LOGGER.info(f"Sending Reset to {payload.ap_mac}")
+                return self._interface.reset_device()
+            if payload.update:
+                _LOGGER.info(f"Sending Update to {payload.ap_mac}")
+                return self._interface.update_device()
+
+
         # first fetch existing data
         device_info_port = await self._interface.get_device_info_port(payload.networkId,payload.ap_mac)
         device_info_client = await self._interface.get_device_info_client(payload.ap_mac)
@@ -479,7 +501,21 @@ class GwnClient:
         if payload.ap_static is None:
             payload.ap_static = self._config_bool(device_info_config, "ap_static")
 
-        return True
+        payload_dict = payload.build_payload()
+        if len(payload_dict) == 0:
+            absent_list: list[str] = []
+            for required in payload.REQUIRED:
+                if getattr(payload, required) is None:
+                    absent_list.append(required)
+
+            _LOGGER.error(f"Failed to send payload. Required fields are missing {absent_list}")
+            return False
+        result: bool = await self._interface.set_device_data(payload_dict)
+        if result:
+            _LOGGER.debug(f"Successfully updated Device {payload.ap_mac}")
+        else:
+            _LOGGER.error(f"Failed to update Device {payload.ap_mac}")
+        return result
 
     async def set_network_data(self, network_id: str, data: dict[str, Any]) -> None:
         _LOGGER.info(f"Command {network_id} {data}")
