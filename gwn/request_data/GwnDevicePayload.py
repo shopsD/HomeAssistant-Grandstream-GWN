@@ -1,31 +1,6 @@
 from dataclasses import dataclass
-from enum import Enum
 
-class RadioPower(Enum):
-    Low = 0
-    Medium = 1
-    High = 2
-    Custom = 3
-    UseRadioSetting = 4
-
-class Width2G(Enum):
-    MHz_20 = 0
-    MHz_20_40 = 1
-    MHz_40 = 2
-    UseRadioSetting = 3
-
-class Width5G(Enum):
-    MHz_20 = 0
-    MHz_40 = 1
-    MHz_80 = 2
-    MHz_160 = 3 # undocumented
-    UseRadioSetting = 4
-
-class BandSteering(Enum):
-    Disable = 0
-    Priority_2G4 = 1
-    Priority_5G = 2
-    Priority_Balance = 3
+from gwn.constants.MessageEnums import RadioPower,Width2G,Width5G,BandSteering
 
 @dataclass(slots=True)
 class GwnDevicePayload:

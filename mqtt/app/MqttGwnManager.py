@@ -5,7 +5,8 @@ from typing import Any
 
 from gwn.api import GwnClient
 from gwn.constants import Constants
-from gwn.request_data import GwnDevice, GwnNetwork, GwnSSID
+from gwn.request_data import  GwnSSIDPayload
+from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 from mqtt.connection import MqttClient
 
 _LOGGER = logging.getLogger(Constants.LOG)
@@ -183,7 +184,22 @@ class MqttGwnManager:
         await self._gwn_client.set_device_data(device_mac, network_id, data)
 
     async def _handle_ssid_command(self, ssid_id: str, device_macs:list[str], network_id: str, data: dict[str, Any]) -> None:
-        if await self._gwn_client.set_ssid_data(ssid_id, device_macs, data, network_id) and not self._poll_trigger.is_set():
+        payload: GwnSSIDPayload = GwnSSIDPayload(id=int(ssid_id), networkId=int(network_id))
+
+        payload.ssidEnable = data.get(Constants.SSID_ENABLE, None)
+        payload.ssidPortalEnable = data.get(Constants.PORTAL_ENABLED, None)
+        payload.ssidVlanid = data.get(Constants.SSID_VLAN_ID, None)
+        payload.ssidVlan = None if payload.ssidVlanid is None else int(payload.ssidVlanid) > 0
+        payload.ghz2_4_enabled = data.get(Constants.GHZ2_4_ENABLED, None)
+        payload.ghz5_enabled = data.get(Constants.GHZ5_ENABLED, None)
+        payload.ghz6_enabled = data.get(Constants.GHZ6_ENABLED, None)
+        payload.ssid_key = data.get(Constants.SSID_KEY, None)
+        payload.ssidSsidHidden = data.get(Constants.SSID_HIDDEN, None)
+        payload.ssidSsid = data.get(Constants.SSID_NAME, None)
+        payload.toggled_macs = data.get(Constants.TOGGLE_DEVICE, None)
+        
+        if await self._gwn_client.set_ssid_data(device_macs, payload) and not self._poll_trigger.is_set():
+            
             # immediately refresh/update the data
             self._poll_trigger.set()
     

@@ -4,8 +4,10 @@ from typing import Any
 
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
-from gwn.constants import Constants
-from gwn.request_data import GwnDevice, GwnNetwork, GwnSSID, IsolationMode, MacFiltering, SecurityMode
+from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode
+from gwn.request_data import GwnSSIDPayload
+from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
+
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
@@ -268,31 +270,20 @@ class GwnClient:
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
-    async def set_ssid_data(self, ssid_id: str, device_macs: list[str], data: dict[str, Any], network_id: str) -> bool:
-        ssid_enable = data.get(Constants.SSID_ENABLE, None)
-        portal_enabled = data.get(Constants.PORTAL_ENABLED, None)
-        vlan_id = data.get(Constants.SSID_VLAN_ID, None)
-        vlan_enabled = None if vlan_id is None else int(vlan_id) > 0
-        ghz2_4_enabled = data.get(Constants.GHZ2_4_ENABLED, None)
-        ghz5_enabled = data.get(Constants.GHZ5_ENABLED, None)
-        ghz6_enabled = data.get(Constants.GHZ6_ENABLED, None)
-        ssid_key = data.get(Constants.SSID_KEY, None)
-        ssid_hidden = data.get(Constants.SSID_HIDDEN, None)
-        ssid_name = data.get(Constants.SSID_NAME, None)
-        bind_macs = data.get(Constants.TOGGLE_DEVICE, None)
+    async def set_ssid_data(self, device_macs: list[str], payload: GwnSSIDPayload) -> bool:
+
         # first fetch existing data
-        config_info = await self._interface.get_ssid_configuration(int(ssid_id))
+        config_info = await self._interface.get_ssid_configuration(payload.id)
         if config_info is None and not self._config.ignore_failed_fetch_before_update:
-            _LOGGER.error(f"Failed to fetch existing SSID config for ID {ssid_id}. Update will not be applied")
+            _LOGGER.error(f"Failed to fetch existing SSID config for ID {payload.id}. Update will not be applied")
             return False
-        
+
         # normalise the macs for processing and for transport in the payload
         normalised_device_macs: list[str] = [GwnConfig.normalise_mac(mac) for mac in device_macs]
         original_bind_macs: list[str] = normalised_device_macs
-
         # try to update the snapshot in case the provided one is stale
         if self._interface.user_password_login:
-            stored_macs = await self._interface.get_ssid_devices(int(ssid_id))
+            stored_macs = await self._interface.get_ssid_devices(payload.id)
             if stored_macs is not None:
                 flattened_stored_macs: list[str] = []
                 for device_info in stored_macs:
@@ -300,70 +291,64 @@ class GwnClient:
                     if bool(device_info.get("checked")):
                         flattened_stored_macs.append(mac)
                 original_bind_macs = flattened_stored_macs
-                
-        # these keys are required as a basic list of the payload
-        payload: dict[str, Any] = {
-            "id": int(ssid_id),
-            "networkId": network_id,
-            "ssidSsid": None if config_info is None else str(config_info.get("ssidSsid")),
-            "ssidWepKey": None if config_info is None else config_info.get("ssidWepKey",None),
-            "ssidWpaKey": None if config_info is None else config_info.get("ssidWpaKey",None),
-            "bindMacs": json.dumps(original_bind_macs),
-            "ssidTimedClientPolicy": None if config_info is None else config_info.get("ssidTimedClientPolicy",None),
-        }
-        ssid_bands: str = "" if config_info is None else str(config_info.get("ssidNewSsidBand"))
-        if ssid_enable is not None:
-            payload["ssidEnable"] = int(ssid_enable)
-        if portal_enabled is not None:
-            payload["ssidPortalEnable"] = int(portal_enabled)
-        if vlan_id is not None and vlan_enabled:
-            payload["ssidVlanid"] = int(vlan_id)
-        if vlan_enabled is not None:
-            payload["ssidVlan"] = int(vlan_enabled)
-        if ghz2_4_enabled is not None:
-            if ghz2_4_enabled and "2" not in ssid_bands:
-                ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}2"
-            elif not ghz2_4_enabled:
-                ssid_bands = ssid_bands.replace("2","")
-            payload["ssidNewSsidBand"] = ssid_bands
-        if ghz5_enabled is not None:
-            if ghz5_enabled and "5" not in ssid_bands:
-                ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}5"
-            elif not ghz5_enabled:
-                ssid_bands = ssid_bands.replace("5","")
-            payload["ssidNewSsidBand"] = ssid_bands
-        if ghz6_enabled is not None:
-            if ghz6_enabled and "6" not in ssid_bands:
-                ssid_bands = f"{ssid_bands}{',' if len(ssid_bands) > 0 else ''}6"
-            elif not ghz6_enabled:
-                ssid_bands = ssid_bands.replace("6","")
-            payload["ssidNewSsidBand"] = ssid_bands
         
-        # config info may have failed but if the source was not from home assistant, 
-        # then ssidEncryption may have been set by another MQTT command
-        if ssid_key is not None and config_info is not None and int(config_info["ssidEncryption"]) < 2:
-            payload["ssidWepKey"] = ssid_key
-        if ssid_key is not None and config_info is not None and int(config_info["ssidEncryption"]) > 1:
-            payload["ssidWpaKey"] = ssid_key
-        if ssid_hidden is not None:
-            payload["ssidSsidHidden"] = int(ssid_hidden)
-        if ssid_name is not None:
-            payload["ssidSsid"] = str(ssid_name)
-        if bind_macs is not None:
-            bind_macs = [GwnConfig.normalise_mac(mac) for mac in bind_macs]
-            added_macs = [mac for mac in bind_macs if mac not in normalised_device_macs]
-            removed_macs = [mac for mac in normalised_device_macs if mac not in bind_macs]
+        # these keys are required as a basic list of the payload so build them up either from the existing payload
+        # or perform a pre-update fetch and use the updated version
+        if payload.bindMacs is None:
+            payload.bindMacs = original_bind_macs
+
+        if payload.toggled_macs is not None:
+            payload.toggled_macs = [GwnConfig.normalise_mac(mac) for mac in payload.toggled_macs]
+            added_macs = [mac for mac in payload.toggled_macs if mac not in normalised_device_macs]
+            removed_macs = [mac for mac in normalised_device_macs if mac not in payload.toggled_macs]
             final_bind_macs = [mac for mac in original_bind_macs if mac not in removed_macs]
             final_bind_macs.extend([mac for mac in added_macs if mac not in final_bind_macs])
-            payload["bindMacs"] = final_bind_macs
+            payload.bindMacs = final_bind_macs
             if len(removed_macs) > 0:
-                payload["removeMacs"] = removed_macs
+                payload.removeMacs = removed_macs
 
-        result: bool = await self._interface.set_ssid_data(payload)
+        if payload.ssidTimedClientPolicy is None:
+            payload.ssidTimedClientPolicy = None if config_info is None else str(config_info.get("ssidTimedClientPolicy"))
+
+        # since toggling a single band is supported, any other bands need to be checked to prevent overwritting their values
+        if payload.ssidNewSsidBand is None:
+            payload.ssidNewSsidBand = None if config_info is None else str(config_info.get("ssidNewSsidBand"))
+        if payload.ssidWepKey is None:
+            payload.ssidWepKey = None if config_info is None else str(config_info.get("ssidWepKey"))
+        if payload.ssidWpaKey is None:
+            payload.ssidWpaKey = None if config_info is None else str(config_info.get("ssidWpaKey"))
+
+        # config info may have failed but if the source was not from home assistant, 
+        # then ssidEncryption may have been set by another MQTT command
+
+        ssid_encryption: SecurityMode | None = None
+
+        if payload.ssidEncryption is not None:
+            ssid_encryption = SecurityMode(payload.ssidEncryption)
+        elif config_info is not None:
+            ssid_encryption = SecurityMode(int(config_info["ssidEncryption"]))
+
+        # if Wep/Wpa key was not specified directly and instead ssid_key was given, use encryption to infer method
+        if ssid_encryption is None:
+            _LOGGER.warn(f"Unable to set WPA/WEP Key for SSID {payload.id}. Unable to determine encryption")
+            return False
+        if payload.ssid_key is not None:
+            match ssid_encryption:
+                case SecurityMode.WEP64:
+                    payload.ssidWepKey = payload.ssid_key
+                case SecurityMode.WEP64:
+                    payload.ssidWepKey = payload.ssid_key
+                case SecurityMode.OPEN:
+                    payload.ssidWepKey = None
+                    payload.ssidWpaKey = None
+                case _:
+                    payload.ssidWpaKey = payload.ssid_key
+        
+        result: bool = await self._interface.set_ssid_data(payload.build_payload())
         if result:
-            _LOGGER.debug(f"Successfully updated SSID {ssid_id}")
+            _LOGGER.debug(f"Successfully updated SSID {payload.id}")
         else:
-            _LOGGER.error(f"Failed to update SSID {ssid_id}")
+            _LOGGER.error(f"Failed to update SSID {payload.id}")
         return result
 
     async def set_device_data(self, device_mac: str, network_id: str, data: dict[str, Any]) -> bool:
