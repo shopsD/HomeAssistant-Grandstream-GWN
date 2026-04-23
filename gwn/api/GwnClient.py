@@ -81,8 +81,8 @@ class GwnClient:
                         channelload_6g=config_info_client["channelload_6g"],
                         channelload_5g=config_info_client["channelload_5g"],
 
-                        channel_info_2_4=device_info_channel["ap_2g4_channel"],
-                        channel_info_5=device_info_channel["ap_5g_channel"]
+                        ap_2g4_channel=device_info_channel["ap_2g4_channel"],
+                        ap_5g_channel=device_info_channel["ap_5g_channel"]
                     )
                     _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
                     device_list[mac] = gwn_device
