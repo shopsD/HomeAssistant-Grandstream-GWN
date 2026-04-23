@@ -339,17 +339,18 @@ class GwnClient:
                 case SecurityMode.WEP128:
                     payload.ssidWepKey = payload.ssid_key
                 case SecurityMode.OPEN:
-                    payload.ssidWepKey = None
-                    payload.ssidWpaKey = None
+                    payload.ssidWepKey = payload.ssidWepKey
+                    payload.ssidWpaKey = payload.ssidWpaKey
                 case _:
                     payload.ssidWpaKey = payload.ssid_key
         payload_dict = payload.build_payload()
         if len(payload_dict) == 0:
-            # dont dump the values below
-            payload.ssidWepKey = None
-            payload.ssidWpaKey = None
-            payload.ssid_key = None
-            _LOGGER.error(f"Failed to send payload. Required fields are missing {payload}")
+            absent_list: list[str] = []
+            for required in payload.REQUIRED:
+                if getattr(payload, required) is None:
+                    absent_list.append(required)
+
+            _LOGGER.error(f"Failed to send payload. Required fields are missing {absent_list}")
             return False
         result: bool = await self._interface.set_ssid_data(payload_dict)
         if result:
