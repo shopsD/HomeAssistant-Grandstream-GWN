@@ -283,13 +283,13 @@ class GwnInterface:
 
     async def set_ssid_data(self, payload: dict[str, Any] ) -> bool:
         if self._config.no_publish:
-            _LOGGER.debug(f"Publish is disabled. Payload {payload}")
+            _LOGGER.debug(f"Publish is disabled. SSID not Updated. Payload {payload}")
             return True
         return await self._post("oapi/v1.0.0/ssid/update",payload) is not None
 
     async def set_device_data(self, payload: dict[str, Any] ) -> bool:
         if self._config.no_publish:
-            _LOGGER.debug(f"Publish is disabled. Payload {payload}")
+            _LOGGER.debug(f"Publish is disabled. Device not Updated. Payload {payload}")
             return True
         return await self._post("oapi/v1.0.0/ap/config/edit",payload) is not None
 
@@ -315,4 +315,8 @@ class GwnInterface:
         data = response.get("data")
         return data is not None and mac in data.get("success_upgrade_macs", [])
        
-
+    async def set_network_data(self, payload: dict[str, Any] ) -> bool:
+        if self._config.no_publish:
+            _LOGGER.debug(f"Publish is disabled. Network not Updated. Payload {payload}")
+            return True
+        return await self._post("oapi/v1.0.0/network/update",payload) is not None

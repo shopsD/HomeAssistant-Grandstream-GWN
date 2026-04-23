@@ -5,7 +5,7 @@ from typing import Any
 
 from gwn.api import GwnClient
 from gwn.constants import Constants
-from gwn.request_data import GwnDevicePayload, GwnSSIDPayload
+from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 from mqtt.connection import MqttClient
 
@@ -179,7 +179,11 @@ class MqttGwnManager:
         _LOGGER.info(f"Command {update_version} {restart}")
 
     async def _handle_network_command(self, network_id: str, data: dict[str, Any]) -> None:
-        await self._gwn_client.set_network_data(network_id, data)
+        payload: GwnNetworkPayload = GwnNetworkPayload(id=network_id)
+        payload.networkName = data.get(Constants.NETWORK_NAME, None)
+        if await self._gwn_client.set_network_data(payload) and not self._poll_trigger.is_set():
+            # immediately refresh/update the data
+            self._poll_trigger.set()
     
     async def _handle_device_command(self, device_mac: str, data: dict[str, Any], network_id: str) -> None:    
         payload: GwnDevicePayload = GwnDevicePayload(ap_mac=device_mac, networkId=int(network_id))

@@ -5,7 +5,7 @@ from typing import Any, TypeVar
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
 from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum
-from gwn.request_data import GwnDevicePayload, GwnSSIDPayload
+from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 
 
@@ -302,6 +302,7 @@ class GwnClient:
     async def set_ssid_data(self, device_macs: list[str], payload: GwnSSIDPayload) -> bool:
 
         # first fetch existing data
+        _LOGGER.debug(f"Fetching current data for SSID {payload.id}")
         config_info = await self._interface.get_ssid_configuration(payload.id)
         if config_info is None and not self._config.ignore_failed_fetch_before_update:
             _LOGGER.error(f"Failed to fetch existing SSID config for ID {payload.id}. Update will not be applied")
@@ -312,6 +313,7 @@ class GwnClient:
         original_bind_macs: list[str] = normalised_device_macs
         # try to update the snapshot in case the provided one is stale
         if self._interface.user_password_login:
+            _LOGGER.debug(f"Fetching detailed data for SSID {payload.id}")
             stored_macs = await self._interface.get_ssid_devices(payload.id)
             if stored_macs is not None:
                 flattened_stored_macs: list[str] = []
@@ -321,6 +323,7 @@ class GwnClient:
                         flattened_stored_macs.append(mac)
                 original_bind_macs = flattened_stored_macs
         
+        _LOGGER.debug(f"Initialising default payload data for SSID {payload.id}")
         # these keys are required as a basic list of the payload so build them up either from the existing payload
         # or perform a pre-update fetch and use the updated version
         if payload.bindMacs is None:
@@ -374,6 +377,7 @@ class GwnClient:
                     payload.ssidWpaKey = payload.ssidWpaKey
                 case _:
                     payload.ssidWpaKey = payload.ssid_key
+        _LOGGER.debug(f"Building Payload for SSID {payload.id}")
         payload_dict = payload.build_payload()
         if len(payload_dict) == 0:
             absent_list: list[str] = []
@@ -383,6 +387,7 @@ class GwnClient:
 
             _LOGGER.error(f"Failed to send payload. Required fields are missing {absent_list}")
             return False
+        _LOGGER.debug(f"Sending Payload for SSID {payload.id}")
         result: bool = await self._interface.set_ssid_data(payload_dict)
         if result:
             _LOGGER.debug(f"Successfully updated SSID {payload.id}")
@@ -415,6 +420,7 @@ class GwnClient:
 
 
         # first fetch existing data
+        _LOGGER.debug(f"Fetching current data for device {payload.ap_mac}")
         device_info_port = await self._interface.get_device_info_port(payload.networkId,payload.ap_mac)
         device_info_client = await self._interface.get_device_info_client(payload.ap_mac)
         info_channel = await self._interface.get_device_channel_info(payload.ap_mac)
@@ -433,11 +439,13 @@ class GwnClient:
 
         device_info_config: dict[str, Any] | None = None
         if self._interface.user_password_login and device_info_client is not None:
+            _LOGGER.debug(f"Fetching detailed data for device {payload.ap_mac}")
             config_device_info = await self._interface.get_app_device_info(payload.ap_mac,device_info_client["apType"])
             if config_device_info is not None:
                 device_info_config = self._normalise_dictionary_data(config_device_info)
 
         # these keys are required as a basic list of the payload
+        _LOGGER.debug(f"Initialising default payload data for device {payload.ap_mac}")
         if payload.ap_2g4_channel is not None:
             payload.ap_2g4_channel = 0 if device_info_channel is None or str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g24"]["channel"]["value"])
         if payload.ap_2g4_power is not None:
@@ -501,15 +509,16 @@ class GwnClient:
         if payload.ap_static is None:
             payload.ap_static = self._config_bool(device_info_config, "ap_static")
 
+        _LOGGER.debug(f"Building Payload for device {payload.ap_mac}")
         payload_dict = payload.build_payload()
         if len(payload_dict) == 0:
             absent_list: list[str] = []
             for required in payload.REQUIRED:
                 if getattr(payload, required) is None:
                     absent_list.append(required)
-
             _LOGGER.error(f"Failed to send payload. Required fields are missing {absent_list}")
             return False
+        _LOGGER.debug(f"Sending Payload for device {payload.ap_mac}")
         result: bool = await self._interface.set_device_data(payload_dict)
         if result:
             _LOGGER.debug(f"Successfully updated Device {payload.ap_mac}")
@@ -517,7 +526,7 @@ class GwnClient:
             _LOGGER.error(f"Failed to update Device {payload.ap_mac}")
         return result
 
-    async def set_network_data(self, network_id: str, data: dict[str, Any]) -> None:
+    async def set_network_data(self, payload: GwnNetworkPayload) -> None:
         _LOGGER.info(f"Command {network_id} {data}")
         network_name = data.get(Constants.NETWORK_NAME)
         _LOGGER.info(f"Command {network_name}")
