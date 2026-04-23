@@ -390,14 +390,14 @@ class GwnClient:
 
         # these keys are required as a basic list of the payload
         payload: dict[str, Any] = {
-            "ap_2g4_channel": 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g24"]["channel"]["value"]),
+            "ap_2g4_channel": 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(device_info_client["g24"]["channel"]["value"]),
             "ap_2g4_power": int(device_info_client["g24"]["power"]),
             "ap_2g4_ratelimit_enable": str(device_info_client.get("ssidSsid")), # EDIT
             "ap_2g4_rssi": device_info_client.get("ssidWepKey",None), # EDIT
             "ap_2g4_rssi_enable": device_info_client.get("ssidWpaKey",None), # EDIT
             "ap_2g4_tag": json.dumps(device_info_client), # EDIT
             "ap_2g4_width": json.dumps(device_info_client), # EDIT
-            "ap_5g_channel": 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"]),
+            "ap_5g_channel": 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(device_info_client["g5"]["channel"]["value"]),
             "ap_5g_power": int(device_info_client["g5"]["power"]),
             "ap_5g_ratelimit_enable": json.dumps(device_info_client), # EDIT
             "ap_5g_rssi": json.dumps(device_info_client), # EDIT
@@ -408,7 +408,7 @@ class GwnClient:
             "ap_band_steering": device_info_client.get("ssidTimedClientPolicy",None), # EDIT
             "ap_mac": device_mac
         }
-        _LOGGER.info(f"Command {payload} {reboot} {update_firmware} {reset} {network_name} {wireless} {channel_2_4} {channel_5} {channel_6}")
+        _ = payload, reboot, update_firmware, reset, network_name, wireless, ap_2g4_channel, ap_5g_channel
         return True
 
     async def set_network_data(self, network_id: str, data: dict[str, Any]) -> None:
