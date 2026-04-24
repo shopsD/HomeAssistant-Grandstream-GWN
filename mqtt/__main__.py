@@ -24,7 +24,7 @@ async def async_main(config_path: Path) -> None:
     init_logger(core_config.logging)
     mqtt_client = MqttClient(core_config.mqtt)
     gwn_client = GwnClient(core_config.gwn)
-    app_manager = MqttGwnManager(core_config.app,mqtt_client,gwn_client)
+    app_manager = MqttGwnManager(core_config.app, mqtt_client, gwn_client)
     if await app_manager.connect():
         await app_manager.run()
 
