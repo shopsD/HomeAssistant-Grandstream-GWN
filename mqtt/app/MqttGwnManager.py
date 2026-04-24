@@ -25,6 +25,10 @@ class MqttGwnManager:
         self._gwn_client: GwnClient = gwn_client
         self._poll_trigger = asyncio.Event()
 
+        self._cached_networks: dict[str, dict[str, object]] = {}
+        self._cached_devices: dict[str, dict[str, dict[str, object]]] = {}
+        self._cached_ssids: dict[str, dict[int, dict[str, object]]] = {}
+
     async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
         while True:
@@ -60,56 +64,63 @@ class MqttGwnManager:
                 device_assignments[gwn_device.mac].append(gwn_ssid)
         return device_assignments
 
-    async def _publish_network(self, gwn_network: GwnNetwork, publish_networks: list[int]) -> None:
-        if len(publish_networks) == 0 or int(gwn_network.id) in publish_networks:
-            _LOGGER.debug(f"Publishing Network: {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
-            try:
-                await self._mqtt_client.publish_network(self._serialise_network(gwn_network))
-                _LOGGER.debug(f"Published {len(gwn_network.devices)} Devices for Network {gwn_network.id} ({gwn_network.networkName}) over MQTT")
-            except Exception as e:
-                _LOGGER.error(f"Failed to publish Network {gwn_network.networkName} with ID {gwn_network.id} to MQTT: %s", e)           
+    async def _publish_network(self, gwn_network: GwnNetwork) -> None:           
+        try:
+            network_payload = self._serialise_network(gwn_network)
+            if self._config.publish_every_poll or gwn_network.id not in self._cached_networks or self._cached_networks[gwn_network.id] != network_payload:
+                _LOGGER.debug(f"Publishing Network: {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
+                await self._mqtt_client.publish_network(network_payload)
+                self._cached_networks[gwn_network.id] = network_payload # only cache after publishing
+                _LOGGER.debug(f"Successfully Published Network {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
+        except Exception as e:
+            _LOGGER.error(f"Failed to publish Network {gwn_network.networkName} with ID {gwn_network.id} to MQTT: %s", e)           
 
-    async def _publish_devices(self, gwn_network: GwnNetwork, publish_devices: list[str], network_names: dict[int,str]) -> None:
-        no_of_devices: int = len(gwn_network.devices)
-        no_of_devices_to_publish: int = len(publish_devices)
-        _LOGGER.info(f"Publishing { no_of_devices if no_of_devices_to_publish > 0 else no_of_devices_to_publish } Devices for Network {gwn_network.id} ({gwn_network.networkName}) over MQTT")
+    async def _publish_devices(self, gwn_network: GwnNetwork, network_names: dict[int,str]) -> None:
+        _LOGGER.info(f"Checking {len(gwn_network.devices)} Devices for Network {gwn_network.id} ({gwn_network.networkName}) for publishing over MQTT")
         device_assignments: dict[str, list[GwnSSID]] = self._build_device_assignments(gwn_network.ssids)
         for gwn_device in gwn_network.devices:
-            if len(publish_devices) == 0 or gwn_device.mac in publish_devices:
-                _LOGGER.debug(f"Publishing Device with MAC {gwn_device.mac} to MQTT")
-                try:
-                    assignments: list[GwnSSID] = device_assignments.get(gwn_device.mac, [])
-                    device_payload = self._serialise_device(gwn_network, gwn_device, assignments)
+            try:
+                assignments: list[GwnSSID] = device_assignments.get(gwn_device.mac, [])
+                device_payload = self._serialise_device(gwn_network, gwn_device, assignments)
+                if (self._config.publish_every_poll or 
+                    gwn_network.id not in self._cached_devices or 
+                    gwn_device.mac not in self._cached_devices[gwn_network.id] or
+                    self._cached_devices[gwn_network.id][gwn_device.mac] != device_payload):
+                    _LOGGER.debug(f"Publishing Device with MAC {gwn_device.mac} to MQTT")
                     await self._mqtt_client.publish_device(device_payload, network_names)
-                    _LOGGER.error("Successfully published Device with MAC %s to MQTT", gwn_device.mac)
-                except Exception as e:
-                    _LOGGER.error("Failed to publish Device with MAC %s to MQTT: %s", gwn_device.mac, e)
+                    self._cached_devices[gwn_network.id][gwn_device.mac] = device_payload # only cache after publishing
+                    _LOGGER.debug(f"Successfully published Device with MAC {gwn_device.mac} to MQTT")
+            except Exception as e:
+                _LOGGER.error("Failed to publish Device with MAC %s to MQTT: %s", gwn_device.mac, e)
 
-    async def _publish_ssids(self,gwn_network: GwnNetwork, publish_ssids: list[int]) -> None:
-        no_of_ssids: int = len(gwn_network.ssids)
-        no_of_ssids_to_publish: int = len(publish_ssids)
-        _LOGGER.info(f"Publishing { no_of_ssids if no_of_ssids_to_publish > 0 else no_of_ssids_to_publish } SSIDs for Network {gwn_network.id} ({gwn_network.networkName}) over MQTT")        
+    async def _publish_ssids(self,gwn_network: GwnNetwork) -> None:
+        _LOGGER.info(f"Checking { len(gwn_network.ssids) } SSIDs for Network {gwn_network.id} ({gwn_network.networkName}) for publishing over MQTT")        
         ssid_device_info: list[list[str]] = [] # build a stripped down and full list of devices for use in SSID toggles
         for gwn_device in gwn_network.devices:
             ssid_device_info.append([gwn_device.mac,gwn_device.name])
         for gwn_ssid in gwn_network.ssids:
-            if len(publish_ssids) == 0 or int(gwn_ssid.id) in publish_ssids:
-                _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
-                try:
-                    ssid_payload = self._serialise_ssid(gwn_network, gwn_ssid)
+            try:
+                ssid_payload = self._serialise_ssid(gwn_network, gwn_ssid)
+                if (self._config.publish_every_poll or 
+                    gwn_network.id not in self._cached_devices or 
+                gwn_ssid.id not in self._cached_devices[gwn_network.id] or
+                self._cached_devices[gwn_network.id][gwn_ssid.id] != ssid_payload):
+                    _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
+
                     await self._mqtt_client.publish_ssid(ssid_payload, ssid_device_info)
-                    _LOGGER.error("Successfully published SSID %s with ID %s to MQTT", gwn_ssid.ssidName, gwn_ssid.id)
-                except Exception as e:
-                    _LOGGER.error("Failed to publish SSID %s with ID %s to MQTT: %s", gwn_ssid.ssidName, gwn_ssid.id, e)
-                
-        
+                    self._cached_devices[gwn_network.id][gwn_ssid.id] = ssid_payload # only cache after publishing
+                    _LOGGER.debug(f"Successfully published SSID {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
+            except Exception as e:
+                _LOGGER.error("Failed to publish SSID %s with ID %s to MQTT: %s", gwn_ssid.ssidName, gwn_ssid.id, e)
+
+
     async def _publish_gwn_data(self, gwn_networks: list[GwnNetwork], publish_networks: list[int], publish_devices: list[str], publish_ssids: list[int]) -> None:
         _LOGGER.info(f"Publishing {len(gwn_networks)} Networks over MQTT")
         network_names: dict[int,str] = {int(network.id):network.networkName for network in gwn_networks}
         for gwn_network in gwn_networks:
-            await self._publish_network(gwn_network,[])
-            await self._publish_devices(gwn_network, [], network_names)
-            await self._publish_ssids(gwn_network, [])
+            await self._publish_network(gwn_network)
+            await self._publish_devices(gwn_network, network_names)
+            await self._publish_ssids(gwn_network)
            
         _LOGGER.info(f"Published {len(gwn_networks)} Networks over MQTT")
 
@@ -141,7 +152,7 @@ class MqttGwnManager:
             Constants.GHZ6_ENABLED: gwn_ssid.ghz6_Enabled,
             Constants.NETWORK_NAME: gwn_network.networkName,
             Constants.NETWORK_ID: gwn_network.id,
-            Constants.ASSIGNED_DEVICES: { device.mac: device.name for device in gwn_ssid.devices }
+            Constants.ASSIGNED_DEVICES: { device.mac: device.name for device in sorted(gwn_ssid.devices, key=lambda device: device.mac) }
         }
 
     def _serialise_device(self, gwn_network: GwnNetwork, gwn_device: GwnDevice, ssids: list[GwnSSID]) -> dict[str, object]:
@@ -186,7 +197,7 @@ class MqttGwnManager:
                     Constants.SSID_ID: ssid.id,
                     Constants.SSID_NAME: ssid.ssidName,
                 }
-                for ssid in ssids
+                for ssid in sorted(ssids, key=lambda ssid: int(ssid.id))
             ]
         }
 
