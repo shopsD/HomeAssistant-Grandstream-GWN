@@ -164,16 +164,18 @@ class MqttClient:
         self._homeassistant_client.application_published()
 
     async def publish_network(self, network_payload: dict[str, object]):
-        network_topic: str = self._get_network_topic(str(network_payload.get(Constants.NETWORK_ID)))
+        network_id: str = str(network_payload.get(Constants.NETWORK_ID))
+        network_topic: str = self._get_network_topic(network_id)
         state_topic: str = f"{network_topic}/{Constants.STATE}"
         await self._interface.publish(state_topic,json.dumps(network_payload),retain=True)
         ha_payload_data = self._homeassistant_client.build_network_discovery_payload(state_topic, network_topic, network_payload)
         for topic, payload in ha_payload_data:
             await self._interface.publish(topic,json.dumps(payload), retain=True)
-        self._homeassistant_client.networks_published()
+        self._homeassistant_client.networks_published(network_topic)
 
     async def publish_device(self, device_payload: dict[str, object], network_names: dict[int,str]) -> None:
-        network_topic: str = self._get_network_topic(str(device_payload.get(Constants.NETWORK_ID)))
+        network_id: str = str(device_payload.get(Constants.NETWORK_ID))
+        network_topic: str = self._get_network_topic(network_id)
         device_mac = str(device_payload.get(Constants.MAC))
         device_mac = self._homeassistant_client.strip_mac(device_mac)
         device_topic = f"{network_topic}/{Constants.DEVICES}/{device_mac}"
@@ -183,10 +185,11 @@ class MqttClient:
         ha_payload_data = self._homeassistant_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names)
         for topic, payload in ha_payload_data:
             await self._interface.publish(topic,json.dumps(payload), retain=True)
-        self._homeassistant_client.devices_published()
+        self._homeassistant_client.devices_published(device_topic)
 
     async def publish_ssid(self, ssid_payload: dict[str, object], devices: list[list[str]]) -> None:
-        network_topic: str = self._get_network_topic(str(ssid_payload.get(Constants.NETWORK_ID)))
+        network_id: str = str(ssid_payload.get(Constants.NETWORK_ID))
+        network_topic: str = self._get_network_topic(network_id)
         ssid_id: str = str(ssid_payload.get(Constants.SSID_ID))
         ssid_topic = f"{network_topic}/{Constants.SSIDS}/{ssid_id}"
 
@@ -195,4 +198,4 @@ class MqttClient:
         ha_payload_data = self._homeassistant_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices)
         for topic, payload in ha_payload_data:
             await self._interface.publish(topic,json.dumps(payload), retain=True)
-        self._homeassistant_client.ssids_published()
+        self._homeassistant_client.ssids_published(ssid_topic)

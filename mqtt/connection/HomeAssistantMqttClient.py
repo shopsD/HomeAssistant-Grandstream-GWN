@@ -12,9 +12,9 @@ class HomeAssistantMqttClient:
     def __init__(self, config: HomeAssistantConfig) -> None:
         self._config: HomeAssistantConfig = config
         self._application_published: bool = False
-        self._networks_published: bool = False
-        self._devices_published: bool = False
-        self._ssids_published: bool = False
+        self._networks_published: set = set()
+        self._devices_published: set = set()
+        self._ssids_published: set = set()
 
     def _normalise_macs(self, macs: dict[int | str, Any] ) -> dict[str, Any]:
         normalised: dict[str, Any] = {}
@@ -436,7 +436,7 @@ class HomeAssistantMqttClient:
         )
         command_topic: str = f"{network_topic}/{Constants.SET}"
         ha_network_payload: list[tuple[str, dict[str, object]]] = []
-        if auto_discovery and not self._networks_published:
+        if auto_discovery and network_topic not in self._networks_published:
             ha_network_payload = self._create_network_discovery_payload(state_topic, command_topic, network_payload)
 
         return ha_network_payload
@@ -450,7 +450,7 @@ class HomeAssistantMqttClient:
             else normalised_macs[normalised_device_mac]
         )
         ha_device_payload: list[tuple[str, dict[str, object]]] = []
-        if auto_discovery and not self._devices_published:
+        if auto_discovery and device_topic not in self._devices_published:
             command_topic: str = f"{device_topic}/{Constants.SET}"
             ha_device_payload = self._create_device_discovery_payload(state_topic, command_topic, device_payload, network_names)
         return ha_device_payload
@@ -462,7 +462,7 @@ class HomeAssistantMqttClient:
             else self._config.ssid_autodiscovery[ssid_id]
         )
         ha_ssid_payload: list[tuple[str, dict[str, object]]] = []
-        if auto_discovery and not self._ssids_published:
+        if auto_discovery and ssid_topic not in self._ssids_published:
             command_topic: str = f"{ssid_topic}/{Constants.SET}"
             ha_ssid_payload = self._create_device_ssid_payload(state_topic, command_topic, ssid_payload, devices)
         return ha_ssid_payload
@@ -470,11 +470,14 @@ class HomeAssistantMqttClient:
     def application_published(self) -> None:
         self._application_published = not self._config.always_publish_autodiscovery
 
-    def networks_published(self) -> None:
-        self._networks_published = not self._config.always_publish_autodiscovery
+    def networks_published(self, network_topic: str) -> None:
+        if not self._config.always_publish_autodiscovery:
+            self._networks_published.add(network_topic)
 
-    def devices_published(self) -> None:
-        self._devices_published = not self._config.always_publish_autodiscovery
+    def devices_published(self, device_topic) -> None:
+        if not self._config.always_publish_autodiscovery:
+            self._devices_published.add(device_topic)
 
-    def ssids_published(self) -> None:
-        self._ssids_published = not self._config.always_publish_autodiscovery
+    def ssids_published(self, ssid_topic: str) -> None:
+        if not self._config.always_publish_autodiscovery:
+            self._ssids_published.add(ssid_topic)
