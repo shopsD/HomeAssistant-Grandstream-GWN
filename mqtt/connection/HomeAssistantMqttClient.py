@@ -456,7 +456,7 @@ class HomeAssistantMqttClient:
         return ha_device_payload
 
     def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: list[list[str]]) -> list[tuple[str, dict[str, object]]]:
-        ssid_id: int = int(str(ssid_payload.get(Constants.NETWORK_ID)))
+        ssid_id: int = int(str(ssid_payload.get(Constants.SSID_ID)))
         auto_discovery: bool = (self._config.default_ssid_autodiscovery 
             if ssid_id not in self._config.ssid_autodiscovery 
             else self._config.ssid_autodiscovery[ssid_id]
