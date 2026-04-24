@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 @dataclass(slots=True)
 class HomeAssistantConfig:
+    always_publish_autodiscovery: bool = False
     application_autodiscovery: bool = False
     default_network_autodiscovery: bool = False
     default_device_autodiscovery: bool = False
@@ -12,7 +13,7 @@ class HomeAssistantConfig:
     network_name_override: dict[int | str, str] = field(default_factory=dict)
     device_name_override: dict[int | str, str] = field(default_factory=dict)
     ssid_name_override: dict[int | str, str] = field(default_factory=dict)
-
+    
 @dataclass(slots=True)
 class MqttConfig:
     host: str = "127.0.0.1"

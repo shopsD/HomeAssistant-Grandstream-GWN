@@ -161,6 +161,7 @@ class MqttClient:
         ha_payload_data = self._homeassistant_client.build_application_discovery_payload(state_topic, application_topic, payload)
         for topic, payload in ha_payload_data:
             await self._interface.publish(state_topic,json.dumps(payload), retain=True)
+        self._homeassistant_client.application_published()
 
     async def publish_network(self, network_payload: dict[str, object]):
         network_topic: str = self._get_network_topic(str(network_payload.get(Constants.NETWORK_ID)))
@@ -169,7 +170,8 @@ class MqttClient:
         ha_payload_data = self._homeassistant_client.build_network_discovery_payload(state_topic, network_topic, network_payload)
         for topic, payload in ha_payload_data:
             await self._interface.publish(state_topic,json.dumps(payload), retain=True)
-    
+        self._homeassistant_client.networks_published()
+
     async def publish_device(self, device_payload: dict[str, object], network_names: dict[int,str]) -> None:
         network_topic: str = self._get_network_topic(str(device_payload.get(Constants.NETWORK_ID)))
         device_mac = str(device_payload.get(Constants.MAC))
@@ -181,6 +183,7 @@ class MqttClient:
         ha_payload_data = self._homeassistant_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names)
         for topic, payload in ha_payload_data:
             await self._interface.publish(state_topic,json.dumps(payload), retain=True)
+        self._homeassistant_client.devices_published()
 
     async def publish_ssid(self, ssid_payload: dict[str, object], devices: list[list[str]]) -> None:
         network_topic: str = self._get_network_topic(str(ssid_payload.get(Constants.NETWORK_ID)))
@@ -192,4 +195,4 @@ class MqttClient:
         ha_payload_data = self._homeassistant_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices)
         for topic, payload in ha_payload_data:
             await self._interface.publish(state_topic,json.dumps(payload), retain=True)
-
+        self._homeassistant_client.ssids_published()
