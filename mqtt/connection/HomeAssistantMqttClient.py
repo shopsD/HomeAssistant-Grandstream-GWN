@@ -171,7 +171,7 @@ class HomeAssistantMqttClient:
     def _create_sensor_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, payload_key_template: str, enabled_by_default: bool | None = None, is_config: bool = False, payload_is_template: bool = False) -> tuple[str, dict[str, object]]:
         
         if not payload_is_template:
-            payload_key_template = "{{ value_json.%s | int(0) }}" % payload_key_template
+            payload_key_template = "{{ value_json.%s }}" % payload_key_template
 
         payload: dict[str, object] = {
             "name": name,
@@ -301,7 +301,7 @@ class HomeAssistantMqttClient:
             self._create_text_payload(device, f"{ssid_payload_id}_passphrase", "WiFi Passphrase", state_topic, command_topic, Constants.SSID_KEY, assigned_devices_json),
             self._create_text_payload(device, f"{ssid_payload_id}_ssid_name", "SSID", state_topic, command_topic, Constants.SSID_NAME, assigned_devices_json),
             self._create_numeric_sensor_payload(device, f"{ssid_payload_id}_client_count", "Clients Online", state_topic, Constants.CLIENT_COUNT),
-            self._create_numeric_sensor_payload(device, f"{ssid_payload_id}_network_name", "Network", state_topic, "{{ %s }}" % json.dumps(network_name),"",None,False,True)
+            self._create_sensor_payload(device, f"{ssid_payload_id}_network_name", "Network", state_topic, "{{ %s }}" % json.dumps(network_name),None,False,True)
         ]
 
     def _create_device_discovery_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
@@ -372,8 +372,8 @@ class HomeAssistantMqttClient:
             self._create_sensor_payload(device, f"{device_payload_id}_channel_5", "Current 5GHz Channel", state_topic, Constants.CHANNEL_5),
             self._create_sensor_payload(device, f"{device_payload_id}_channel_6", "Current 6GHz Channel", state_topic, Constants.CHANNEL_6),
             self._create_number_payload(device, f"{device_payload_id}_ap_2g4_channel", "2.4Ghz Channel", state_topic, command_topic, Constants.AP_2G4_CHANNEL, 0, 13),
-            self._create_number_payload(device, f"{device_payload_id}_ap_5g_channel", "5Ghz Channel", state_topic, command_topic, Constants.AP_2G4_CHANNEL, 0, 165, "{{ 0 if value_json.%s | int(0) < 36 else value_json.%s | int(0) }}" % (Constants.AP_5G_CHANNEL, Constants.AP_5G_CHANNEL)),
-            self._create_number_payload(device, f"{device_payload_id}_ap_6g_channel", "6Ghz Channel", state_topic, command_topic, Constants.AP_2G4_CHANNEL, 0, 177, "{{ 0 if value_json.%s | int(0) < 36 else value_json.%s | int(0) }}" % (Constants.AP_6G_CHANNEL, Constants.AP_6G_CHANNEL)),
+            self._create_number_payload(device, f"{device_payload_id}_ap_5g_channel", "5Ghz Channel", state_topic, command_topic, Constants.AP_5G_CHANNEL, 0, 165, "{{ 0 if value_json.%s | int(0) < 36 else value_json.%s | int(0) }}" % (Constants.AP_5G_CHANNEL, Constants.AP_5G_CHANNEL)),
+            self._create_number_payload(device, f"{device_payload_id}_ap_6g_channel", "6Ghz Channel", state_topic, command_topic, Constants.AP_6G_CHANNEL, 0, 177, "{{ 0 if value_json.%s | int(0) < 36 else value_json.%s | int(0) }}" % (Constants.AP_6G_CHANNEL, Constants.AP_6G_CHANNEL)),
             self._create_sensor_payload(device, f"{device_payload_id}_mac", "MAC", state_topic, Constants.MAC, True, True)
         ]
 
