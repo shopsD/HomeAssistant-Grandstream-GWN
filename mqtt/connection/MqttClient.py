@@ -120,6 +120,54 @@ class MqttClient:
     def _get_network_topic(self, network_id: str) -> str:
         return f"{self._interface.topic}/{Constants.NETWORKS}/{network_id}"
 
+    async def _publish_online_payload(self, application_payload: dict[str,object], clear: bool) -> None:
+        application_topic = f"{self._interface.topic}/{Constants.APPLICATION}"
+        await self._interface.publish(f"{application_topic}/{Constants.STATUS}", '{"status": "online"}', retain=True)
+        state_topic: str = f"{application_topic}/{Constants.STATE}"
+        await self._interface.publish(state_topic, "" if clear else json.dumps(application_payload), retain=True)
+        ha_payload_data = self._homeassistant_client.build_application_discovery_payload(state_topic, application_topic, application_payload, clear)
+        for topic, payload in ha_payload_data:
+            await self._interface.publish(topic, "" if clear else json.dumps(payload), retain=True)
+        self._homeassistant_client.application_published()
+
+    async def _publish_network_payload(self, network_payload: dict[str, object], clear: bool):
+        network_id: str = str(network_payload.get(Constants.NETWORK_ID))
+        network_topic: str = self._get_network_topic(network_id)
+        state_topic: str = f"{network_topic}/{Constants.STATE}"
+        await self._interface.publish(state_topic, "" if clear else json.dumps(network_payload),retain=True)
+        ha_payload_data = self._homeassistant_client.build_network_discovery_payload(state_topic, network_topic, network_payload, clear)
+        for topic, payload in ha_payload_data:
+            await self._interface.publish(topic, "" if clear else json.dumps(payload), retain=True)
+        self._homeassistant_client.networks_published(network_topic)
+
+    async def _publish_device_payload(self, device_payload: dict[str, object], network_names: dict[int,str], clear: bool) -> None:
+        network_id: str = str(device_payload.get(Constants.NETWORK_ID))
+        network_topic: str = self._get_network_topic(network_id)
+        device_mac = str(device_payload.get(Constants.MAC))
+        device_mac = self._homeassistant_client.strip_mac(device_mac)
+        device_topic = f"{network_topic}/{Constants.DEVICES}/{device_mac}"
+
+        state_topic: str = f"{device_topic}/{Constants.STATE}"
+        await self._interface.publish(state_topic, "" if clear else json.dumps(device_payload), retain=True)
+        ha_payload_data = self._homeassistant_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names, clear)
+        for topic, payload in ha_payload_data:
+            await self._interface.publish(topic, "" if clear else json.dumps(payload), retain=True)
+        self._homeassistant_client.devices_published(device_topic)
+
+    async def _publish_ssid_payload(self, ssid_payload: dict[str, object], devices: list[list[str]], clear: bool) -> None:
+        network_id: str = str(ssid_payload.get(Constants.NETWORK_ID))
+        network_topic: str = self._get_network_topic(network_id)
+        ssid_id: str = str(ssid_payload.get(Constants.SSID_ID))
+        ssid_topic = f"{network_topic}/{Constants.SSIDS}/{ssid_id}"
+
+        state_topic: str = f"{ssid_topic}/{Constants.STATE}"
+        await self._interface.publish(state_topic, "" if clear else json.dumps(ssid_payload), retain=True)
+        ha_payload_data = self._homeassistant_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices, clear)
+        for topic, payload in ha_payload_data:
+            await self._interface.publish(topic, "" if clear else json.dumps(payload), retain=True)
+        self._homeassistant_client.ssids_published(ssid_topic)
+
+
     @property
     def is_connected(self) -> bool:
         return self._interface.is_connected
@@ -152,50 +200,27 @@ class MqttClient:
             self._listen_task = None
         await self._publish_offline()
         return await self._interface.disconnect()
+    
+    async def publish_online(self, application_payload: dict[str,object]) -> None:
+        await self._publish_online_payload(application_payload, False)
 
-    async def publish_online(self, payload: dict[str,object]) -> None:
-        application_topic = f"{self._interface.topic}/{Constants.APPLICATION}"
-        await self._interface.publish(f"{application_topic}/{Constants.STATUS}", '{"status": "online"}', retain=True)
-        state_topic: str = f"{application_topic}/{Constants.STATE}"
-        await self._interface.publish(state_topic,json.dumps(payload),retain=True)
-        ha_payload_data = self._homeassistant_client.build_application_discovery_payload(state_topic, application_topic, payload)
-        for topic, payload in ha_payload_data:
-            await self._interface.publish(topic,json.dumps(payload), retain=True)
-        self._homeassistant_client.application_published()
-
-    async def publish_network(self, network_payload: dict[str, object]):
-        network_id: str = str(network_payload.get(Constants.NETWORK_ID))
-        network_topic: str = self._get_network_topic(network_id)
-        state_topic: str = f"{network_topic}/{Constants.STATE}"
-        await self._interface.publish(state_topic,json.dumps(network_payload),retain=True)
-        ha_payload_data = self._homeassistant_client.build_network_discovery_payload(state_topic, network_topic, network_payload)
-        for topic, payload in ha_payload_data:
-            await self._interface.publish(topic,json.dumps(payload), retain=True)
-        self._homeassistant_client.networks_published(network_topic)
+    async def publish_network(self, network_payload: dict[str, object]) -> None:
+        await self._publish_network_payload(network_payload, False)
 
     async def publish_device(self, device_payload: dict[str, object], network_names: dict[int,str]) -> None:
-        network_id: str = str(device_payload.get(Constants.NETWORK_ID))
-        network_topic: str = self._get_network_topic(network_id)
-        device_mac = str(device_payload.get(Constants.MAC))
-        device_mac = self._homeassistant_client.strip_mac(device_mac)
-        device_topic = f"{network_topic}/{Constants.DEVICES}/{device_mac}"
-
-        state_topic: str = f"{device_topic}/{Constants.STATE}"
-        await self._interface.publish(state_topic,json.dumps(device_payload), retain=True)
-        ha_payload_data = self._homeassistant_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names)
-        for topic, payload in ha_payload_data:
-            await self._interface.publish(topic,json.dumps(payload), retain=True)
-        self._homeassistant_client.devices_published(device_topic)
+        await self._publish_device_payload(device_payload, network_names, False)
 
     async def publish_ssid(self, ssid_payload: dict[str, object], devices: list[list[str]]) -> None:
-        network_id: str = str(ssid_payload.get(Constants.NETWORK_ID))
-        network_topic: str = self._get_network_topic(network_id)
-        ssid_id: str = str(ssid_payload.get(Constants.SSID_ID))
-        ssid_topic = f"{network_topic}/{Constants.SSIDS}/{ssid_id}"
+        await self._publish_ssid_payload(ssid_payload, devices, False)
 
-        state_topic: str = f"{ssid_topic}/{Constants.STATE}"
-        await self._interface.publish(state_topic,json.dumps(ssid_payload), retain=True)
-        ha_payload_data = self._homeassistant_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices)
-        for topic, payload in ha_payload_data:
-            await self._interface.publish(topic,json.dumps(payload), retain=True)
-        self._homeassistant_client.ssids_published(ssid_topic)
+    async def unpublish_online(self, application_payload: dict[str,object]) -> None:
+        await self._publish_online_payload(application_payload, True) # Maybe if uninstalling?
+
+    async def unpublish_network(self, network_payload: dict[str, object]) -> None:
+        await self._publish_network_payload(network_payload, True)
+
+    async def unpublish_device(self, device_payload: dict[str, object]) -> None:
+        await self._publish_device_payload(device_payload, {}, True)
+
+    async def unpublish_ssid(self, ssid_payload: dict[str, object], devices: list[list[str]]) -> None:
+        await self._publish_ssid_payload(ssid_payload, devices, True)

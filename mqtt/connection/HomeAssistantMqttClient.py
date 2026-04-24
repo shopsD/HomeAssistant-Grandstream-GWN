@@ -421,14 +421,16 @@ class HomeAssistantMqttClient:
     def strip_mac(self, mac: str) -> str:
         return mac.replace(":", "").replace("-","").lower()
 
-    def build_application_discovery_payload(self, state_topic: str, application_topic: str, application_payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
+    def build_application_discovery_payload(self, state_topic: str, application_topic: str, application_payload: dict[str, object], clear: bool) -> list[tuple[str, dict[str, object]]]:
         command_topic: str = f"{application_topic}/{Constants.SET}"
         ha_application_payload: list[tuple[str, dict[str, object]]] = []
-        if self._config.application_autodiscovery and not self._application_published:
+        if clear or (self._config.application_autodiscovery and not self._application_published):
             ha_application_payload = self._create_application_discovery_payload(state_topic, command_topic, application_payload)
+        if clear:
+            self._application_published = False
         return ha_application_payload
 
-    def build_network_discovery_payload(self, state_topic: str, network_topic: str, network_payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
+    def build_network_discovery_payload(self, state_topic: str, network_topic: str, network_payload: dict[str, object], clear: bool) -> list[tuple[str, dict[str, object]]]:
         network_id: int = int(str(network_payload.get(Constants.NETWORK_ID)))
         auto_discovery: bool = (self._config.default_network_autodiscovery 
             if network_id not in self._config.network_autodiscovery
@@ -436,12 +438,13 @@ class HomeAssistantMqttClient:
         )
         command_topic: str = f"{network_topic}/{Constants.SET}"
         ha_network_payload: list[tuple[str, dict[str, object]]] = []
-        if auto_discovery and network_topic not in self._networks_published:
+        if clear or (auto_discovery and network_topic not in self._networks_published):
             ha_network_payload = self._create_network_discovery_payload(state_topic, command_topic, network_payload)
-
+        if clear:
+            self._networks_published.remove(network_topic)
         return ha_network_payload
 
-    def build_device_discovery_payload(self, state_topic: str, device_topic: str, device_payload: dict[str, object], network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
+    def build_device_discovery_payload(self, state_topic: str, device_topic: str, device_payload: dict[str, object], network_names: dict[int, str], clear: bool) -> list[tuple[str, dict[str, object]]]:
         normalised_macs = self._normalise_macs(self._config.device_autodiscovery)
         device_mac = str(device_payload.get(Constants.MAC))
         normalised_device_mac = self.strip_mac(device_mac)
@@ -450,21 +453,25 @@ class HomeAssistantMqttClient:
             else normalised_macs[normalised_device_mac]
         )
         ha_device_payload: list[tuple[str, dict[str, object]]] = []
-        if auto_discovery and device_topic not in self._devices_published:
+        if clear or (auto_discovery and device_topic not in self._devices_published):
             command_topic: str = f"{device_topic}/{Constants.SET}"
             ha_device_payload = self._create_device_discovery_payload(state_topic, command_topic, device_payload, network_names)
+        if clear:
+            self._networks_published.remove(device_topic)
         return ha_device_payload
 
-    def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: list[list[str]]) -> list[tuple[str, dict[str, object]]]:
+    def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: list[list[str]], clear: bool) -> list[tuple[str, dict[str, object]]]:
         ssid_id: int = int(str(ssid_payload.get(Constants.SSID_ID)))
         auto_discovery: bool = (self._config.default_ssid_autodiscovery 
             if ssid_id not in self._config.ssid_autodiscovery 
             else self._config.ssid_autodiscovery[ssid_id]
         )
         ha_ssid_payload: list[tuple[str, dict[str, object]]] = []
-        if auto_discovery and ssid_topic not in self._ssids_published:
+        if clear or (auto_discovery and ssid_topic not in self._ssids_published):
             command_topic: str = f"{ssid_topic}/{Constants.SET}"
             ha_ssid_payload = self._create_device_ssid_payload(state_topic, command_topic, ssid_payload, devices)
+        if clear:
+            self._networks_published.remove(ssid_topic)
         return ha_ssid_payload
 
     def application_published(self) -> None:

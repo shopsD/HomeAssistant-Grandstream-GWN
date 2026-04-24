@@ -116,6 +116,30 @@ class MqttGwnManager:
             except Exception as e:
                 _LOGGER.error("Failed to publish SSID %s with ID %s to MQTT: %s", gwn_ssid.ssidName, gwn_ssid.id, e)
 
+    async def _unpublish_networks(self, old_cache: dict[str, dict[str, object]]) -> None:
+        removed_network_ids = set(old_cache) - set(self._cached_networks)
+        for network_id in removed_network_ids:
+            await self._mqtt_client.unpublish_network(old_cache[network_id])
+
+    async def _unpublish_devices(self, old_cache: dict[str, dict[str, dict[str, object]]]) -> None:
+        for network_id, old_devices in old_cache.items():
+            new_devices = self._cached_devices.get(network_id, {})
+            removed_device_macs = set(old_devices) - set(new_devices)
+            for device_mac in removed_device_macs:
+                await self._mqtt_client.unpublish_device(old_devices[device_mac])
+
+    async def _unpublish_ssids(self, old_ssid_cache: dict[str, dict[str, dict[str, object]]], old_device_cache: dict[str, dict[str, dict[str, object]]]) -> None:
+        for network_id, old_ssids in old_ssid_cache.items():
+            new_ssids = self._cached_ssids.get(network_id, {})
+            removed_ssid_ids = set(old_ssids) - set(new_ssids)
+            old_devices = old_device_cache.get(network_id, {})
+            ssid_device_info: list[list[str]] = [
+                [device_mac, str(device_payload.get(Constants.NAME, ""))]
+                for device_mac, device_payload in old_devices.items()
+            ]
+
+            for ssid_id in removed_ssid_ids:
+                await self._mqtt_client.unpublish_ssid(old_ssids[ssid_id], ssid_device_info)
 
     async def _publish_gwn_data(self, gwn_networks: list[GwnNetwork], publish_networks: list[int], publish_devices: list[str], publish_ssids: list[int]) -> None:
         _LOGGER.info(f"Publishing {len(gwn_networks)} Networks over MQTT")
@@ -132,7 +156,9 @@ class MqttGwnManager:
             await self._publish_network(gwn_network, cached_networks)
             await self._publish_devices(gwn_network, network_names, cached_devices)
             await self._publish_ssids(gwn_network, cached_ssids)
-           
+        await self._unpublish_networks(cached_networks)
+        await self._unpublish_devices(cached_devices)
+        await self._unpublish_ssids(cached_ssids, cached_devices)
         _LOGGER.info(f"Published {len(gwn_networks)} Networks over MQTT")
 
     def _enum_value(self, value: Enum | None) -> str | None:
