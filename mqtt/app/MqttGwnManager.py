@@ -7,6 +7,7 @@ from gwn.api import GwnClient
 from gwn.constants import Constants
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
+from mqtt.config import AppConfig
 from mqtt.connection import MqttClient
 
 _LOGGER = logging.getLogger(Constants.LOG)
@@ -18,17 +19,20 @@ class RequestError(Exception):
     pass
 
 class MqttGwnManager:
-    def __init__(self, mqtt_client: MqttClient, gwn_client: GwnClient) -> None:
+    def __init__(self, config: AppConfig, mqtt_client: MqttClient, gwn_client: GwnClient) -> None:
+        self._config: AppConfig = config
         self._mqtt_client = mqtt_client
         self._gwn_client = gwn_client
         self._poll_trigger = asyncio.Event()
 
     async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
+        publish_data = True # publish on start
         while True:
             try:
                 networks = await self._gwn_client.get_gwn_data()
-                await self._publish_network(networks)
+                if publish_data or self._config.publish_every_poll:
+                    await self._publish_network(networks)
             except Exception as e:
                 _LOGGER.error("Error retreiving GWN Data: %s", e)
             _LOGGER.info(f"Will refresh in {self._gwn_client.refresh_period}s")

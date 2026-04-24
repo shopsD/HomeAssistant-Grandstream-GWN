@@ -1,3 +1,5 @@
+app:
+  publish_every_poll: False # default False. If set to True then MQTT will publish a message every time a GWN poll is performed. If set to False, then MQTT message are only published when data changes in GWN
 mqtt:
   port: 1883 # default 1883
   host: HOST_OR_IP # default 127.0.0.1

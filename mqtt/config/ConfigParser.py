@@ -7,6 +7,7 @@ import yaml
 from gwn.authentication import GwnConfig
 from gwn.constants import Constants
 from mqtt.config.AppConfig import AppConfig
+from mqtt.config.CoreConfig import CoreConfig
 from mqtt.config.MqttConfig import MqttConfig
 from mqtt.config.LoggingConfig import LogLocation, LoggingConfig
 
@@ -301,7 +302,22 @@ class ConfigParser:
         return log_config
 
     @staticmethod
-    def load(path: str | Path) -> AppConfig:
+    def _load_app(raw) -> AppConfig:
+        app_section = raw.get("app", {})
+        app_config = AppConfig()
+        if not isinstance(app_section, dict):
+            _LOGGER.debug("No App section found in config")
+        else:
+            _LOGGER.debug("Parsing App Config")
+            # app verify publish every poll
+            publish_every_poll = app_section.get("publish_every_poll")
+            if publish_every_poll is not None:
+                app_config.publish_every_poll = bool(publish_every_poll)
+        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'")
+        return app_config
+
+    @staticmethod
+    def load(path: str | Path) -> CoreConfig:
         _LOGGER.debug(f"Loading Config from {path}")
         config_path = Path(path)
 
@@ -313,8 +329,9 @@ class ConfigParser:
 
         gwn_config = ConfigParser._load_gwn(raw) # required section
 
+        app_config = ConfigParser._load_app(raw) # optional section
         mqtt_config = ConfigParser._load_mqtt(raw) # optional section
         log_config = ConfigParser._load_logging(raw) # optional section
         
         _LOGGER.info("Successfully loaded the config")
-        return AppConfig(mqtt_config, log_config, gwn_config)
+        return CoreConfig(app_config, gwn_config, log_config, mqtt_config)
