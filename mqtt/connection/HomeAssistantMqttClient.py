@@ -440,7 +440,7 @@ class HomeAssistantMqttClient:
         ha_network_payload: list[tuple[str, dict[str, object]]] = []
         if clear or (auto_discovery and network_topic not in self._networks_published):
             ha_network_payload = self._create_network_discovery_payload(state_topic, command_topic, network_payload)
-        if clear:
+        if clear and network_topic in self._networks_published:
             self._networks_published.remove(network_topic)
         return ha_network_payload
 
@@ -456,8 +456,8 @@ class HomeAssistantMqttClient:
         if clear or (auto_discovery and device_topic not in self._devices_published):
             command_topic: str = f"{device_topic}/{Constants.SET}"
             ha_device_payload = self._create_device_discovery_payload(state_topic, command_topic, device_payload, network_names)
-        if clear:
-            self._networks_published.remove(device_topic)
+        if clear and device_topic in self._devices_published:
+            self._devices_published.remove(device_topic)
         return ha_device_payload
 
     def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: list[list[str]], clear: bool) -> list[tuple[str, dict[str, object]]]:
@@ -470,8 +470,8 @@ class HomeAssistantMqttClient:
         if clear or (auto_discovery and ssid_topic not in self._ssids_published):
             command_topic: str = f"{ssid_topic}/{Constants.SET}"
             ha_ssid_payload = self._create_device_ssid_payload(state_topic, command_topic, ssid_payload, devices)
-        if clear:
-            self._networks_published.remove(ssid_topic)
+        if clear and ssid_topic in self._ssids_published:
+            self._ssids_published.remove(ssid_topic)
         return ha_ssid_payload
 
     def application_published(self) -> None:
