@@ -9,8 +9,9 @@ _LOGGER = logging.getLogger(Constants.LOG)
 
 class HomeAssistantMqttClient:
 
-    def __init__(self, config: HomeAssistantConfig) -> None:
+    def __init__(self, config: HomeAssistantConfig, base_topic: str) -> None:
         self._config: HomeAssistantConfig = config
+        self._base_topic: str = base_topic
         self._application_published: bool = False
         self._networks_published: set[str] = set()
         self._devices_published: set[str] = set()
@@ -31,7 +32,7 @@ class HomeAssistantMqttClient:
         }
 
     def _ha_discovery_topic(self, component: str, object_id: str) -> str:
-        return f"homeassistant/{component}/{object_id}/config"
+        return f"{self._base_topic}/{component}/{object_id}/{Constants.CONFIG}"
 
     def _create_switch_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str, assigned_devices_json: str | None = None ) -> tuple[str, dict[str, object]]:
         
