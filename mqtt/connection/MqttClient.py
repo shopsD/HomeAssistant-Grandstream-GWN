@@ -68,17 +68,15 @@ class MqttClient:
                 network_id = data.get(Constants.NETWORK_ID)
                 device_mac = data.get(Constants.MAC)
                 ssid_id = data.get(Constants.SSID_ID)
+                application_command = network_id is None
 
                 if device_mac is not None and ssid_id is not None:
                     return _LOGGER.warning(f"Only 1 of '{Constants.MAC}' ({device_mac}) and '{Constants.SSID_ID}' ({ssid_id}) can be specified")
 
-                action_data: object = ()
+                action_data = data.get(Constants.ACTION)
                 input_device_macs: object = ()
-                if ssid_id is None:
-                    action_data = data
-                else:
+                if ssid_id is not None:
                     input_device_macs = data.get(Constants.DEVICE_MACS)
-                    action_data = data.get(Constants.ACTION)
 
                     if not isinstance(input_device_macs, list) or not all(isinstance(item, str) for item in input_device_macs):
                         _LOGGER.debug(f"Malformed {Constants.DEVICE_MACS} entry. Received: {input_device_macs}")

@@ -214,6 +214,7 @@ class MqttGwnManager:
                 for device_mac in network_dict.keys():
                     if device_mac not in device_names[network_id]:
                         force_republish_ssids = True
+                        force_republish_devices = True
 
         if force_republish_devices:
             await self._mqtt_client.reset_devices()
