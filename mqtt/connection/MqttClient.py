@@ -71,10 +71,19 @@ class MqttClient:
                 application_command = network_id is None
 
                 if device_mac is not None and ssid_id is not None:
+                    _LOGGER.debug(f"Malformed Payload: {data}")
                     return _LOGGER.warning(f"Only 1 of '{Constants.MAC}' ({device_mac}) and '{Constants.SSID_ID}' ({ssid_id}) can be specified")
+                
+                if (device_mac is not None or ssid_id is not None) and application_command:
+                    _LOGGER.debug(f"Malformed Payload: {data}")
+                    return _LOGGER.warning(f"Malformed command. If {Constants.NETWORK_ID} is absent then {Constants.MAC} and {Constants.SSID_ID} must also be absent")
 
                 action_data = data.get(Constants.ACTION)
                 input_device_macs: object = ()
+                if ssid_id is None and data.get(Constants.DEVICE_MACS, None) is not None:
+                    _LOGGER.debug(f"Malformed Payload: {data}")
+                    return _LOGGER.warning(f"Malformed command. {Constants.DEVICE_MACS} can only be supplied with {Constants.SSID_ID}")
+
                 if ssid_id is not None:
                     input_device_macs = data.get(Constants.DEVICE_MACS)
 

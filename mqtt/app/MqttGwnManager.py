@@ -67,14 +67,18 @@ class MqttGwnManager:
     async def _publish_network(self, gwn_network: GwnNetwork, cached_networks: dict[str, dict[str, object]]) -> None:
         try:
             network_payload = self._serialise_network(gwn_network)
-            if self._config.publish_every_poll or gwn_network.id not in cached_networks or cached_networks[gwn_network.id] != network_payload:
+            cached_payload = network_payload.copy()
+            cached_payload[Constants.CACHE] = "metadata"
+            if self._config.publish_every_poll or gwn_network.id not in cached_networks or cached_networks[gwn_network.id] != cached_payload:
                 _LOGGER.debug(f"Publishing Network: {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
                 await self._mqtt_client.publish_network(network_payload)
                 _LOGGER.debug(f"Successfully Published Network {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
-            self._cached_networks[gwn_network.id] = network_payload # only cache after publishing
+            self._cached_networks[gwn_network.id] = cached_payload # only cache after publishing
         except Exception as e:
-            if gwn_network.id in cached_networks: # always preserve the cache if it fails
-                self._cached_networks[gwn_network.id] = cached_networks[gwn_network.id]
+            if gwn_network.id in cached_networks:  # always preserve the cache if it fails so it is not unpublished
+                failed_payload = cached_networks[gwn_network.id].copy()
+                failed_payload.pop(Constants.CACHE, None) # this is metadata used only in the cache so ensure it is removed to force a refresh on another cycle
+                self._cached_networks[gwn_network.id] = failed_payload
             _LOGGER.error(f"Failed to publish Network {gwn_network.networkName} with ID {gwn_network.id} to MQTT: %s", e)
 
     async def _publish_devices(self, gwn_network: GwnNetwork, network_names: dict[int,str], cached_devices: dict[str, dict[str, dict[str, object]]], force_republish: bool) -> None:
@@ -88,7 +92,7 @@ class MqttGwnManager:
                 device_payload = self._serialise_device(gwn_network, gwn_device, assignments)
                 # copy the cache because all networks need to be recorded so that if a discovery publish fails, it will reattempt on next cycle
                 cached_payload = device_payload.copy()
-                cached_payload[Constants.NETWORKS] = dict(sorted(network_names.items())) # may need to be sorted
+                cached_payload[Constants.CACHE] = dict(sorted(network_names.items())) # may need to be sorted
                 if (force_republish or
                     self._config.publish_every_poll or
                     gwn_network.id not in cached_devices or
@@ -99,8 +103,10 @@ class MqttGwnManager:
                     _LOGGER.debug(f"Successfully published Device with MAC {gwn_device.mac} to MQTT")
                 self._cached_devices[gwn_network.id][gwn_device.mac] = cached_payload # only cache after publishing
             except Exception as e:
-                if gwn_network.id in cached_devices and gwn_device.mac in cached_devices[gwn_network.id]: # always preserve the cache if it fails
-                    self._cached_devices[gwn_network.id][gwn_device.mac] = cached_devices[gwn_network.id][gwn_device.mac]
+                if gwn_network.id in cached_devices and gwn_device.mac in cached_devices[gwn_network.id]: # always preserve the cache if it fails so it is not unpublished
+                    failed_payload = cached_devices[gwn_network.id][gwn_device.mac].copy()
+                    failed_payload.pop(Constants.CACHE, None) # this is metadata used only in the cache so ensure it is removed to force a refresh on another cycle
+                    self._cached_devices[gwn_network.id][gwn_device.mac] = failed_payload
                 _LOGGER.error("Failed to publish Device with MAC %s to MQTT: %s", gwn_device.mac, e)
 
     async def _publish_ssids(self, gwn_network: GwnNetwork, device_names: dict[str, GwnDevice], cached_ssids: dict[str, dict[str, dict[str, object]]], force_republish: bool) -> None:
@@ -114,7 +120,7 @@ class MqttGwnManager:
             try:
                 ssid_payload = self._serialise_ssid(gwn_network, gwn_ssid)
                 cached_payload = ssid_payload.copy()
-                cached_payload[Constants.DEVICES] = {device.mac : device.name for device in sorted(device_names.values(), key=lambda device: device.mac)}
+                cached_payload[Constants.CACHE] = {device.mac : device.name for device in sorted(device_names.values(), key=lambda device: device.mac)}
                 if (force_republish or
                     self._config.publish_every_poll or
                     gwn_network.id not in cached_ssids or
@@ -126,8 +132,10 @@ class MqttGwnManager:
                     _LOGGER.debug(f"Successfully published SSID {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
                 self._cached_ssids[gwn_network.id][gwn_ssid.id] = cached_payload # only cache after publishing
             except Exception as e:
-                if gwn_network.id in cached_ssids and gwn_ssid.id in cached_ssids[gwn_network.id]: # always preserve the cache if it fails
-                    self._cached_ssids[gwn_network.id][gwn_ssid.id] = cached_ssids[gwn_network.id][gwn_ssid.id]
+                if gwn_network.id in cached_ssids and gwn_ssid.id in cached_ssids[gwn_network.id]: # always preserve the cache if it fails so it is not unpublished
+                    failed_payload = cached_ssids[gwn_network.id][gwn_ssid.id].copy()
+                    failed_payload.pop(Constants.CACHE, None) # this is metadata used only in the cache so ensure it is removed to force a refresh on another cycle
+                    self._cached_ssids[gwn_network.id][gwn_ssid.id] = failed_payload
                 _LOGGER.error("Failed to publish SSID %s with ID %s to MQTT: %s", gwn_ssid.ssidName, gwn_ssid.id, e)
 
     async def _unpublish_networks(self, old_cache: dict[str, dict[str, object]]) -> None:
