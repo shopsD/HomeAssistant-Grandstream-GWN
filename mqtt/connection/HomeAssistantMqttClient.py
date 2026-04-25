@@ -332,7 +332,6 @@ class HomeAssistantMqttClient:
             device_model = device_name if len(device_name) > 0 else device_mac
             device_name = str(normalised_name_override_macs[normalised_device_mac])
 
-        
         # For the SSID list sensor
         # build the list of SSID names and use the overrides if any names have been overriden in the config
         raw_ssids = payload[Constants.SSIDS]

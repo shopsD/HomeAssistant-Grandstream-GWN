@@ -204,7 +204,7 @@ class MqttClient:
             self._listen_task = None
         await self._publish_offline()
         return await self._interface.disconnect()
-    
+
     async def publish_online(self, application_payload: dict[str,object]) -> None:
         await self._publish_online_payload(application_payload, False)
 

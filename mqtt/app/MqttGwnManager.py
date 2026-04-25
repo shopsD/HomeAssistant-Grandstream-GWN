@@ -64,7 +64,7 @@ class MqttGwnManager:
                 device_assignments[gwn_device.mac].append(gwn_ssid)
         return device_assignments
 
-    async def _publish_network(self, gwn_network: GwnNetwork, cached_networks: dict[str, dict[str, object]]) -> None:           
+    async def _publish_network(self, gwn_network: GwnNetwork, cached_networks: dict[str, dict[str, object]]) -> None:
         try:
             network_payload = self._serialise_network(gwn_network)
             if self._config.publish_every_poll or gwn_network.id not in cached_networks or cached_networks[gwn_network.id] != network_payload:
