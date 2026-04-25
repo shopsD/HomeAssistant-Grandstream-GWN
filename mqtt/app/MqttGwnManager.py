@@ -158,7 +158,7 @@ class MqttGwnManager:
         self._cached_networks = {}
         self._cached_devices = {}
         self._cached_ssids = {}
-        old_networks: set = set(cached_networks)
+        old_networks: set[str] = set(cached_networks)
         old_devices: dict[str, set[str]] = {network_id: set(devices) for network_id, devices in cached_devices.items()}
         # only republish ssids if the devices on their own network have actually changed (Added or removed)
         new_devices: dict[str, set[str]] = {network.id: {device.mac for device in network.devices} for network in gwn_networks}

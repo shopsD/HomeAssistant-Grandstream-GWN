@@ -12,9 +12,9 @@ class HomeAssistantMqttClient:
     def __init__(self, config: HomeAssistantConfig) -> None:
         self._config: HomeAssistantConfig = config
         self._application_published: bool = False
-        self._networks_published: set = set()
-        self._devices_published: set = set()
-        self._ssids_published: set = set()
+        self._networks_published: set[str] = set()
+        self._devices_published: set[str] = set()
+        self._ssids_published: set[str] = set()
 
     def _normalise_macs(self, macs: dict[int | str, Any] ) -> dict[str, Any]:
         normalised: dict[str, Any] = {}
