@@ -13,7 +13,7 @@ class HomeAssistantConfig:
     network_name_override: dict[int | str, str] = field(default_factory=dict)
     device_name_override: dict[int | str, str] = field(default_factory=dict)
     ssid_name_override: dict[int | str, str] = field(default_factory=dict)
-    
+
 @dataclass(slots=True)
 class MqttConfig:
     host: str = "127.0.0.1"
