@@ -45,7 +45,7 @@ class MqttClient:
 
     async def _handle_mqtt_command(self, topic: str, payload: str) -> None:
         # only process anything that is a set command and starts with the topic
-        if (topic.startswith(self._interface.topic) and topic.endswith(f"/{Constants.SET}")):
+        if (topic.startswith(f"{self._interface.topic}/") and topic.endswith(f"/{Constants.SET}")):
             # only json is allowed
             data = json.loads(payload)
             # buttons only have an action, no value and if action is missing its an unsupported message
@@ -61,7 +61,7 @@ class MqttClient:
             formatted_data: dict[str, Any] = {}
             application_command: bool = False
             if parts_count == 1 and parts[0] == Constants.GWN:
-                _LOGGER.info(f"Multi Data command: {formatted_data}")
+                _LOGGER.info("Multi Data command")
                 network_id = data.get(Constants.NETWORK_ID)
                 device_mac = data.get(Constants.MAC)
                 ssid_id = data.get(Constants.SSID_ID)
@@ -77,7 +77,7 @@ class MqttClient:
 
                 for command_data in action_data:
                     formatted_data[command_data[Constants.ACTION]] = command_data.get(Constants.VALUE, None)
-
+                _LOGGER.debug("Formatted Payload: %s", formatted_data)
             else:
                 if parts_count == 1 and parts[0] == Constants.APPLICATION:
                     _LOGGER.info("Application command")

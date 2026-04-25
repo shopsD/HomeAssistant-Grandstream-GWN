@@ -253,17 +253,21 @@ class HomeAssistantMqttClient:
         
         raw_device_mac_list: list[str] = []
         # first build a list of assigned devices
+        local_device_data: list[list[str]] = [] # dont modify existing due to changing device info
         for device_info in device_data:
-            raw_device_mac:str = device_info[0]
-            if len(device_info) == 2:
-                device_info.append("")
-            device_info[2] = "true" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else ""
-            if bool(device_info[2]):
+            local_device_info = device_info.copy()
+            raw_device_mac:str = local_device_info[0]
+            if len(local_device_info) == 2:
+                local_device_info.append("")
+            local_device_info[2] = "true" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else ""
+            if bool(local_device_info[2]):
                 raw_device_mac_list.append(raw_device_mac)
+            local_device_data.append(local_device_info)
+
 
         assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
 
-        for device_info in device_data:
+        for device_info in local_device_data:
             # see if the device has a custom name assigned in GWN Manager
             raw_device_mac = device_info[0]
             device_name: str = device_info[1]
@@ -336,7 +340,7 @@ class HomeAssistantMqttClient:
         ssid_names: list[str] = []
         for ssid in ssids:
             ssid_name = ssid.get(Constants.SSID_NAME)
-            ssid_id = ssid.get(Constants.SSID_ID)
+            ssid_id: int = int(str(ssid.get(Constants.SSID_ID)))
             if ssid_name is not None and ssid_id is not None:
                 ssid_names.append(str(self._config.ssid_name_override.get(ssid_id,ssid_name)))
 
