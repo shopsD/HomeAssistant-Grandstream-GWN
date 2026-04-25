@@ -158,8 +158,11 @@ class MqttGwnManager:
         self._cached_networks = {}
         self._cached_devices = {}
         self._cached_ssids = {}
-        old_networks = set(cached_networks)
-        old_devices = {network_id: set(devices) for network_id, devices in cached_devices.items()}
+        old_networks: set = set(cached_networks)
+        old_devices: dict[str, set[str]] = {network_id: set(devices) for network_id, devices in cached_devices.items()}
+        # only republish ssids if the devices on their own network have actually changed (Added or removed)
+        new_devices: dict[str, set[str]] = {network.id: {device.mac for device in network.devices} for network in gwn_networks}
+        shared_networks = old_devices.keys() & new_devices.keys()
 
         # if the topology changes, then all devices/ssids must be republished
         # create a local copy so that the unpublishing later can also happen
@@ -169,7 +172,7 @@ class MqttGwnManager:
             # force a republish of all devices and their topology so the select network updates
             await self._mqtt_client.reset_devices()
             local_cached_devices = {}
-        if old_devices != { network.id: { device.mac for device in network.devices} for network in gwn_networks }:
+        if any(old_devices[network_id] != new_devices[network_id] for network_id in shared_networks):
             # force a republish of all ssids and their topology so the assign devices updates
             await self._mqtt_client.reset_ssids()
             local_cached_ssids = {}
