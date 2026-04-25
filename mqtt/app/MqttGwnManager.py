@@ -128,14 +128,28 @@ class MqttGwnManager:
     async def _unpublish_networks(self, old_cache: dict[str, dict[str, object]]) -> None:
         removed_network_ids = set(old_cache) - set(self._cached_networks)
         for network_id in removed_network_ids:
-            await self._mqtt_client.unpublish_network(old_cache[network_id], True)
+            try:
+                _LOGGER.debug(f"Unpublishing Network with ID {network_id} from MQTT")
+                await self._mqtt_client.unpublish_network(old_cache[network_id], True)
+                _LOGGER.debug(f"Unpublished Network with ID {network_id} from MQTT")
+            except Exception as e:
+                # allow retry again on next poll cycle
+                self._cached_networks[network_id] = old_cache[network_id]
+                _LOGGER.error("Failed to unpublish Network with ID %s from MQTT: %s", network_id, e)
 
     async def _unpublish_devices(self, old_cache: dict[str, dict[str, dict[str, object]]], current_devices: set[str]) -> None:
         for network_id, old_devices in old_cache.items():
             new_devices = self._cached_devices.get(network_id, {})
             removed_device_macs = set(old_devices) - set(new_devices)
             for device_mac in removed_device_macs:
-                await self._mqtt_client.unpublish_device(old_devices[device_mac], device_mac not in current_devices)
+                try:
+                    _LOGGER.debug(f"Unpublishing Device with MAC {device_mac} from MQTT")
+                    await self._mqtt_client.unpublish_device(old_devices[device_mac], device_mac not in current_devices)
+                    _LOGGER.debug(f"Unpublished Device with MAC {device_mac} from MQTT")
+                except Exception as e:
+                    # allow retry again on next poll cycle
+                    self._cached_devices.setdefault(network_id, {})[device_mac] = old_devices[device_mac]
+                    _LOGGER.error("Failed to unpublish Device with MAC %s from MQTT: %s", device_mac, e)
 
     async def _unpublish_ssids(self, old_ssid_cache: dict[str, dict[str, dict[str, object]]], old_device_cache: dict[str, dict[str, dict[str, object]]]) -> None:
         for network_id, old_ssids in old_ssid_cache.items():
@@ -148,7 +162,14 @@ class MqttGwnManager:
             ]
 
             for ssid_id in removed_ssid_ids:
-                await self._mqtt_client.unpublish_ssid(old_ssids[ssid_id], ssid_device_info, True)
+                try:
+                    _LOGGER.debug(f"Unpublishing SSID with ID {ssid_id} from MQTT")
+                    await self._mqtt_client.unpublish_ssid(old_ssids[ssid_id], ssid_device_info, True)
+                    _LOGGER.debug(f"Unpublished SSID with ID {ssid_id} from MQTT")
+                except Exception as e:
+                    # allow retry again on next poll cycle
+                    self._cached_ssids.setdefault(network_id, {})[ssid_id] = old_ssids[ssid_id]
+                    _LOGGER.error("Failed to unpublish SSID with ID %s from MQTT: %s", ssid_id, e)
 
     async def _publish_gwn_data(self, gwn_networks: list[GwnNetwork]) -> None:
         _LOGGER.info(f"Publishing {len(gwn_networks)} Networks over MQTT")
