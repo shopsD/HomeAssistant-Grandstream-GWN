@@ -11,9 +11,10 @@ mqtt:
   # tls: False # default false
   # verify_tls: True # default true
   homeassistant: # controls support for home assistant auto discovery
+    discovery_topic: "homeassistant" # default homeassistant. The topic to publish home assistant discoveries to
     # Regarding the 'always_publish_autodiscovery' If this is False, then autodiscovery is published only on application start. If set to True then every payload
     # update will publish autodiscovery. This only applies to Networks, Devices and SSIDs that have autodiscovery enabled via ther other config options
-    always_publish_autodiscovery: False # default False. 
+    always_publish_autodiscovery: False # default False.
     application_autodiscovery: False # default False. This will prevent this application (GWN to MQTT) from having auto discovery in home assistant.
     default_network_autodiscovery: False # default False. This will not support home assistant auto discovery for networks that are not otherwise specified below
     default_device_autodiscovery: False # default False. This will not support home assistant auto discovery for devices that are not otherwise specified below

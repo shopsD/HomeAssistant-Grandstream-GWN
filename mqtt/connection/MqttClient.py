@@ -14,7 +14,7 @@ class MqttClient:
     def __init__(self, config: MqttConfig) -> None:
         self._config: MqttConfig = config
         self._interface: MqttInterface = MqttInterface(config)
-        self._homeassistant_client: HomeAssistantMqttClient = HomeAssistantMqttClient(config.homeassistant, self._config.topic)
+        self._homeassistant_client: HomeAssistantMqttClient = HomeAssistantMqttClient(config.homeassistant)
         self._application_callback: Callable[[dict[str, Any]], None] | None = None
         self._network_callback: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None
         self._device_callback: Callable[[str, dict[str, Any], str], Awaitable[None]] | None = None
@@ -82,12 +82,12 @@ class MqttClient:
 
                     if not isinstance(input_device_macs, list) or not all(isinstance(item, str) for item in input_device_macs):
                         _LOGGER.debug(f"Malformed {Constants.DEVICE_MACS} entry. Received: {input_device_macs}")
-                        raise KeyError(f"{Constants.DEVICE_MACS} must be an array/list of strings") 
+                        raise KeyError(f"{Constants.DEVICE_MACS} must be an array/list of strings")
                     device_macs = input_device_macs
 
                 if not isinstance(action_data, list) or not all(isinstance(item, dict) for item in action_data):
                     _LOGGER.debug(f"Malformed {Constants.ACTION} entry. Received: {action_data}")
-                    raise KeyError(f"{Constants.ACTION} must be an array/list of objects") 
+                    raise KeyError(f"{Constants.ACTION} must be an array/list of objects")
 
                 for command_data in action_data:
                     formatted_data[command_data[Constants.ACTION]] = command_data.get(Constants.VALUE, None)
@@ -185,7 +185,7 @@ class MqttClient:
         if clear and not clear_autodiscovery:
             return
         ha_payload_data = self._homeassistant_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names, clear_autodiscovery)
-        
+
         for topic, payload in ha_payload_data:
             await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
         if not clear_autodiscovery and len(ha_payload_data) > 0:
