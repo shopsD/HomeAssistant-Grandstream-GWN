@@ -228,3 +228,12 @@ class MqttClient:
 
     async def unpublish_ssid(self, ssid_payload: dict[str, object], devices: list[list[str]]) -> None:
         await self._publish_ssid_payload(ssid_payload, devices, True)
+
+    async def reset_networks(self) -> None:
+        self._homeassistant_client.reset_networks()
+
+    async def reset_devices(self) -> None:
+        self._homeassistant_client.reset_devices()
+
+    async def reset_ssids(self) -> None:
+        self._homeassistant_client.reset_ssids()

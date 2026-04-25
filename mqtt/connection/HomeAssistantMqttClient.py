@@ -492,3 +492,12 @@ class HomeAssistantMqttClient:
     def ssids_published(self, ssid_topic: str) -> None:
         if not self._config.always_publish_autodiscovery:
             self._ssids_published.add(ssid_topic)
+
+    def reset_networks(self) -> None:
+        self._networks_published = set()
+
+    def reset_devices(self) -> None:
+        self._devices_published = set()
+
+    def reset_ssids(self) -> None:
+        self._ssids_published = set()
