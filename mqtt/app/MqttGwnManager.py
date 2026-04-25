@@ -159,23 +159,25 @@ class MqttGwnManager:
         self._cached_devices = {}
         self._cached_ssids = {}
         old_networks = set(cached_networks)
-        old_devices = set(list({mac for devices in cached_devices.values() for mac in devices}))
-        # old_ssids = set(list({ssid_id for ssids in cached_ssids.values() for ssid_id in ssids}))
-        # ssids_changed = old_ssids != {ssid.id for network in gwn_networks for ssid in network.ssids} # nothing for now
-        # if the topology changes, then all devices must be republished for their "select" list to update
+        old_devices = {network_id: set(devices) for network_id, devices in cached_devices.items()}
+
+        # if the topology changes, then all devices/ssids must be republished
+        # create a local copy so that the unpublishing later can also happen
+        local_cached_devices: dict[str, dict[str, dict[str, object]]] = cached_devices
+        local_cached_ssids: dict[str, dict[str, dict[str, object]]] = cached_ssids
         if old_networks != {network.id for network in gwn_networks}:
             # force a republish of all devices and their topology so the select network updates
             await self._mqtt_client.reset_devices()
-            cached_devices = {}
-        if old_devices != {device.mac for network in gwn_networks for device in network.devices}:
+            local_cached_devices = {}
+        if old_devices != { network.id: { device.mac for device in network.devices} for network in gwn_networks }:
             # force a republish of all ssids and their topology so the assign devices updates
             await self._mqtt_client.reset_ssids()
-            cached_ssids = {}
+            local_cached_ssids = {}
     
         for gwn_network in gwn_networks:
             await self._publish_network(gwn_network, cached_networks)
-            await self._publish_devices(gwn_network, network_names, cached_devices)
-            await self._publish_ssids(gwn_network, cached_ssids)
+            await self._publish_devices(gwn_network, network_names, local_cached_devices)
+            await self._publish_ssids(gwn_network, local_cached_ssids)
         _LOGGER.info(f"Published {len(gwn_networks)} Networks over MQTT")
         _LOGGER.info("Cleaning old data from cache")
         await self._unpublish_networks(cached_networks)
