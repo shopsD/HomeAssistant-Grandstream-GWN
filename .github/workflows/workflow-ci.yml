@@ -1,4 +1,4 @@
-name: mypy
+name: python-checker
 
 on: [push]
 
