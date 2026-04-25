@@ -160,24 +160,65 @@ class MqttGwnManager:
         self._cached_networks = {}
         self._cached_devices = {}
         self._cached_ssids = {}
-        old_networks: set[str] = set(cached_networks)
-        old_devices: dict[str, set[str]] = {network_id: set(devices) for network_id, devices in cached_devices.items()}
-        # only republish ssids if the devices on their own network have actually changed (Added or removed)
-        new_devices: dict[str, set[str]] = {network.id: {device.mac for device in network.devices} for network in gwn_networks}
-        shared_networks = old_devices.keys() & new_devices.keys()
 
-        # if the topology changes, then all devices/ssids must be republished
-        # create a local copy so that the unpublishing later can also happen
+        # first see if any old networks have been removed or any new networks were added
+        gwn_network_dict: dict[str,GwnNetwork] = {}
+        gwn_device_dict: dict[str, dict[str, GwnDevice]] = {}
+
         force_republish_devices: bool = False
         force_republish_ssids: bool = False
-        if old_networks != {network.id for network in gwn_networks}:
-            # force a republish of all devices and their topology so the select network updates
+        # first find any newly added networks
+        for gwn_network in gwn_networks:
+            gwn_network_dict[gwn_network.id] = gwn_network
+            gwn_device_dict[gwn_network.id] = {}
+            if (gwn_network.id not in cached_networks or
+                cached_networks[gwn_network.id][Constants.NETWORK_NAME] != gwn_network.networkName):
+                force_republish_devices = True
+            for gwn_device in gwn_network.devices:
+                gwn_device_dict[gwn_network.id][gwn_device.mac] = gwn_device
+                if (gwn_network.id not in cached_devices or
+                    gwn_device.mac not in cached_devices[gwn_network.id] or
+                    cached_devices[gwn_network.id][gwn_device.mac][Constants.NAME] != gwn_device.name):
+                    force_republish_ssids = True
+
+        # now handle networks or devices that may have moved or been removed
+        for network_id in cached_networks.keys():
+            if network_id not in gwn_network_dict:
+                force_republish_devices = True
+        for network_id, network_dict in cached_devices.items():
+            if network_id not in gwn_device_dict:
+                force_republish_devices = True
+            else:
+                for device_mac in network_dict.keys():
+                    if device_mac not in gwn_device_dict[network_id]:
+                        force_republish_ssids = True
+
+        if force_republish_devices:
             await self._mqtt_client.reset_devices()
-            force_republish_devices = True
-        if any(old_devices[network_id] != new_devices[network_id] for network_id in shared_networks):
-            # force a republish of all ssids and their topology so the assign devices updates
+        if force_republish_ssids:
             await self._mqtt_client.reset_ssids()
-            force_republish_ssids = True
+
+        # old_networks: set[str] = set(cached_networks)
+        # old_devices: dict[str, set[str]] = {network_id: set(devices) for network_id, devices in cached_devices.items()}
+        # old_network_names = {id: str(payload.get(Constants.NETWORK_NAME, "")) for id, payload in cached_networks.items()}
+
+        # # only republish ssids if the devices on their own network have actually changed (Added or removed)
+        # new_devices: dict[str, set[str]] = {network.id: {device.mac for device in network.devices} for network in gwn_networks}
+        # shared_networks = old_devices.keys() & new_devices.keys()
+
+        # # if the topology changes, then all devices/ssids must be republished
+        # # create a local copy so that the unpublishing later can also happen
+        # force_republish_devices: bool = False
+        # force_republish_ssids: bool = False
+        # if old_networks != {network.id for network in gwn_networks}:
+        #     # force a republish of all devices and their topology so the select network updates
+        #     await self._mqtt_client.reset_devices()
+        #     force_republish_devices = True
+        # if any(old_devices[network_id] != new_devices[network_id] for network_id in shared_networks) or
+        #     old_network_names != {network.id: network.networkName for network in gwn_networks}:
+        #     # force a republish of all ssids and their topology so the assign devices updates
+        #     await self._mqtt_client.reset_ssids()
+        #     force_republish_ssids = True
     
         for gwn_network in gwn_networks:
             await self._publish_network(gwn_network, cached_networks)
