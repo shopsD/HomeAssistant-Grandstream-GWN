@@ -48,6 +48,9 @@ class MqttClient:
         if (topic.startswith(f"{self._interface.topic}/") and topic.endswith(f"/{Constants.SET}")):
             # only json is allowed
             data = json.loads(payload)
+            if not isinstance(data, dict):
+                _LOGGER.debug(f"Received malformed data. Received: {data}")
+                raise KeyError("MQTT payload must be an object")
             # buttons only have an action, no value and if action is missing its an unsupported message
             # strip the subscription topic and the set portion
             sub_topic = topic.removeprefix(f"{self._interface.topic}/").removesuffix(f"/{Constants.SET}")
@@ -65,15 +68,26 @@ class MqttClient:
                 network_id = data.get(Constants.NETWORK_ID)
                 device_mac = data.get(Constants.MAC)
                 ssid_id = data.get(Constants.SSID_ID)
-                
+
                 if device_mac is not None and ssid_id is not None:
                     return _LOGGER.warning(f"Only 1 of '{Constants.MAC}' ({device_mac}) and '{Constants.SSID_ID}' ({ssid_id}) can be specified")
-                
+
+                action_data: object = ()
+                input_device_macs: object = ()
                 if ssid_id is None:
                     action_data = data
                 else:
-                    device_macs = data.get(Constants.DEVICE_MACS)
+                    input_device_macs = data.get(Constants.DEVICE_MACS)
                     action_data = data.get(Constants.ACTION)
+
+                    if not isinstance(input_device_macs, list) or not all(isinstance(item, str) for item in input_device_macs):
+                        _LOGGER.debug(f"Malformed {Constants.DEVICE_MACS} entry. Received: {input_device_macs}")
+                        raise KeyError(f"{Constants.DEVICE_MACS} must be an array/list of strings") 
+                    device_macs = input_device_macs
+
+                if not isinstance(action_data, list) or not all(isinstance(item, dict) for item in action_data):
+                    _LOGGER.debug(f"Malformed {Constants.ACTION} entry. Received: {action_data}")
+                    raise KeyError(f"{Constants.ACTION} must be an array/list of objects") 
 
                 for command_data in action_data:
                     formatted_data[command_data[Constants.ACTION]] = command_data.get(Constants.VALUE, None)
@@ -95,12 +109,24 @@ class MqttClient:
                     _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}")
                 else:
                     return _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
+                raw_action_data: object = ()
+                raw_device_macs: object = ()
                 if ssid_id is None:
-                    action_data = data
+                    raw_action_data = data
                 else:
-                    device_macs = data.get(Constants.DEVICE_MACS)
-                    action_data = data.get(Constants.ACTION)
-                formatted_data = {action_data[Constants.ACTION]: action_data.get(Constants.VALUE, None) }
+                    raw_device_macs = data.get(Constants.DEVICE_MACS)
+                    raw_action_data = data.get(Constants.ACTION)
+
+                    if not isinstance(raw_device_macs, list) or not all(isinstance(item, str) for item in raw_device_macs):
+                        _LOGGER.debug(f"Malformed {Constants.DEVICE_MACS} entry. Received: {raw_device_macs}")
+                        raise KeyError(f"{Constants.DEVICE_MACS} must be an array/list of strings")
+                    device_macs = raw_device_macs
+
+                if not isinstance(raw_action_data, dict):
+                    _LOGGER.debug(f"Malformed {Constants.ACTION} entry. Received: {raw_action_data}")
+                    raise KeyError(f"{Constants.ACTION} must be an object")
+
+                formatted_data = {raw_action_data[Constants.ACTION]: raw_action_data.get(Constants.VALUE, None) }
                 _LOGGER.debug("Formatted Payload: %s", formatted_data)
 
             if application_command and self._application_callback is not None:
