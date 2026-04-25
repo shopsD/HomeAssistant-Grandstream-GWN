@@ -34,7 +34,7 @@ class MqttGwnManager:
         while True:
             try:
                 networks = await self._gwn_client.get_gwn_data()
-                await self._publish_gwn_data(networks,[],[],[])
+                await self._publish_gwn_data(networks)
             except Exception as e:
                 _LOGGER.error("Error retreiving GWN Data: %s", e)
             _LOGGER.info(f"Will refresh in {self._gwn_client.refresh_period}s")
@@ -148,7 +148,7 @@ class MqttGwnManager:
             for ssid_id in removed_ssid_ids:
                 await self._mqtt_client.unpublish_ssid(old_ssids[ssid_id], ssid_device_info)
 
-    async def _publish_gwn_data(self, gwn_networks: list[GwnNetwork], publish_networks: list[int], publish_devices: list[str], publish_ssids: list[int]) -> None:
+    async def _publish_gwn_data(self, gwn_networks: list[GwnNetwork]) -> None:
         _LOGGER.info(f"Publishing {len(gwn_networks)} Networks over MQTT")
         network_names: dict[int,str] = {int(network.id):network.networkName for network in gwn_networks}
         # take a snapshot of the cache and then wipe it. This prevents the cache from growing stale
