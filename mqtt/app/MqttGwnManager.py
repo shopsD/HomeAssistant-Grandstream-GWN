@@ -73,6 +73,8 @@ class MqttGwnManager:
                 _LOGGER.debug(f"Successfully Published Network {gwn_network.networkName} with ID {gwn_network.id} to MQTT")
             self._cached_networks[gwn_network.id] = network_payload # only cache after publishing
         except Exception as e:
+            if gwn_network.id in cached_networks: # always preserve the cache if it fails
+                self._cached_networks[gwn_network.id] = cached_networks[gwn_network.id]
             _LOGGER.error(f"Failed to publish Network {gwn_network.networkName} with ID {gwn_network.id} to MQTT: %s", e)           
 
     async def _publish_devices(self, gwn_network: GwnNetwork, network_names: dict[int,str], cached_devices) -> None:
@@ -93,6 +95,8 @@ class MqttGwnManager:
                     _LOGGER.debug(f"Successfully published Device with MAC {gwn_device.mac} to MQTT")
                 self._cached_devices[gwn_network.id][gwn_device.mac] = device_payload # only cache after publishing
             except Exception as e:
+                if gwn_network.id in cached_devices and gwn_device.mac in cached_devices[gwn_network.id]: # always preserve the cache if it fails
+                    self._cached_devices[gwn_network.id][gwn_device.mac] = cached_devices[gwn_network.id][gwn_device.mac]
                 _LOGGER.error("Failed to publish Device with MAC %s to MQTT: %s", gwn_device.mac, e)
 
     async def _publish_ssids(self,gwn_network: GwnNetwork, cached_ssids: dict[str, dict[str, dict[str, object]]]) -> None:
@@ -115,6 +119,8 @@ class MqttGwnManager:
                     _LOGGER.debug(f"Successfully published SSID {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
                 self._cached_ssids[gwn_network.id][gwn_ssid.id] = ssid_payload # only cache after publishing
             except Exception as e:
+                if gwn_network.id in cached_ssids and gwn_ssid.id in cached_ssids[gwn_network.id]: # always preserve the cache if it fails
+                    self._cached_ssids[gwn_network.id][gwn_ssid.id] = cached_ssids[gwn_network.id][gwn_ssid.id]
                 _LOGGER.error("Failed to publish SSID %s with ID %s to MQTT: %s", gwn_ssid.ssidName, gwn_ssid.id, e)
 
     async def _unpublish_networks(self, old_cache: dict[str, dict[str, object]]) -> None:
