@@ -3,11 +3,12 @@ import json
 from typing import Any
 
 from gwn.constants import Constants
+from mqtt.clients.MqttPublisherClient import MqttPublisherClient
 from mqtt.config import HomeAssistantConfig
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
-class HomeAssistantMqttClient:
+class HomeAssistantMqttClient(MqttPublisherClient):
 
     def __init__(self, config: HomeAssistantConfig) -> None:
         self._config: HomeAssistantConfig = config
@@ -19,7 +20,7 @@ class HomeAssistantMqttClient:
     def _normalise_macs(self, macs: dict[int | str, Any] ) -> dict[str, Any]:
         normalised: dict[str, Any] = {}
         for mac, enabled in macs.items():
-            normalised[self.strip_mac(str(mac))] = enabled
+            normalised[MqttPublisherClient.strip_mac(str(mac))] = enabled
         return normalised
 
     def _ha_device_block(self, identifier: str, name: str, model: str) -> dict[str, object]:
@@ -272,7 +273,7 @@ class HomeAssistantMqttClient:
                 device_name = str(raw_device_mac)
             # Last check, see if the config overrides the name and always use this override in display
             # otherwise use whatever was found previously
-            normalised_device_mac = self.strip_mac(raw_device_mac)
+            normalised_device_mac = MqttPublisherClient.strip_mac(raw_device_mac)
             device_name = str(normalised_name_override_macs.get(normalised_device_mac, device_name))
             
             device_assignment.append(
@@ -311,7 +312,7 @@ class HomeAssistantMqttClient:
     def _create_device_discovery_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
         # For the device block
         device_mac: str = str(payload.get(Constants.MAC))
-        normalised_device_mac = self.strip_mac(device_mac)
+        normalised_device_mac = MqttPublisherClient.strip_mac(device_mac)
         # override the names in Home Assistant. This will not change anything underlying, only what is displayed in home assistant
         normalised_name_override_macs = self._normalise_macs(self._config.device_name_override)
         device_model: str = device_mac
@@ -418,9 +419,6 @@ class HomeAssistantMqttClient:
             self._create_button_payload(device, f"{application_payload_id}_restart", "Restart", command_topic, Constants.RESTART)
         ]
 
-    def strip_mac(self, mac: str) -> str:
-        return mac.replace(":", "").replace("-","").lower()
-
     def build_application_discovery_payload(self, state_topic: str, application_topic: str, application_payload: dict[str, object], clear: bool) -> list[tuple[str, dict[str, object]]]:
         command_topic: str = f"{application_topic}/{Constants.SET}"
         ha_application_payload: list[tuple[str, dict[str, object]]] = []
@@ -447,7 +445,7 @@ class HomeAssistantMqttClient:
     def build_device_discovery_payload(self, state_topic: str, device_topic: str, device_payload: dict[str, object], network_names: dict[int, str], clear: bool) -> list[tuple[str, dict[str, object]]]:
         normalised_macs = self._normalise_macs(self._config.device_autodiscovery)
         device_mac = str(device_payload.get(Constants.MAC))
-        normalised_device_mac = self.strip_mac(device_mac)
+        normalised_device_mac = MqttPublisherClient.strip_mac(device_mac)
         auto_discovery: bool = (self._config.default_device_autodiscovery 
             if normalised_device_mac not in normalised_macs
             else normalised_macs[normalised_device_mac]
@@ -481,7 +479,7 @@ class HomeAssistantMqttClient:
         if not self._config.always_publish_autodiscovery:
             self._networks_published.add(network_topic)
 
-    def devices_published(self, device_topic) -> None:
+    def devices_published(self, device_topic: str) -> None:
         if not self._config.always_publish_autodiscovery:
             self._devices_published.add(device_topic)
 

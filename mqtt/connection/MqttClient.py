@@ -5,7 +5,7 @@ from typing import Any, Awaitable, Callable
 
 from gwn.constants import Constants
 from mqtt.config import MqttConfig
-from mqtt.connection.HomeAssistantMqttClient import HomeAssistantMqttClient
+from mqtt.clients import HomeAssistantMqttClient, MqttPublisherClient
 from mqtt.connection.MqttInterface import MqttInterface
 
 _LOGGER = logging.getLogger(Constants.LOG)
@@ -14,12 +14,14 @@ class MqttClient:
     def __init__(self, config: MqttConfig) -> None:
         self._config: MqttConfig = config
         self._interface: MqttInterface = MqttInterface(config)
-        self._homeassistant_client: HomeAssistantMqttClient = HomeAssistantMqttClient(config.homeassistant)
         self._application_callback: Callable[[dict[str, Any]], None] | None = None
         self._network_callback: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None
         self._device_callback: Callable[[str, dict[str, Any], str], Awaitable[None]] | None = None
         self._ssid_callback: Callable[[str, list[str], str, dict[str, Any]], Awaitable[None]] | None = None
         self._listen_task: asyncio.Task[None] | None = None
+        self._publisher_clients: list[MqttPublisherClient] = [
+            HomeAssistantMqttClient(config.homeassistant)
+        ]
 
     async def _listen_to_topics(self) -> None:
         base = self._interface.topic
@@ -166,11 +168,20 @@ class MqttClient:
         await self._interface.publish(state_topic, "" if clear else json.dumps(application_payload), retain=True)
         if clear and not clear_autodiscovery:
             return
-        ha_payload_data = self._homeassistant_client.build_application_discovery_payload(state_topic, application_topic, application_payload, clear_autodiscovery)
-        for topic, payload in ha_payload_data:
-            await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
-        if not clear_autodiscovery and len(ha_payload_data) > 0:
-            self._homeassistant_client.application_published()
+
+        exception_occurred: bool = False
+        for publisher_client in self._publisher_clients:
+            try:
+                ha_payload_data = publisher_client.build_application_discovery_payload(state_topic, application_topic, application_payload, clear_autodiscovery)
+                for topic, payload in ha_payload_data:
+                    await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
+                if not clear_autodiscovery and len(ha_payload_data) > 0:
+                    publisher_client.application_published()
+            except Exception as e:
+                exception_occurred = True
+                _LOGGER.error(f"Failed to publish Client specific payload - {state_topic}: {e}")
+        if exception_occurred:
+            raise Exception("Some exceptions occurred when publishing Application Data")
 
     async def _publish_network_payload(self, network_payload: dict[str, object], clear: bool, clear_autodiscovery: bool):
         network_id: str = str(network_payload.get(Constants.NETWORK_ID))
@@ -179,16 +190,25 @@ class MqttClient:
         await self._interface.publish(state_topic, "" if clear else json.dumps(network_payload),retain=True)
         if clear and not clear_autodiscovery:
             return
-        ha_payload_data = self._homeassistant_client.build_network_discovery_payload(state_topic, network_topic, network_payload, clear_autodiscovery)
-        for topic, payload in ha_payload_data:
-            await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
-        if not clear_autodiscovery and len(ha_payload_data) > 0:
-            self._homeassistant_client.networks_published(network_topic)
+
+        exception_occurred: bool = False
+        for publisher_client in self._publisher_clients:
+            try:
+                ha_payload_data = publisher_client.build_network_discovery_payload(state_topic, network_topic, network_payload, clear_autodiscovery)
+                for topic, payload in ha_payload_data:
+                    await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
+                if not clear_autodiscovery and len(ha_payload_data) > 0:
+                    publisher_client.networks_published(network_topic)
+            except Exception as e:
+                exception_occurred = True
+                _LOGGER.error(f"Failed to publish Client specific payload - {state_topic}: {e}")
+        if exception_occurred:
+            raise Exception("Some exceptions occurred when publishing networks")
 
     async def _publish_device_payload(self, device_payload: dict[str, object], network_names: dict[int,str], clear: bool, clear_autodiscovery: bool) -> None:
         network_id: str = str(device_payload.get(Constants.NETWORK_ID))
         device_mac = str(device_payload.get(Constants.MAC))
-        device_mac = self._homeassistant_client.strip_mac(device_mac)
+        device_mac = MqttPublisherClient.strip_mac(device_mac)
         device_topic = self._get_device_topic(network_id,device_mac)
 
         state_topic: str = f"{device_topic}/{Constants.STATE}"
@@ -196,12 +216,21 @@ class MqttClient:
         
         if clear and not clear_autodiscovery:
             return
-        ha_payload_data = self._homeassistant_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names, clear_autodiscovery)
 
-        for topic, payload in ha_payload_data:
-            await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
-        if not clear_autodiscovery and len(ha_payload_data) > 0:
-            self._homeassistant_client.devices_published(device_topic)
+        exception_occurred: bool = False
+        for publisher_client in self._publisher_clients:
+            try:
+                ha_payload_data = publisher_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names, clear_autodiscovery)
+
+                for topic, payload in ha_payload_data:
+                    await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
+                if not clear_autodiscovery and len(ha_payload_data) > 0:
+                    publisher_client.devices_published(device_topic)
+            except Exception as e:
+                exception_occurred = True
+                _LOGGER.error(f"Failed to publish Client specific payload - {state_topic}: {e}")
+        if exception_occurred:
+            raise Exception("Some exceptions occurred when publishing devices")
 
     async def _publish_ssid_payload(self, ssid_payload: dict[str, object], devices: dict[str, str], clear: bool, clear_autodiscovery: bool) -> None:
         network_id: str = str(ssid_payload.get(Constants.NETWORK_ID))
@@ -212,12 +241,19 @@ class MqttClient:
         await self._interface.publish(state_topic, "" if clear else json.dumps(ssid_payload), retain=True)
         if clear and not clear_autodiscovery:
             return
-        ha_payload_data = self._homeassistant_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices, clear_autodiscovery)
-        for topic, payload in ha_payload_data:
-            await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
-        if not clear_autodiscovery and len(ha_payload_data) > 0:
-            self._homeassistant_client.ssids_published(ssid_topic)
-
+        exception_occurred: bool = False
+        for publisher_client in self._publisher_clients:
+            try:
+                ha_payload_data = publisher_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices, clear_autodiscovery)
+                for topic, payload in ha_payload_data:
+                    await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
+                if not clear_autodiscovery and len(ha_payload_data) > 0:
+                    publisher_client.ssids_published(ssid_topic)
+            except Exception as e:
+                exception_occurred = True
+                _LOGGER.error(f"Failed to publish Client specific payload - {state_topic}: {e}")
+        if exception_occurred:
+            raise Exception("Some exceptions occurred when publishing SSIDs")
 
     @property
     def is_connected(self) -> bool:
@@ -277,18 +313,42 @@ class MqttClient:
         await self._publish_ssid_payload(ssid_payload, devices, True, propagate)
 
     async def reset_networks(self, network_id: str | None = None) -> None:
-        self._homeassistant_client.reset_networks(None if network_id is None else self._get_network_topic(network_id))
+        exception_occurred: bool = False
+        for publisher_client in self._publisher_clients:
+            try:
+                publisher_client.reset_networks(None if network_id is None else self._get_network_topic(network_id))
+            except Exception as e:
+                exception_occurred = True
+                _LOGGER.error(f"Failed to reset client specific Network with ID {network_id}: {e}")
+        if exception_occurred:
+            raise Exception("Some exceptions occurred when resetting networks")
 
     async def reset_devices(self, network_id: str | None = None, device_mac: str | None = None) -> None:
         if (network_id is not None and device_mac is None) or (device_mac is not None and network_id is None):
             raise KeyError("Network ID and MAC must both be none or both be supplied")
 
+        exception_occurred: bool = False
         device_topic: str | None = None if device_mac is None or network_id is None else self._get_device_topic(network_id, device_mac)
-        self._homeassistant_client.reset_devices(device_topic)
+        for publisher_client in self._publisher_clients:
+            try:
+                publisher_client.reset_devices(device_topic)
+            except Exception as e:
+                exception_occurred = True
+                _LOGGER.error(f"Failed to reset client specific Device with MAC {device_mac}: {e}")
+        if exception_occurred:
+            raise Exception("Some exceptions occurred when resetting devices")
 
     async def reset_ssids(self, network_id: str | None = None, ssid_id: str | None = None) -> None:
         if (network_id is not None and ssid_id is None) or (ssid_id is not None and network_id is None):
             raise KeyError("Network ID and SSID ID must both be none or both be supplied")
 
+        exception_occurred: bool = False
         ssid_topic: str | None = None if ssid_id is None or network_id is None else self._get_ssid_topic(network_id, ssid_id)
-        self._homeassistant_client.reset_ssids(ssid_topic)
+        for publisher_client in self._publisher_clients:
+            try:
+                publisher_client.reset_ssids(ssid_topic)
+            except Exception as e:
+                exception_occurred = True
+                _LOGGER.error(f"Failed to reset client specific SSID with ID {ssid_id}: {e}")
+        if exception_occurred:
+            raise Exception("Some exceptions occurred when resetting SSIDs")
