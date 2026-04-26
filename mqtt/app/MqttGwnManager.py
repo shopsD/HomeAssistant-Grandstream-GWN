@@ -120,9 +120,11 @@ class MqttGwnManager:
                 cached_payload[Constants.CACHE] = device_names
                 if (gwn_network.id in cached_ssids and
                     gwn_ssid.id in cached_ssids[gwn_network.id] and
-                    Constants.CACHE in cached_ssids[gwn_network.id][gwn_ssid.id] and
-                    (cached_payload[Constants.CACHE] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.CACHE] or
-                    cached_payload[Constants.ASSIGNED_DEVICES] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.ASSIGNED_DEVICES])):
+                    (cached_payload[Constants.ASSIGNED_DEVICES] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.ASSIGNED_DEVICES] or
+                        (Constants.CACHE in cached_ssids[gwn_network.id][gwn_ssid.id] and
+                        cached_payload[Constants.CACHE] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.CACHE])
+                    )
+                ):
                     # since assigned devices are baked into the data for every home assistant toggle, if device assignments change, discovery needs to be republished
                     # cache is checked as well so that if the device name changes, then it updates in autodiscovery (home assistant UI)
                     await self._mqtt_client.reset_ssids(gwn_network.id, gwn_ssid.id)
