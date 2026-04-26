@@ -45,7 +45,7 @@ def main() -> None:
         ,type=str
         ,nargs="?",
         const=""
-        ,help="Your password for logging in to GWN Manager. Supplying this option will display the text for use in the config file hashed_password entry then exit the application"
+        ,help="Your password for logging in to GWN Manager. Supplying this option will hash then display the value to use in the config file gwn.hashed_password field, then exit the application"
     )
 
     args = parser.parse_args()
