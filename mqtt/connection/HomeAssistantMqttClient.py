@@ -256,7 +256,7 @@ class HomeAssistantMqttClient:
         local_device_data: dict[str, tuple[str, bool]] = {} # dont modify existing due to changing device info
         for data_device_mac, data_device_name in device_data.items():
             data_is_assigned: bool = assigned_devices is not None and data_device_mac in assigned_devices
-            
+
             if data_is_assigned:
                 raw_device_mac_list.append(data_device_mac)
             local_device_data[data_device_mac] = (data_device_name, data_is_assigned)
