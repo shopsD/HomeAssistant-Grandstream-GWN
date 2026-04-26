@@ -24,7 +24,7 @@ class MqttPublisherClient():
     def networks_published(self, network_topic: str) -> None:
         pass
 
-    def devices_published(self, device_topic: str) -> None: 
+    def devices_published(self, device_topic: str) -> None:
         pass
 
     def ssids_published(self, ssid_topic: str) -> None:
@@ -33,7 +33,7 @@ class MqttPublisherClient():
     def reset_networks(self, network_topic: str | None = None) -> None:
         pass
 
-    def reset_devices(self, device_topic: str | None = None) -> None: 
+    def reset_devices(self, device_topic: str | None = None) -> None:
         pass
 
     def reset_ssids(self, ssid_topic: str | None = None) -> None:
