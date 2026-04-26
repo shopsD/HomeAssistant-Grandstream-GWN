@@ -43,8 +43,10 @@ gwn: # required
   url: https://localhost:8443 # default https://localhost:8443
   app_id: CHANGE_ME # required
   secret_key: CHANGE_ME # required
+  # password and hashed_password cannot be supplied together. Only 1 must be provided if using username/password for GWN authentication
   # username: CHANGE_ME # optional (required if password is specified) This is the username for logging into GWN Manager. Required for associating SSIDs to Devices
-  # password: CHANGE_ME # optional (required if username is specified) This is the password for logging into GWN Manager. Required for associating SSIDs to Devices
+  # password: CHANGE_ME # optional (required if username is specified and hashed_password is not specified) This is the plaintext password for logging into GWN Manager. Required for associating SSIDs to Devices
+  # hashed_password: CHANGE_ME # optional (required if username is specified and password is not specified) This is the pre-hashed password for logging into GWN Manager. Required for associating SSIDs to Devices. It can be acquired by running the application with the flag --password then entering your password in the prompt
   # page_size: 5 # default 10
   # max_pages: 100 # default 0 (set to 0 for unlimited)
   # refresh_period_s: 30 # the rate to poll the GWN Manager for all data
