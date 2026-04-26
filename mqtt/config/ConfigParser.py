@@ -7,6 +7,7 @@ import yaml
 from gwn.authentication import GwnConfig
 from gwn.constants import Constants
 from mqtt.config.AppConfig import AppConfig
+from mqtt.config.CoreConfig import CoreConfig
 from mqtt.config.MqttConfig import MqttConfig
 from mqtt.config.LoggingConfig import LogLocation, LoggingConfig
 
@@ -209,6 +210,14 @@ class ConfigParser:
             if homeassistant_sub_section is not None:
                 if not isinstance(homeassistant_sub_section, dict):
                     raise ConfigParserError("mqtt.homeassistant is invalid")
+                # mqtt default application discovery topic
+                discovery_topic = homeassistant_sub_section.get("discovery_topic")
+                if discovery_topic is not None:
+                    mqtt_config.homeassistant.discovery_topic = str(discovery_topic)
+                # mqtt default application autodiscovery
+                always_publish_autodiscovery = homeassistant_sub_section.get("always_publish_autodiscovery")
+                if always_publish_autodiscovery is not None:
+                    mqtt_config.homeassistant.always_publish_autodiscovery = bool(always_publish_autodiscovery)
                 # mqtt default application autodiscovery
                 application_autodiscovery = homeassistant_sub_section.get("application_autodiscovery")
                 if application_autodiscovery is not None:
@@ -250,7 +259,7 @@ class ConfigParser:
                 if ssid_name_override is not None:
                     mqtt_config.homeassistant.ssid_name_override = ConfigParser._load_name_override_module(homeassistant_sub_section.get("ssid_name_override"),"ssid_name_override")
 
-                _LOGGER.debug(f"MQTT.HomeAssistant Config|Application Auto-discovery '{mqtt_config.homeassistant.application_autodiscovery}'|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
+                _LOGGER.debug(f"MQTT.HomeAssistant Config|Discovery Topic '{mqtt_config.homeassistant.discovery_topic}'|Always Publish Autodiscovery '{mqtt_config.homeassistant.always_publish_autodiscovery}'||Application Auto-discovery '{mqtt_config.homeassistant.application_autodiscovery}'|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
 
         _LOGGER.debug(f"MQTT Config|No Publish: '{mqtt_config.no_publish}'|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'")
         return mqtt_config
@@ -301,7 +310,22 @@ class ConfigParser:
         return log_config
 
     @staticmethod
-    def load(path: str | Path) -> AppConfig:
+    def _load_app(raw) -> AppConfig:
+        app_section = raw.get("app", {})
+        app_config = AppConfig()
+        if not isinstance(app_section, dict):
+            _LOGGER.debug("No App section found in config")
+        else:
+            _LOGGER.debug("Parsing App Config")
+            # app verify publish every poll
+            publish_every_poll = app_section.get("publish_every_poll")
+            if publish_every_poll is not None:
+                app_config.publish_every_poll = bool(publish_every_poll)
+        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'")
+        return app_config
+
+    @staticmethod
+    def load(path: str | Path) -> CoreConfig:
         _LOGGER.debug(f"Loading Config from {path}")
         config_path = Path(path)
 
@@ -313,8 +337,9 @@ class ConfigParser:
 
         gwn_config = ConfigParser._load_gwn(raw) # required section
 
+        app_config = ConfigParser._load_app(raw) # optional section
         mqtt_config = ConfigParser._load_mqtt(raw) # optional section
         log_config = ConfigParser._load_logging(raw) # optional section
         
         _LOGGER.info("Successfully loaded the config")
-        return AppConfig(mqtt_config, log_config, gwn_config)
+        return CoreConfig(app_config, gwn_config, log_config, mqtt_config)

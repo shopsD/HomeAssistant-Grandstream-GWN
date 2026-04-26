@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 
 @dataclass(slots=True)
 class HomeAssistantConfig:
+    discovery_topic: str = "homeassistant"
+    always_publish_autodiscovery: bool = False
     application_autodiscovery: bool = False
     default_network_autodiscovery: bool = False
     default_device_autodiscovery: bool = False

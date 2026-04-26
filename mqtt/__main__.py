@@ -20,11 +20,11 @@ def init_logger(config: LoggingConfig) -> None:
     _LOGGER.info("Logging Initialised")
 
 async def async_main(config_path: Path) -> None:
-    app_config = ConfigParser.load(config_path)
-    init_logger(app_config.logging)
-    manager = MqttClient(app_config.mqtt)
-    gwn_client = GwnClient(app_config.gwn)
-    app_manager = MqttGwnManager(manager,gwn_client)
+    core_config = ConfigParser.load(config_path)
+    init_logger(core_config.logging)
+    mqtt_client = MqttClient(core_config.mqtt)
+    gwn_client = GwnClient(core_config.gwn)
+    app_manager = MqttGwnManager(core_config.app, mqtt_client, gwn_client)
     if await app_manager.connect():
         await app_manager.run()
 

@@ -4,15 +4,17 @@ from typing import Any
 
 from gwn.constants import Constants
 from mqtt.config import HomeAssistantConfig
-from mqtt.connection.MqttInterface import MqttInterface
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
 class HomeAssistantMqttClient:
 
-    def __init__(self, config: HomeAssistantConfig, interface: MqttInterface) -> None:
+    def __init__(self, config: HomeAssistantConfig) -> None:
         self._config: HomeAssistantConfig = config
-        self._interface: MqttInterface = interface
+        self._application_published: bool = False
+        self._networks_published: set[str] = set()
+        self._devices_published: set[str] = set()
+        self._ssids_published: set[str] = set()
 
     def _normalise_macs(self, macs: dict[int | str, Any] ) -> dict[str, Any]:
         normalised: dict[str, Any] = {}
@@ -29,7 +31,7 @@ class HomeAssistantMqttClient:
         }
 
     def _ha_discovery_topic(self, component: str, object_id: str) -> str:
-        return f"homeassistant/{component}/{object_id}/config"
+        return f"{self._config.discovery_topic}/{component}/{object_id}/{Constants.CONFIG}"
 
     def _create_switch_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str, assigned_devices_json: str | None = None ) -> tuple[str, dict[str, object]]:
         
@@ -222,12 +224,13 @@ class HomeAssistantMqttClient:
         return (self._ha_discovery_topic("binary_sensor", unique_id),payload)
 
 
-    def _create_device_ssid_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, device_data: list[list[str]]) -> list[tuple[str, dict[str, object]]]:
+    def _create_device_ssid_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], device_data: dict[str, str]) -> list[tuple[str, dict[str, object]]]:
         ssid_id: str = str(payload.get(Constants.SSID_ID))
         ssid_id_int: int = int(ssid_id)
         # Use the SSID name and network name as model unless there was an override then use then
         # use the override as the SSID name and the old SSID name as the model
         ssid_name: str = str(payload.get(Constants.SSID_NAME))
+        network_name: str = str(payload.get(Constants.NETWORK_NAME))
         ssid_model: str = network_name if len(network_name) > 0 else "GWN SSID"
         if ssid_id_int in self._config.ssid_name_override:
             ssid_model = ssid_name
@@ -235,6 +238,7 @@ class HomeAssistantMqttClient:
         ssid_payload_id: str = f"gwn_ssid_{ssid_id}"
         device = self._ha_device_block(ssid_payload_id, ssid_name, ssid_model)
 
+        network_id: int = int(str(payload.get(Constants.NETWORK_ID)))
         if network_id in self._config.network_name_override:
             network_name = self._config.network_name_override[network_id]
         if len(network_name) == 0:
@@ -249,21 +253,21 @@ class HomeAssistantMqttClient:
         
         raw_device_mac_list: list[str] = []
         # first build a list of assigned devices
-        for device_info in device_data:
-            raw_device_mac:str = device_info[0]
-            if len(device_info) == 2:
-                device_info.append("")
-            device_info[2] = "true" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else ""
-            if bool(device_info[2]):
-                raw_device_mac_list.append(raw_device_mac)
+        local_device_data: dict[str, tuple[str, bool]] = {} # dont modify existing due to changing device info
+        for data_device_mac, data_device_name in device_data.items():
+            data_is_assigned: bool = assigned_devices is not None and data_device_mac in assigned_devices
+
+            if data_is_assigned:
+                raw_device_mac_list.append(data_device_mac)
+            local_device_data[data_device_mac] = (data_device_name, data_is_assigned)
+
 
         assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
 
-        for device_info in device_data:
+        for raw_device_mac in local_device_data.keys():
             # see if the device has a custom name assigned in GWN Manager
-            raw_device_mac = device_info[0]
-            device_name: str = device_info[1]
-            is_assigned: bool = device_info[2].lower() == "true"
+            device_name: str = local_device_data[raw_device_mac][0]
+            is_assigned: bool = local_device_data[raw_device_mac][1]
             if len(device_name) == 0: # No custom name so use the MAC
                 device_name = str(raw_device_mac)
             # Last check, see if the config overrides the name and always use this override in display
@@ -304,15 +308,15 @@ class HomeAssistantMqttClient:
             self._create_sensor_payload(device, f"{ssid_payload_id}_network_name", "Network", state_topic, "{{ %s }}" % json.dumps(network_name),None,False,True)
         ]
 
-    def _create_device_discovery_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], network_id: int, network_name: str, network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
-        device_mac = str(payload.get(Constants.MAC))
+    def _create_device_discovery_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], network_names: dict[int, str]) -> list[tuple[str, dict[str, object]]]:
+        # For the device block
+        device_mac: str = str(payload.get(Constants.MAC))
         normalised_device_mac = self.strip_mac(device_mac)
-
         # override the names in Home Assistant. This will not change anything underlying, only what is displayed in home assistant
         normalised_name_override_macs = self._normalise_macs(self._config.device_name_override)
         device_model: str = device_mac
         device_name: str = str(payload.get(Constants.NAME))
-
+        network_name: str = str(payload.get(Constants.NETWORK_NAME))
         # if no name is given, then use the AP type as a name otherwise, use the network name if there is one, otherwise, use 
         # 'GWN Device' as the name
         if len(device_name) == 0:
@@ -324,19 +328,24 @@ class HomeAssistantMqttClient:
             device_model = device_name if len(device_name) > 0 else device_mac
             device_name = str(normalised_name_override_macs[normalised_device_mac])
 
+        # For the SSID list sensor
         # build the list of SSID names and use the overrides if any names have been overriden in the config
         raw_ssids = payload[Constants.SSIDS]
         ssids: list[dict[str, str]] = raw_ssids if isinstance(raw_ssids,list) else []
         ssid_names: list[str] = []
         for ssid in ssids:
             ssid_name = ssid.get(Constants.SSID_NAME)
-            ssid_id = ssid.get(Constants.SSID_ID)
+            ssid_id: int = int(str(ssid.get(Constants.SSID_ID)))
             if ssid_name is not None and ssid_id is not None:
                 ssid_names.append(str(self._config.ssid_name_override.get(ssid_id,ssid_name)))
 
+        # For the Network Name Select input
+        network_id: int = int(str(payload.get(Constants.NETWORK_ID)))
         found_names: list[str] = []
-        for id in network_names:
-            new_network_name = network_names[id]
+
+        local_network_names = network_names.copy()
+        for id in local_network_names:
+            new_network_name = local_network_names[id]
             # now see if the network name was overriden in the config. If it was, then use the overridden name otherwise
             # see if it has a name. If it doesnt, then use the normal name
             if id in self._config.network_name_override:
@@ -347,7 +356,7 @@ class HomeAssistantMqttClient:
                 found_names.append(new_network_name)
             if network_id == id:
                 network_name = new_network_name
-            network_names[id] = new_network_name
+            local_network_names[id] = new_network_name
         
         device_payload_id: str = f"gwn_device_{normalised_device_mac}"
 
@@ -358,7 +367,7 @@ class HomeAssistantMqttClient:
             self._create_button_payload(device, f"{device_payload_id}_reboot", "Reboot", command_topic, Constants.REBOOT),
             self._create_button_payload(device, f"{device_payload_id}_reset", "Reset", command_topic, Constants.RESET, False, True),
             self._create_update_payload(device, f"{device_payload_id}_update_firmware","Update Firmware", state_topic, command_topic, "Firmware Update", Constants.UPDATE_FIRMWARE, Constants.CURRENT_FIRMWARE, Constants.NEW_FIRMWARE, False, True),
-            self._create_select_payload(device, f"{device_payload_id}_network_name", "Network", state_topic, command_topic, Constants.NETWORK_NAME, list(network_names.values()),{name: network_id for network_id, name in network_names.items()},"{{ %s }}" % json.dumps(network_name), True, True),
+            self._create_select_payload(device, f"{device_payload_id}_network_name", "Network", state_topic, command_topic, Constants.NETWORK_NAME, list(local_network_names.values()),{name: network_id for network_id, name in local_network_names.items()},"{{ %s }}" % json.dumps(network_name), True, True),
             self._create_binary_sensor_payload(device, f"{device_payload_id}_status", "Status", state_topic, Constants.STATUS),
             self._create_sensor_payload(device, f"{device_payload_id}_ipv4", "IPv4", state_topic, Constants.IPV4),
             self._create_sensor_payload(device, f"{device_payload_id}_ipv6", "IPv6", state_topic, Constants.IPV6),
@@ -397,7 +406,7 @@ class HomeAssistantMqttClient:
             self._create_sensor_payload(device, f"{network_payload_id}_timezone", "Timezone", state_topic, Constants.TIMEZONE)
         ]
 
-    def _generic_application_payload_to_homeassistant(self, state_topic: str, command_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
+    def _create_application_discovery_payload(self, state_topic: str, command_topic: str, payload: dict[str, object]) -> list[tuple[str, dict[str, object]]]:
         device = self._ha_device_block("gwn_to_mqtt", "GWN to MQTT Bridge", "GWN Manager to MQTT")
         device["manufacturer"] = "GWNtoMQTT"
         application_payload_id: str = "gwn_to_mqtt"
@@ -412,49 +421,88 @@ class HomeAssistantMqttClient:
     def strip_mac(self, mac: str) -> str:
         return mac.replace(":", "").replace("-","").lower()
 
-    async def publish_online(self, state_topic: str, application_topic: str, payload: dict[str, object]) -> None:
+    def build_application_discovery_payload(self, state_topic: str, application_topic: str, application_payload: dict[str, object], clear: bool) -> list[tuple[str, dict[str, object]]]:
         command_topic: str = f"{application_topic}/{Constants.SET}"
-        if self._config.application_autodiscovery:
-            ha_application_payload = self._generic_application_payload_to_homeassistant(state_topic, command_topic, payload)
-            for topic, discovery_payload in ha_application_payload:
-                await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
+        ha_application_payload: list[tuple[str, dict[str, object]]] = []
+        if clear or (self._config.application_autodiscovery and not self._application_published):
+            ha_application_payload = self._create_application_discovery_payload(state_topic, command_topic, application_payload)
+        if clear:
+            self._application_published = False
+        return ha_application_payload
 
-
-    async def publish_network(self, state_topic: str, network_topic: str, gwn_network_id: int, gwn_network: dict[str, object]) -> None:
-
+    def build_network_discovery_payload(self, state_topic: str, network_topic: str, network_payload: dict[str, object], clear: bool) -> list[tuple[str, dict[str, object]]]:
+        network_id: int = int(str(network_payload.get(Constants.NETWORK_ID)))
         auto_discovery: bool = (self._config.default_network_autodiscovery 
-            if gwn_network_id not in self._config.network_autodiscovery
-            else self._config.network_autodiscovery[gwn_network_id]
+            if network_id not in self._config.network_autodiscovery
+            else self._config.network_autodiscovery[network_id]
         )
         command_topic: str = f"{network_topic}/{Constants.SET}"
-        if auto_discovery:
-            ha_network_payload = self._create_network_discovery_payload(state_topic, command_topic, gwn_network)
-            # now actually publish
-            for topic, discovery_payload in ha_network_payload:
-                await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
+        ha_network_payload: list[tuple[str, dict[str, object]]] = []
+        if clear or (auto_discovery and network_topic not in self._networks_published):
+            ha_network_payload = self._create_network_discovery_payload(state_topic, command_topic, network_payload)
+        if clear and network_topic in self._networks_published:
+            self._networks_published.remove(network_topic)
+        return ha_network_payload
 
-    async def publish_device(self, state_topic: str, device_topic: str, network_names: dict[int, str], network_id: int, network_name: str, device_mac:str, device_payload: dict[str, object]) -> None:
+    def build_device_discovery_payload(self, state_topic: str, device_topic: str, device_payload: dict[str, object], network_names: dict[int, str], clear: bool) -> list[tuple[str, dict[str, object]]]:
         normalised_macs = self._normalise_macs(self._config.device_autodiscovery)
+        device_mac = str(device_payload.get(Constants.MAC))
+        normalised_device_mac = self.strip_mac(device_mac)
         auto_discovery: bool = (self._config.default_device_autodiscovery 
-            if device_mac not in normalised_macs
-            else normalised_macs[device_mac]
+            if normalised_device_mac not in normalised_macs
+            else normalised_macs[normalised_device_mac]
         )
-        if auto_discovery:
+        ha_device_payload: list[tuple[str, dict[str, object]]] = []
+        if clear or (auto_discovery and device_topic not in self._devices_published):
             command_topic: str = f"{device_topic}/{Constants.SET}"
-            ha_device_payload = self._create_device_discovery_payload(state_topic, command_topic, device_payload, network_id, network_name, network_names)
-            # now actually publish
-            for topic, discovery_payload in ha_device_payload:
-                await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
+            ha_device_payload = self._create_device_discovery_payload(state_topic, command_topic, device_payload, network_names)
+        if clear and device_topic in self._devices_published:
+            self._devices_published.remove(device_topic)
+        return ha_device_payload
 
-    async def publish_ssid(self, network_topic: str, network_id: int, network_name: str, state_topic: str, devices: list[list[str]], gwn_ssid_id: int, ssid_topic: str, ssid_payload: dict[str, object]) -> None:
+    def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: dict[str, str], clear: bool) -> list[tuple[str, dict[str, object]]]:
+        ssid_id: int = int(str(ssid_payload.get(Constants.SSID_ID)))
         auto_discovery: bool = (self._config.default_ssid_autodiscovery 
-            if gwn_ssid_id not in self._config.ssid_autodiscovery 
-            else self._config.ssid_autodiscovery[gwn_ssid_id]
+            if ssid_id not in self._config.ssid_autodiscovery
+            else self._config.ssid_autodiscovery[ssid_id]
         )
-        
-        if auto_discovery:
+        ha_ssid_payload: list[tuple[str, dict[str, object]]] = []
+        if clear or (auto_discovery and ssid_topic not in self._ssids_published):
             command_topic: str = f"{ssid_topic}/{Constants.SET}"
-            ha_ssid_payload = self._create_device_ssid_payload(state_topic, command_topic, ssid_payload, network_id, network_name, devices)
-            # now actually publish
-            for topic, discovery_payload in ha_ssid_payload:
-                await self._interface.publish(topic, json.dumps(discovery_payload), retain=True)
+            ha_ssid_payload = self._create_device_ssid_payload(state_topic, command_topic, ssid_payload, devices)
+        if clear and ssid_topic in self._ssids_published:
+            self._ssids_published.remove(ssid_topic)
+        return ha_ssid_payload
+
+    def application_published(self) -> None:
+        self._application_published = not self._config.always_publish_autodiscovery
+
+    def networks_published(self, network_topic: str) -> None:
+        if not self._config.always_publish_autodiscovery:
+            self._networks_published.add(network_topic)
+
+    def devices_published(self, device_topic) -> None:
+        if not self._config.always_publish_autodiscovery:
+            self._devices_published.add(device_topic)
+
+    def ssids_published(self, ssid_topic: str) -> None:
+        if not self._config.always_publish_autodiscovery:
+            self._ssids_published.add(ssid_topic)
+
+    def reset_networks(self, network_topic: str | None = None) -> None:
+        if network_topic is None:
+            self._networks_published = set()
+        else:
+            self._networks_published.discard(network_topic)
+
+    def reset_devices(self, device_topic: str | None = None) -> None:
+        if device_topic is None:
+            self._devices_published = set()
+        else:
+            self._devices_published.discard(device_topic)
+
+    def reset_ssids(self, ssid_topic: str | None = None) -> None:
+        if ssid_topic is None:
+            self._ssids_published = set()
+        else:
+            self._ssids_published.discard(ssid_topic)

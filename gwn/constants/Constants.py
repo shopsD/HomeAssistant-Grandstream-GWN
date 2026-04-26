@@ -98,3 +98,7 @@ class Constants:
     NETWORKS: ClassVar[str] = "networks"
     SET: ClassVar[str] = "set"
     STATE: ClassVar[str] = "state"
+    CONFIG: ClassVar[str] = "config"
+
+    # Application Processing
+    CACHE: ClassVar[str] = "cache"
