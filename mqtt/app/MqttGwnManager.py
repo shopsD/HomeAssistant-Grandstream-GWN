@@ -121,6 +121,7 @@ class MqttGwnManager:
                 if (gwn_network.id in cached_ssids and 
                     gwn_ssid.id in cached_ssids[gwn_network.id] and 
                     cached_payload[Constants.ASSIGNED_DEVICES] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.ASSIGNED_DEVICES]):
+                    # since assigned devices are baked into the data for every home assistant toggle, if device assignments change, discovery needs to be republished
                     await self._mqtt_client.reset_ssids(gwn_network.id, gwn_ssid.id)
                 if (force_republish or
                     self._config.publish_every_poll or
