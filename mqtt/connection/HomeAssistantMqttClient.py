@@ -493,16 +493,16 @@ class HomeAssistantMqttClient:
         if network_topic is None:
             self._networks_published = set()
         else:
-            self._networks_published.remove(network_topic)
+            self._networks_published.discard(network_topic)
 
     def reset_devices(self, device_topic: str | None = None) -> None:
         if device_topic is None:
             self._devices_published = set()
         else:
-            self._devices_published.remove(device_topic)
+            self._devices_published.discard(device_topic)
 
     def reset_ssids(self, ssid_topic: str | None = None) -> None:
         if ssid_topic is None:
             self._ssids_published = set()
         else:
-            self._ssids_published.remove(ssid_topic)
+            self._ssids_published.discard(ssid_topic)

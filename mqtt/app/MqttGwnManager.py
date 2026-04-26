@@ -117,8 +117,10 @@ class MqttGwnManager:
             try:
                 ssid_payload = self._serialise_ssid(gwn_network, gwn_ssid)
                 cached_payload = ssid_payload.copy()
-                cached_payload[Constants.CACHE] = device_names.items()
-                if gwn_network.id in cached_ssids and cached_payload[Constants.ASSIGNED_DEVICES] != cached_ssids[gwn_network.id][Constants.ASSIGNED_DEVICES]:
+                cached_payload[Constants.CACHE] = device_names
+                if (gwn_network.id in cached_ssids and 
+                    gwn_ssid.id in cached_ssids[gwn_network.id] and 
+                    cached_payload[Constants.ASSIGNED_DEVICES] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.ASSIGNED_DEVICES]):
                     await self._mqtt_client.reset_ssids(gwn_network.id, gwn_ssid.id)
                 if (force_republish or
                     self._config.publish_every_poll or
