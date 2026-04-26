@@ -153,6 +153,12 @@ class MqttClient:
     def _get_network_topic(self, network_id: str) -> str:
         return f"{self._interface.topic}/{Constants.NETWORKS}/{network_id}"
 
+    def _get_device_topic(self, network_id: str, device_mac: str) -> str:
+        return f"{self._get_network_topic(network_id)}/{Constants.DEVICES}/{device_mac}"
+
+    def _get_ssid_topic(self, network_id: str, ssid_id: str) -> str:
+        return f"{self._get_network_topic(network_id)}/{Constants.SSIDS}/{ssid_id}"
+
     async def _publish_online_payload(self, application_payload: dict[str,object], clear: bool, clear_autodiscovery: bool) -> None:
         application_topic = f"{self._interface.topic}/{Constants.APPLICATION}"
         await self._interface.publish(f"{application_topic}/{Constants.STATUS}", "" if clear else '{"status": "online"}', retain=True)
@@ -181,10 +187,9 @@ class MqttClient:
 
     async def _publish_device_payload(self, device_payload: dict[str, object], network_names: dict[int,str], clear: bool, clear_autodiscovery: bool) -> None:
         network_id: str = str(device_payload.get(Constants.NETWORK_ID))
-        network_topic: str = self._get_network_topic(network_id)
         device_mac = str(device_payload.get(Constants.MAC))
         device_mac = self._homeassistant_client.strip_mac(device_mac)
-        device_topic = f"{network_topic}/{Constants.DEVICES}/{device_mac}"
+        device_topic = self._get_device_topic(network_id,device_mac)
 
         state_topic: str = f"{device_topic}/{Constants.STATE}"
         await self._interface.publish(state_topic, "" if clear else json.dumps(device_payload), retain=True)
@@ -198,11 +203,10 @@ class MqttClient:
         if not clear_autodiscovery and len(ha_payload_data) > 0:
             self._homeassistant_client.devices_published(device_topic)
 
-    async def _publish_ssid_payload(self, ssid_payload: dict[str, object], devices: list[list[str]], clear: bool, clear_autodiscovery: bool) -> None:
+    async def _publish_ssid_payload(self, ssid_payload: dict[str, object], devices: dict[str, str], clear: bool, clear_autodiscovery: bool) -> None:
         network_id: str = str(ssid_payload.get(Constants.NETWORK_ID))
-        network_topic: str = self._get_network_topic(network_id)
         ssid_id: str = str(ssid_payload.get(Constants.SSID_ID))
-        ssid_topic = f"{network_topic}/{Constants.SSIDS}/{ssid_id}"
+        ssid_topic = self._get_ssid_topic(network_id,ssid_id)
 
         state_topic: str = f"{ssid_topic}/{Constants.STATE}"
         await self._interface.publish(state_topic, "" if clear else json.dumps(ssid_payload), retain=True)
@@ -257,7 +261,7 @@ class MqttClient:
     async def publish_device(self, device_payload: dict[str, object], network_names: dict[int,str]) -> None:
         await self._publish_device_payload(device_payload, network_names, False, False)
 
-    async def publish_ssid(self, ssid_payload: dict[str, object], devices: list[list[str]]) -> None:
+    async def publish_ssid(self, ssid_payload: dict[str, object], devices: dict[str, str]) -> None:
         await self._publish_ssid_payload(ssid_payload, devices, False, False)
 
     async def unpublish_online(self, application_payload: dict[str,object], propagate: bool) -> None:
@@ -269,14 +273,22 @@ class MqttClient:
     async def unpublish_device(self, device_payload: dict[str, object], propagate: bool) -> None:
         await self._publish_device_payload(device_payload, {}, True, propagate)
 
-    async def unpublish_ssid(self, ssid_payload: dict[str, object], devices: list[list[str]], propagate: bool) -> None:
+    async def unpublish_ssid(self, ssid_payload: dict[str, object], devices: dict[str, str], propagate: bool) -> None:
         await self._publish_ssid_payload(ssid_payload, devices, True, propagate)
 
-    async def reset_networks(self) -> None:
-        self._homeassistant_client.reset_networks()
+    async def reset_networks(self, network_id: str | None = None) -> None:
+        self._homeassistant_client.reset_networks(None if network_id is None else self._get_network_topic(network_id))
 
-    async def reset_devices(self) -> None:
-        self._homeassistant_client.reset_devices()
+    async def reset_devices(self, network_id: str | None = None, device_mac: str | None = None) -> None:
+        if (network_id is not None and device_mac is None) or (device_mac is not None and network_id is None):
+            raise KeyError("Network ID and MAC must both be none or both be supplied")
 
-    async def reset_ssids(self) -> None:
-        self._homeassistant_client.reset_ssids()
+        device_topic: str | None = None if device_mac is None or network_id is None else self._get_device_topic(network_id, device_mac)
+        self._homeassistant_client.reset_devices(device_topic)
+
+    async def reset_ssids(self, network_id: str | None = None, ssid_id: str | None = None) -> None:
+        if (network_id is not None and ssid_id is None) or (ssid_id is not None and network_id is None):
+            raise KeyError("Network ID and SSID ID must both be none or both be supplied")
+
+        ssid_topic: str | None = None if ssid_id is None or network_id is None else self._get_ssid_topic(network_id, ssid_id)
+        self._homeassistant_client.reset_ssids(ssid_topic)

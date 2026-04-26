@@ -224,7 +224,7 @@ class HomeAssistantMqttClient:
         return (self._ha_discovery_topic("binary_sensor", unique_id),payload)
 
 
-    def _create_device_ssid_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], device_data: list[list[str]]) -> list[tuple[str, dict[str, object]]]:
+    def _create_device_ssid_payload(self, state_topic: str, command_topic: str, payload: dict[str, object], device_data: dict[str, str]) -> list[tuple[str, dict[str, object]]]:
         ssid_id: str = str(payload.get(Constants.SSID_ID))
         ssid_id_int: int = int(ssid_id)
         # Use the SSID name and network name as model unless there was an override then use then
@@ -253,25 +253,21 @@ class HomeAssistantMqttClient:
         
         raw_device_mac_list: list[str] = []
         # first build a list of assigned devices
-        local_device_data: list[list[str]] = [] # dont modify existing due to changing device info
-        for device_info in device_data:
-            local_device_info = device_info.copy()
-            raw_device_mac:str = local_device_info[0]
-            if len(local_device_info) == 2:
-                local_device_info.append("")
-            local_device_info[2] = "true" if bool(assigned_devices is not None and raw_device_mac in assigned_devices) else ""
-            if bool(local_device_info[2]):
-                raw_device_mac_list.append(raw_device_mac)
-            local_device_data.append(local_device_info)
+        local_device_data: dict[str, tuple[str, bool]] = {} # dont modify existing due to changing device info
+        for data_device_mac, data_device_name in device_data.items():
+            data_is_assigned: bool = assigned_devices is not None and data_device_mac in assigned_devices
+            
+            if data_is_assigned:
+                raw_device_mac_list.append(data_device_mac)
+            local_device_data[data_device_mac] = (data_device_name, data_is_assigned)
 
 
         assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
 
-        for device_info in local_device_data:
+        for raw_device_mac in local_device_data.keys():
             # see if the device has a custom name assigned in GWN Manager
-            raw_device_mac = device_info[0]
-            device_name: str = device_info[1]
-            is_assigned: bool = device_info[2].lower() == "true"
+            device_name: str = local_device_data[raw_device_mac][0]
+            is_assigned: bool = local_device_data[raw_device_mac][1]
             if len(device_name) == 0: # No custom name so use the MAC
                 device_name = str(raw_device_mac)
             # Last check, see if the config overrides the name and always use this override in display
@@ -464,7 +460,7 @@ class HomeAssistantMqttClient:
             self._devices_published.remove(device_topic)
         return ha_device_payload
 
-    def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: list[list[str]], clear: bool) -> list[tuple[str, dict[str, object]]]:
+    def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: dict[str, str], clear: bool) -> list[tuple[str, dict[str, object]]]:
         ssid_id: int = int(str(ssid_payload.get(Constants.SSID_ID)))
         auto_discovery: bool = (self._config.default_ssid_autodiscovery 
             if ssid_id not in self._config.ssid_autodiscovery
@@ -493,11 +489,20 @@ class HomeAssistantMqttClient:
         if not self._config.always_publish_autodiscovery:
             self._ssids_published.add(ssid_topic)
 
-    def reset_networks(self) -> None:
-        self._networks_published = set()
+    def reset_networks(self, network_topic: str | None = None) -> None:
+        if network_topic is None:
+            self._networks_published = set()
+        else:
+            self._networks_published.remove(network_topic)
 
-    def reset_devices(self) -> None:
-        self._devices_published = set()
+    def reset_devices(self, device_topic: str | None = None) -> None:
+        if device_topic is None:
+            self._devices_published = set()
+        else:
+            self._devices_published.remove(device_topic)
 
-    def reset_ssids(self) -> None:
-        self._ssids_published = set()
+    def reset_ssids(self, ssid_topic: str | None = None) -> None:
+        if ssid_topic is None:
+            self._ssids_published = set()
+        else:
+            self._ssids_published.remove(ssid_topic)
