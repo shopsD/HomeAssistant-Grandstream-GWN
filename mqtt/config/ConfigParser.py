@@ -136,8 +136,13 @@ class ConfigParser:
             gwn_config.username = str(gwn_username)
         # gwn password
         gwn_password = gwn_section.get("password")
+        gwn_hashed_password = gwn_section.get("hashed_password")
+        if gwn_password is not None and gwn_hashed_password is not None:
+            raise ConfigParserError("gwn.password and gwn.hashed_password cannot be both provided")
         if gwn_password:
             gwn_config.password = GwnConfig.hash_password(gwn_password)
+        elif gwn_hashed_password:
+            gwn_config.password = str(gwn_hashed_password)
         if gwn_config.username and not gwn_config.password:
             raise ConfigParserError("gwn.username specified but gwn.password is missing")
         if gwn_config.password and not gwn_config.username:
@@ -323,6 +328,10 @@ class ConfigParser:
                 app_config.publish_every_poll = bool(publish_every_poll)
         _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'")
         return app_config
+
+    @staticmethod
+    def get_hash(password: str) -> str:
+        return GwnConfig.hash_password(password)
 
     @staticmethod
     def load(path: str | Path) -> CoreConfig:

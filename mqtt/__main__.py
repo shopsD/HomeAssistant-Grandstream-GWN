@@ -1,7 +1,7 @@
 import argparse
 import asyncio
+import getpass
 import logging
-
 from pathlib import Path
 
 from gwn.api import GwnClient
@@ -39,8 +39,28 @@ def main() -> None:
         ,default=Path(__file__).resolve().parent / "data" / "config.yml"
         ,help="Path to config YAML file. Defaults to ./data/config.yml relative to mqtt/main.py"
     )
-    _LOGGER.info("Starting GWN Manager to MQTT")
+    parser.add_argument(
+        "-p"
+        ,"--password"
+        ,type=str
+        ,nargs="?",
+        const=""
+        ,help="Your password for logging in to GWN Manager. Supplying this option will hash then display the value to use in the config file gwn.hashed_password field, then exit the application"
+    )
+
     args = parser.parse_args()
+    if args.password is not None:
+        password: str = ""
+        if len(args.password) > 0:
+            password = args.password
+        else:
+            password = getpass.getpass("Gwn Manager Password: ")
+            confirm_password = getpass.getpass("Confirm Gwn Manager Password: ")
+            if password != confirm_password:
+                raise ValueError("Passwords do not match")
+        return print(ConfigParser.get_hash(password))
+
+    _LOGGER.info("Starting GWN Manager to MQTT")
     asyncio.run(async_main(args.config_path))
     _LOGGER.info("Stopped GWN Manager to MQTT")
 
