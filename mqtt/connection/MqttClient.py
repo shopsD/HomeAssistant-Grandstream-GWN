@@ -43,7 +43,8 @@ class MqttClient:
                 payload = message.payload.decode("utf-8")
                 await self._handle_mqtt_command(topic, payload)
             except Exception as e:
-                _LOGGER.error("Failed to process MQTT command: %s", e)
+                _LOGGER.error(f"Failed to process MQTT command to {topic}: {e}")
+                _LOGGER.debug(f"Failed MQTT command: {payload}")
 
     async def _handle_mqtt_command(self, topic: str, payload: str) -> None:
         # only process anything that is a set command and starts with the topic

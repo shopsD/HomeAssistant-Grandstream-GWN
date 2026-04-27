@@ -92,6 +92,7 @@ class GwnClient:
                     device_list[mac] = gwn_device
             except Exception as e:
                 _LOGGER.error("Failed to process a device %s", e)
+                _LOGGER.debug(f"Basic Info of Failed Device: {basic_info}")
         _LOGGER.info(f"Processed {len(device_list)} Devices")
         return device_list
 
@@ -99,59 +100,63 @@ class GwnClient:
         ssid_list: dict[str | int,GwnSSID] = {}
         _LOGGER.info(f"Processing {len(ssid_info)} SSIDs")
         for id in ssid_info:
-            if int(id) in self._config.exclude_ssid:
-                _LOGGER.debug(f"Ignoring SSID: {id}")
-            else:
-                basic_info: dict[str, Any] = ssid_info[id][0]
-                config_info: dict[str, Any] = ssid_info[id][1]
-                ssid_device_info: list[dict[str, Any]] = ssid_info[id][2]
-
-                gwn_ssid = GwnSSID(
-                    id=id,
-                    ssidName=basic_info["ssidName"],
-                    wifiEnabled=int(basic_info["wifiEnabled"])==1,
-                    onlineDevices=int(basic_info["onlineDevices"]),
-                    scheduleEnabled=int(basic_info["scheduleEnabled"])==1,
-                    portalEnabled=int(basic_info["portalEnabled"])==1,
-                    securityMode=SecurityMode(int(basic_info["securityMode"])),
-                    macFilteringEnabled=MacFiltering(int(basic_info["macFilteringEnabled"])),
-                    clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
-                    ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0" 
-                        else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1" 
-                        else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2" 
-                        else None),
-                    ssidIsolation=int(config_info["ssidIsolation"])==1,
-                    ssidSsidHidden=int(config_info["ssidSsidHidden"])==1,
-                    ssidNewSsidBand=str(config_info["ssidNewSsidBand"]),
-                    ssidVlanid=int(config_info["ssidVlanid"]) if config_info["ssidVlanid"] is not None else None,
-                    ssidVlanEnabled=int(config_info["ssidVlan"])==1 if config_info["ssidVlan"] is not None else False,
-                    ssidEnable=int(config_info["ssidEnable"]) == 1,
-                    ssidRemark=str(config_info["ssidRemark"]),
-                    ssidKey=(None if int(id) in self._config.exclude_passphrase
-                        else str(config_info["ssidWpaKey"]) if config_info["ssidWpaKey"] is not None
-                        else str(config_info["ssidWepKey"]) if config_info["ssidWepKey"] is not None
-                        else None),
-                    ghz2_4_Enabled="2" in str(config_info["ssidNewSsidBand"]),
-                    ghz5_Enabled="5" in str(config_info["ssidNewSsidBand"]),
-                    ghz6_Enabled="6" in str(config_info["ssidNewSsidBand"]),
-                    devices=[]
-                )
-                
-                has_device_info = ssid_device_info is not None and len(ssid_device_info) > 0
-
-                if has_device_info:
-                    for device_info in ssid_device_info:
-                        mac = GwnConfig.normalise_mac(str(device_info.get("mac")))
-                        gwn_device = devices.get(mac, None)
-                        if gwn_device is not None and bool(device_info.get("checked")):
-                            gwn_ssid.devices.append(gwn_device)
-
-                ssid_dictionary_key = int(gwn_ssid.id) if has_device_info else str(gwn_ssid.ssidName)
-                if not has_device_info and ssid_dictionary_key in ssid_list:
-                    _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
+            try:
+                if int(id) in self._config.exclude_ssid:
+                    _LOGGER.debug(f"Ignoring SSID: {id}")
                 else:
-                    ssid_list[ssid_dictionary_key] = gwn_ssid
-                _LOGGER.debug(f"Processed SSID: {id} - Key: {ssid_dictionary_key}")
+                    basic_info: dict[str, Any] = ssid_info[id][0]
+                    config_info: dict[str, Any] = ssid_info[id][1]
+                    ssid_device_info: list[dict[str, Any]] = ssid_info[id][2]
+
+                    gwn_ssid = GwnSSID(
+                        id=id,
+                        ssidName=basic_info["ssidName"],
+                        wifiEnabled=int(basic_info["wifiEnabled"])==1,
+                        onlineDevices=int(basic_info["onlineDevices"]),
+                        scheduleEnabled=int(basic_info["scheduleEnabled"])==1,
+                        portalEnabled=int(basic_info["portalEnabled"])==1,
+                        securityMode=SecurityMode(int(basic_info["securityMode"])),
+                        macFilteringEnabled=MacFiltering(int(basic_info["macFilteringEnabled"])),
+                        clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
+                        ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0" 
+                            else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1" 
+                            else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2" 
+                            else None),
+                        ssidIsolation=config_info["ssidIsolation"] is not None and int(config_info["ssidIsolation"])==1,
+                        ssidSsidHidden=config_info["ssidSsidHidden"] is not None and int(config_info["ssidSsidHidden"])==1,
+                        ssidNewSsidBand=str(config_info["ssidNewSsidBand"]) if config_info["ssidNewSsidBand"] is not None else "",
+                        ssidVlanid=int(config_info["ssidVlanid"]) if config_info["ssidVlanid"] is not None else None,
+                        ssidVlanEnabled=int(config_info["ssidVlan"])==1 if config_info["ssidVlan"] is not None else False,
+                        ssidEnable=config_info["ssidEnable"] is not None and int(config_info["ssidEnable"]) == 1,
+                        ssidRemark=str(config_info["ssidRemark"]) if config_info["ssidRemark"] is not None else "",
+                        ssidKey=(None if int(id) in self._config.exclude_passphrase
+                            else str(config_info["ssidWpaKey"]) if config_info["ssidWpaKey"] is not None
+                            else str(config_info["ssidWepKey"]) if config_info["ssidWepKey"] is not None
+                            else None),
+                        ghz2_4_Enabled=config_info["ssidNewSsidBand"] is not None and "2" in str(config_info["ssidNewSsidBand"]),
+                        ghz5_Enabled=config_info["ssidNewSsidBand"] is not None and "5" in str(config_info["ssidNewSsidBand"]),
+                        ghz6_Enabled=config_info["ssidNewSsidBand"] is not None and "6" in str(config_info["ssidNewSsidBand"]),
+                        devices=[]
+                    )
+                    
+                    has_device_info = ssid_device_info is not None and len(ssid_device_info) > 0
+
+                    if has_device_info:
+                        for device_info in ssid_device_info:
+                            mac = GwnConfig.normalise_mac(str(device_info.get("mac")))
+                            gwn_device = devices.get(mac, None)
+                            if gwn_device is not None and bool(device_info.get("checked")):
+                                gwn_ssid.devices.append(gwn_device)
+
+                    ssid_dictionary_key = int(gwn_ssid.id) if has_device_info else str(gwn_ssid.ssidName)
+                    if not has_device_info and ssid_dictionary_key in ssid_list:
+                        _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
+                    else:
+                        ssid_list[ssid_dictionary_key] = gwn_ssid
+                    _LOGGER.debug(f"Processed SSID: {id} - Key: {ssid_dictionary_key}")
+            except Exception as e:
+                _LOGGER.error(f"Failed to Process SSID with ID {id}: {e}")
+                _LOGGER.debug(f"Basic Info of Failed SSID: {basic_info}")
         _LOGGER.info(f"Processed {len(ssid_list)} SSIDs")
         return ssid_list
 
@@ -296,6 +301,7 @@ class GwnClient:
                             _LOGGER.debug(f"Processed Network '{gwn_network.networkName}' with ID {gwn_network.id}")
                 except Exception as e:
                     _LOGGER.error("Failed to process a Network: %s", e)
+                    _LOGGER.debug(f"Basic Info of Failed Network: {network}")
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
