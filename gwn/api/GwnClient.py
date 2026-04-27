@@ -4,7 +4,7 @@ from typing import Any, TypeVar
 
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
-from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum
+from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum, MultiCastToUnicast, SSID_11W, SSID_BMS
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 
@@ -399,6 +399,79 @@ class GwnClient:
                     payload.ssidWpaKey = payload.ssidWpaKey
                 case _:
                     payload.ssidWpaKey = payload.ssid_key
+
+        # apply full payload defaults
+        if payload.ssidRemark is None:
+            payload.ssidRemark = str(config_info.get("ssidRemark", None))
+        if payload.ssidEnable is None:
+            payload.ssidEnable = bool(config_info.get("ssidEnable")) == 1
+        if payload.ssidVlan is None:
+            payload.ssidVlan = bool(config_info.get("ssidVlan")) == 1
+        if payload.ssidVlanid is None:
+            payload.ssidVlanid = config_info.get("ssidVlanid")
+        if payload.ssidRadiusDynamicVlan is None:
+            payload.ssidRadiusDynamicVlan = config_info.get("ssidRadiusDynamicVlan", None)
+        if payload.ssidSsidHidden is None:
+            payload.ssidSsidHidden = config_info.get("ssidSsidHidden", None) == 1
+        if payload.ssidWifiClientLimit is None:
+            payload.ssidWifiClientLimit = config_info.get("ssidRadiusDynamicVlan", None)
+        if payload.ssidEncryption is None:
+            payload.ssidEncryption = ssid_encryption
+        if payload.ssidWpaKeyMode is None:
+            payload.ssidWpaKeyMode = config_info.get("ssidWpaKeyMode", None) == 1
+        if payload.ssidWpaEncryption is None:
+            payload.ssidWpaEncryption = config_info.get("ssidWpaEncryption", None) == 1
+        if payload.ssidBridgeEnable is None:
+            payload.ssidBridgeEnable = config_info.get("ssidBridgeEnable", None) == 1
+        if payload.ssidIsolationMode is None:
+            payload.ssidIsolationMode = config_info.get("ssidIsolationMode", None)
+        if payload.ssidGatewayMac is None:
+            payload.ssidGatewayMac = config_info.get("ssidGatewayMac", None)
+        if payload.ssidVoiceEnterprise is None:
+            payload.ssidVoiceEnterprise = config_info.get("ssidVoiceEnterprise", None) == 1
+        if payload.ssid11V is None:
+            payload.ssid11V = config_info.get("ssid11V", None) == 1
+        if payload.ssid11R is None:
+            payload.ssid11R = config_info.get("ssid11R", None) == 1
+        if payload.ssid11K is None:
+            payload.ssid11K = config_info.get("ssid11K", None) == 1
+        if payload.ssidDtimPeriod is None:
+            payload.ssidDtimPeriod = config_info.get("ssidDtimPeriod", None)
+        if payload.ssidMcastToUcast is None:
+            payload.ssidMcastToUcast = MultiCastToUnicast(config_info.get("ssidMcastToUcast"))
+        if payload.ssidProxyarp is None:
+            payload.ssidProxyarp = config_info.get("ssidProxyarp", None) == 1
+        if payload.ssidStaIdleTimeout is None:
+            payload.ssidStaIdleTimeout = config_info.get("ssidStaIdleTimeout", None) == 1
+        if payload.ssid11W is None:
+            payload.ssid11W = None if config_info.get("ssid11W", None) is None else SSID_11W(config_info.get("ssid11W", None))
+        if payload.ssidBms is None:
+            payload.ssidBms = None if config_info.get("ssidBms", None) is None else SSID_BMS(config_info.get("ssidBms", None))
+        if payload.ssidClientIPAssignment is None:
+            payload.ssidClientIPAssignment = config_info.get("ssidClientIPAssignment", None) == 1
+        if payload.ssidPortalEnable is None:
+            payload.ssidPortalEnable = config_info.get("ssidPortalEnable", None)
+        if payload.ssidPortalPolicy is None:
+            payload.ssidPortalPolicy = config_info.get("ssidPortalPolicy", None)
+        if payload.ssidMaclistBlacks is None:
+            payload.ssidMaclistBlacks = None if detailed_ssid_info is None else self._config_value(detailed_ssid_info["access_control"],"ssid_maclist_black")
+        if payload.ssidMaclistWhites is None:
+            payload.ssidMaclistWhites = None if detailed_ssid_info is None else self._config_value(detailed_ssid_info["access_control"],"ssid_maclist_white")
+        if payload.ssidMacFiltering is None:
+            payload.ssidMacFiltering = MacFiltering(config_info.get("ssidPortalPolicy", None))
+        if payload.scheduleId is None:
+            payload.scheduleId = None if detailed_ssid_info is None else self._config_value(detailed_ssid_info["basic"],"ssid_schedule")
+        if payload.bandwidthType is None:
+            payload.bandwidthType = config_info.get("bandwidthType", None)
+        if payload.bandwidthRules is None:
+            payload.bandwidthRules = config_info.get("bandwidthRules", None)
+        if payload.ssidSecurityType is None:
+            payload.ssidSecurityType = config_info.get("ssidSecurityType", None)
+        if payload.ppskProfile is None:
+            payload.ppskProfile = config_info.get("ppskProfile", None)
+        if payload.radiusProfile is None:
+            payload.radiusProfile = config_info.get("radiusProfile", None)
+
         _LOGGER.debug(f"Building Payload for SSID {payload.id}")
         payload_dict = payload.build_payload()
         if len(payload_dict) == 0:

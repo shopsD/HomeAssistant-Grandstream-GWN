@@ -20,7 +20,7 @@ class MqttInterface:
 
     @property
     def client(self) -> Client:
-        if self._client is None:
+        if self._client is None and not self.connect():
             raise RuntimeError("MQTT client is not connected")
         return self._client
 
