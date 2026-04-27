@@ -314,6 +314,7 @@ class MqttClient:
 
     async def reset_networks(self, network_id: str | None = None) -> None:
         exception_occurred: bool = False
+        _LOGGER.debug(f"Resetting {len(self._publisher_clients)} clients MQTT data for Network with ID {network_id}")
         for publisher_client in self._publisher_clients:
             try:
                 publisher_client.reset_networks(None if network_id is None else self._get_network_topic(network_id))
@@ -326,7 +327,7 @@ class MqttClient:
     async def reset_devices(self, network_id: str | None = None, device_mac: str | None = None) -> None:
         if (network_id is not None and device_mac is None) or (device_mac is not None and network_id is None):
             raise KeyError("Network ID and MAC must both be none or both be supplied")
-
+        _LOGGER.debug(f"Resetting {len(self._publisher_clients)} clients MQTT data for Device with MAC {device_mac}")
         exception_occurred: bool = False
         device_topic: str | None = None if device_mac is None or network_id is None else self._get_device_topic(network_id, device_mac)
         for publisher_client in self._publisher_clients:
@@ -344,6 +345,7 @@ class MqttClient:
 
         exception_occurred: bool = False
         ssid_topic: str | None = None if ssid_id is None or network_id is None else self._get_ssid_topic(network_id, ssid_id)
+        _LOGGER.debug(f"Resetting {len(self._publisher_clients)} clients MQTT data for SSID with ID {ssid_id}")
         for publisher_client in self._publisher_clients:
             try:
                 publisher_client.reset_ssids(ssid_topic)

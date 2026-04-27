@@ -125,6 +125,7 @@ class MqttGwnManager:
                         cached_payload[Constants.CACHE] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.CACHE])
                     )
                 ):
+                    _LOGGER.debug(f"Publishing Autodiscovery for SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
                     # since assigned devices are baked into the data for every home assistant toggle, if device assignments change, discovery needs to be republished
                     # cache is checked as well so that if the device name changes, then it updates in autodiscovery (home assistant UI)
                     await self._mqtt_client.reset_ssids(gwn_network.id, gwn_ssid.id)
@@ -205,6 +206,7 @@ class MqttGwnManager:
 
         network_device_names: dict[str, dict[str, str]] = {} # contains devices tied to a network
         current_devices: dict[str, str] = {}  # contains all devices present (regardless of network)
+        _LOGGER.debug("Checking cached data")
         # first find any newly added networks
         for gwn_network in gwn_networks:
             network_device_names[gwn_network.id] = {}
@@ -219,7 +221,6 @@ class MqttGwnManager:
                     gwn_device.mac not in cached_devices[gwn_network.id] or
                     cached_devices[gwn_network.id][gwn_device.mac][Constants.NAME] != gwn_device.name):
                     force_republish_ssids = True
-
         # now handle networks or devices that may have moved or been removed
         for network_id, network_dict in cached_devices.items():
             if network_id not in network_device_names:
@@ -237,16 +238,17 @@ class MqttGwnManager:
         if force_republish_ssids:
             await self._mqtt_client.reset_ssids()
 
+        _LOGGER.debug(f"Processing {len(gwn_networks)} Networks")
         for gwn_network in gwn_networks:
             await self._publish_network(gwn_network, cached_networks, force_republish_networks)
             await self._publish_devices(gwn_network, network_names, cached_devices, force_republish_devices)
             await self._publish_ssids(gwn_network, network_device_names[gwn_network.id], cached_ssids, force_republish_ssids)
-        _LOGGER.info(f"Published {len(gwn_networks)} Networks over MQTT")
-        _LOGGER.info("Cleaning old data from cache")
+        _LOGGER.info(f"Processed {len(gwn_networks)} Networks")
+        _LOGGER.info("Processing cache for unpublishing")
         await self._unpublish_networks(cached_networks)
         await self._unpublish_devices(cached_devices, current_devices)
         await self._unpublish_ssids(cached_ssids, cached_devices)
-        _LOGGER.info("Cleaned old data from cache")
+        _LOGGER.info("Processed cache for unpublishing")
 
     def _enum_value(self, value: Enum | None) -> str | None:
         if value is None:

@@ -33,7 +33,7 @@ class MqttInterface:
         return self.client.messages
 
     async def connect(self) -> bool:
-        _LOGGER.info("Connecting to MQTT")
+        _LOGGER.info(f"Connecting to MQTT broker {self._config.host}:{self._config.port}")
         if self._client is not None:
             _LOGGER.error("Client is already connected")
             return self._connected
@@ -55,7 +55,7 @@ class MqttInterface:
         await client.__aenter__()
         self._client = client
         self._connected = True
-        _LOGGER.info("Connected to MQTT broker at %s:%s", self._config.host, self._config.port)
+        _LOGGER.info(f"Connected to MQTT broker at {self._config.host}:{self._config.port}")
         return self._connected
 
     async def disconnect(self) -> None:
