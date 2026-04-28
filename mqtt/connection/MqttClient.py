@@ -32,19 +32,28 @@ class MqttClient:
             f"{base}/{Constants.NETWORKS}/+/{Constants.SSIDS}/+/{Constants.SET}",
             f"{base}/{Constants.GWN}/{Constants.SET}"
         ]
-
-        for topic in topics:
-            await self._interface.subscribe(topic)
-            _LOGGER.debug("Subscribed to %s", topic)
-
-        async for message in self._interface.messages:
+        while True:
             try:
-                topic = str(message.topic)
-                payload = message.payload.decode("utf-8")
-                await self._handle_mqtt_command(topic, payload)
+                if not self._interface.is_connected:
+                    await self._interface.connect()
+                for topic in topics:
+                    await self._interface.subscribe(topic)
+                    _LOGGER.debug("Subscribed to %s", topic)
+
+                async for message in self._interface.messages:
+                    try:
+                        topic = str(message.topic)
+                        payload = message.payload.decode("utf-8")
+                        await self._handle_mqtt_command(topic, payload)
+                    except Exception as e:
+                        _LOGGER.error(f"Failed to process MQTT command to {topic}: {e}")
+                        _LOGGER.debug(f"Failed MQTT command: {payload}")
+            except asyncio.CancelledError:
+                raise
             except Exception as e:
-                _LOGGER.error(f"Failed to process MQTT command to {topic}: {e}")
-                _LOGGER.debug(f"Failed MQTT command: {payload}")
+                _LOGGER.warning(f"MQTT listener disconnected: {e}")
+                await self._interface.disconnect()
+                await asyncio.sleep(5)
 
     async def _handle_mqtt_command(self, topic: str, payload: str) -> None:
         # only process anything that is a set command and starts with the topic

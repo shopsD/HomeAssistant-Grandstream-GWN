@@ -13,15 +13,15 @@ class MqttInterface:
         self._config: MqttConfig = config
         self._client: Client | None = None
         self._connected: bool = False
-    
-    def _authenticated_client(self) -> Client:
-        if self._client is None and not self.connect():
+
+    def _ensure_client(self) -> Client:
+        if self._client is None:
             raise RuntimeError("MQTT client is not connected")
         return self._client
 
     @property
     def is_connected(self) -> bool:
-        return self._connected
+        return self._connected and self._client is not None
 
     @property
     def topic(self) -> str:
@@ -29,7 +29,7 @@ class MqttInterface:
 
     @property
     def messages(self):
-        return self._authenticated_client.messages
+        return self._ensure_client().messages
 
     async def connect(self) -> bool:
         _LOGGER.info(f"Connecting to MQTT broker {self._config.host}:{self._config.port}")
@@ -68,7 +68,7 @@ class MqttInterface:
 
     async def publish(self, topic: str, payload: str, retain: bool = False) -> None:
         if not self._config.no_publish:
-            await self._authenticated_client.publish(topic, payload, retain=retain)
+            await self._ensure_client().publish(topic, payload, retain=retain)
 
     async def subscribe(self, topic: str) -> None:
-        await self._authenticated_client.subscribe(topic)
+        await self._ensure_client().subscribe(topic)
