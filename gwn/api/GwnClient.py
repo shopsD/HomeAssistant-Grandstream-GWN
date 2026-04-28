@@ -4,7 +4,23 @@ from typing import Any, TypeVar
 
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
-from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum, MultiCastToUnicast, SSID_11W, SSID_BMS, SSIDSecurityType, BandwidthType
+from gwn.constants import ( Constants, 
+                            IsolationMode, 
+                            MacFiltering, 
+                            SecurityMode, 
+                            RadioPower, 
+                            Width2G, 
+                            Width5G, 
+                            Width6G, 
+                            BandSteering, 
+                            BooleanEnum, 
+                            MultiCastToUnicast, 
+                            SSID_11W, 
+                            SSID_BMS, 
+                            SSIDSecurityType, 
+                            BandwidthType, 
+                            WpaEncryption, 
+                            WpaKeyMode)
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 
@@ -28,10 +44,16 @@ class GwnClient:
         return normalised
 
     def _get_bool_or_none(self, data: dict[str, Any], key: str) -> bool | None:
-        return None if data is None or key not in data else str(data.get(key)) == "1"
+        if data is None or key not in data:
+            return None
+        value = data.get(key, None)
+        return None if value is None else str(value) == "1"
 
     def _get_int_or_none(self, data: dict[str, Any], key: str) -> int | None:
-        return None if data is None or key not in data else int(data[key])
+        if data is None or key not in data:
+            return None
+        value = data.get(key, None)
+        return None if value is None else int(value)
 
     def _get_enum_or_none(self, data: dict[str, Any], key: str, enum_type: type[TypedEnum]) -> TypedEnum | None:
         if key not in data or data[key] is None:
@@ -444,7 +466,7 @@ class GwnClient:
                 payload.ssidMaclistWhites = self._config_list(detailed_ssid_info["access_control"],"ssid_maclist_white")
             if payload.scheduleId is None:
                 schedule_id = self._config_value(detailed_ssid_info["basic"],"ssid_schedule")
-                payload.scheduleId = None if schedule_id is None else int(schedule_id)
+                payload.scheduleId = None if schedule_id is None or schedule_id == "" else int(schedule_id)
         if config_info is not None:
             if payload.ssidRemark is None:
                 payload.ssidRemark = config_info.get("ssidRemark", None)
@@ -461,9 +483,9 @@ class GwnClient:
             if payload.ssidWifiClientLimit is None:
                 payload.ssidWifiClientLimit = self._get_int_or_none(config_info,"ssidWifiClientLimit")
             if payload.ssidWpaKeyMode is None:
-                payload.ssidWpaKeyMode = self._get_bool_or_none(config_info,"ssidWpaKeyMode")
+                payload.ssidWpaKeyMode = self._get_enum_or_none(config_info,"ssidWpaKeyMode", WpaKeyMode)
             if payload.ssidWpaEncryption is None:
-                payload.ssidWpaEncryption = self._get_bool_or_none(config_info,"ssidWpaEncryption")
+                payload.ssidWpaEncryption = self._get_enum_or_none(config_info,"ssidWpaEncryption", WpaEncryption)
             if payload.ssidBridgeEnable is None:
                 payload.ssidBridgeEnable = self._get_bool_or_none(config_info,"ssidBridgeEnable")
             if payload.ssidIsolationMode is None:
@@ -485,7 +507,7 @@ class GwnClient:
             if payload.ssidProxyarp is None:
                 payload.ssidProxyarp = self._get_bool_or_none(config_info,"ssidProxyarp")
             if payload.ssidStaIdleTimeout is None:
-                payload.ssidStaIdleTimeout = self._get_bool_or_none(config_info,"ssidStaIdleTimeout") 
+                payload.ssidStaIdleTimeout = self._get_int_or_none(config_info,"ssidStaIdleTimeout") 
             if payload.ssid11W is None:
                 payload.ssid11W =  self._get_enum_or_none(config_info,"ssid11W", SSID_11W)
             if payload.ssidBms is None:

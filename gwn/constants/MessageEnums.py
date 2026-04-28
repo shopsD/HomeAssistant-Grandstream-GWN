@@ -61,9 +61,9 @@ class MacFiltering(Enum):
     Blacklist = 2
 
 class IsolationMode(Enum):
-    Radio = 0
-    Internet = 1
-    Gateway = 2
+    Radio = "0"
+    Internet = "1"
+    Gateway = "2"
 
 class MultiCastToUnicast(Enum):
     Disabled = 0
@@ -92,3 +92,12 @@ class SSIDSecurityType(Enum):
     PPSKWithoutRADIUS = 3
     Hotspot2_0_OSEN = 4
     PPSKWithRADIUS = 5
+
+class WpaEncryption(Enum):
+    AES = 0
+    AES_TKIP = 1
+
+class WpaKeyMode(Enum):
+    MODE_PSK = 0
+    MODE_802_1X = 1
+    MODE_PPSK = 2 # undocumented and unconfirmed

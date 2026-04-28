@@ -19,6 +19,11 @@ class MqttInterface:
             raise RuntimeError("MQTT client is not connected")
         return self._client
 
+    async def _authenticated_client(self) -> Client:
+        if self._client is None:
+            await self.connect()
+        return self._ensure_client()
+
     @property
     def is_connected(self) -> bool:
         return self._connected and self._client is not None
@@ -68,7 +73,9 @@ class MqttInterface:
 
     async def publish(self, topic: str, payload: str, retain: bool = False) -> None:
         if not self._config.no_publish:
-            await self._ensure_client().publish(topic, payload, retain=retain)
+            client = await self._authenticated_client()
+            await client.publish(topic, payload, retain=retain)
 
     async def subscribe(self, topic: str) -> None:
-        await self._ensure_client().subscribe(topic)
+        client = await self._authenticated_client()
+        await client.subscribe(topic)

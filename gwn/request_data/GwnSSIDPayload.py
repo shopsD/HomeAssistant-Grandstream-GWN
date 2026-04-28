@@ -9,7 +9,9 @@ from gwn.constants import (SecurityMode,
                             BandwidthType, 
                             SSIDSecurityType, 
                             SSID_11W, 
-                            SSID_BMS)
+                            SSID_BMS,
+                            WpaEncryption,
+                            WpaKeyMode)
 
 @dataclass(slots=True)
 class GwnSSIDPayload:
@@ -26,8 +28,8 @@ class GwnSSIDPayload:
     ssidWifiClientLimit: int | None = None # that is serialised as a string
     ssidEncryption: SecurityMode | None = None
     ssidWepKey: str | None = None
-    ssidWpaKeyMode: bool | None = None
-    ssidWpaEncryption: bool | None = None
+    ssidWpaKeyMode: WpaKeyMode | None = None
+    ssidWpaEncryption: WpaEncryption | None = None
     ssidWpaKey: str | None = None
     ssidBridgeEnable: bool | None = None
     ssidIsolation: bool | None = None
@@ -40,7 +42,7 @@ class GwnSSIDPayload:
     ssidDtimPeriod: int | None = None
     ssidMcastToUcast: MultiCastToUnicast | None = None
     ssidProxyarp: bool | None = None
-    ssidStaIdleTimeout: bool | None = None
+    ssidStaIdleTimeout: int | None = None
     ssid11W: SSID_11W | None = None
     ssidBms: SSID_BMS | None = None
     ssidClientIPAssignment: bool | None = None
