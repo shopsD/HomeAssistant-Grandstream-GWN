@@ -47,7 +47,7 @@ class GwnSSIDPayload:
     bindMacs: list[str] | None = None # documentation says string. tbc via testing. documentation example shows an array
     removeMacs: list[str] | None = None
     ssidPortalEnable: bool | None = None # bool that is serialised as a string
-    ssidPortalPolicy: bool | None = None
+    ssidPortalPolicy: int | None = None
     ssidMaclistBlacks: list[str] | None = None
     ssidMaclistWhites: list[str] | None = None
     ssidMacFiltering: MacFiltering | None = None

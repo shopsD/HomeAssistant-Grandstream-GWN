@@ -4,7 +4,7 @@ from typing import Any, TypeVar
 
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
-from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum, MultiCastToUnicast, SSID_11W, SSID_BMS
+from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum, MultiCastToUnicast, SSID_11W, SSID_BMS, SSIDSecurityType, BandwidthType
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 
@@ -26,6 +26,29 @@ class GwnClient:
             normalised[entry["key"]] = entry
 
         return normalised
+
+    def _get_bool_or_none(self, data: dict[str, Any], key: str) -> bool | None:
+        return None if data is None or key not in data else str(data.get(key)) == "1"
+
+    def _get_int_or_none(self, data: dict[str, Any], key: str) -> int | None:
+        return None if data is None or key not in data else int(data[key])
+
+    def _get_enum_or_none(self, data: dict[str, Any], key: str, enum_type: type[TypedEnum]) -> TypedEnum | None:
+        if key not in data or data[key] is None:
+            return None
+
+        value: Any = data[key]
+        try:
+            return enum_type(value)
+        except ValueError:
+            pass
+        if value == "":
+            return None
+        try:
+            return enum_type(int(value))
+        except (TypeError, ValueError):
+            _LOGGER.warning("Unable to parse %s=%r as %s", key, value, enum_type.__name__)
+            return None
 
     def _build_device_data(self, device_info: list[list[dict[str, Any]]]) -> dict[str, GwnDevice]:
         device_list: dict[str, GwnDevice] = {}
@@ -234,13 +257,16 @@ class GwnClient:
         _LOGGER.info(f"Found {len(ssids)} SSIDs for Network: {network_id}")
         return list(devices.values()), list(ssids.values())
 
-    def _config_value(self, config: dict[str, Any] | None, key: str) -> str | None:
+    def _config_raw_value(self, config: dict[str, Any] | None, key: str) -> Any | None:
         if config is None:
             return None
         item = config.get(key)
         if not isinstance(item, dict):
             return None
-        value = item.get("defaultValue")
+        return item.get("defaultValue")
+
+    def _config_value(self, config: dict[str, Any] | None, key: str) -> str | None:
+        value = self._config_raw_value(config, key)
         return None if value is None else str(value)
 
     def _config_int(self, config: dict[str, Any] | None, key: str) -> int | None:
@@ -262,7 +288,15 @@ class GwnClient:
         if value is None or value == "":
             return None
         return enum_type(int(value))
-   
+
+    def _config_list(self, config: dict[str, Any] | None, key: str) -> list[str] | None:
+        value = self._config_raw_value(config, key)
+        if value is None:
+            return None
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        return [str(value)]
+
     @property
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
@@ -401,76 +435,79 @@ class GwnClient:
                     payload.ssidWpaKey = payload.ssid_key
 
         # apply full payload defaults
-        if payload.ssidRemark is None:
-            payload.ssidRemark = str(config_info.get("ssidRemark", None))
-        if payload.ssidEnable is None:
-            payload.ssidEnable = bool(config_info.get("ssidEnable")) == 1
-        if payload.ssidVlan is None:
-            payload.ssidVlan = bool(config_info.get("ssidVlan")) == 1
-        if payload.ssidVlanid is None:
-            payload.ssidVlanid = config_info.get("ssidVlanid")
-        if payload.ssidRadiusDynamicVlan is None:
-            payload.ssidRadiusDynamicVlan = config_info.get("ssidRadiusDynamicVlan", None)
-        if payload.ssidSsidHidden is None:
-            payload.ssidSsidHidden = config_info.get("ssidSsidHidden", None) == 1
-        if payload.ssidWifiClientLimit is None:
-            payload.ssidWifiClientLimit = config_info.get("ssidRadiusDynamicVlan", None)
         if payload.ssidEncryption is None:
             payload.ssidEncryption = ssid_encryption
-        if payload.ssidWpaKeyMode is None:
-            payload.ssidWpaKeyMode = config_info.get("ssidWpaKeyMode", None) == 1
-        if payload.ssidWpaEncryption is None:
-            payload.ssidWpaEncryption = config_info.get("ssidWpaEncryption", None) == 1
-        if payload.ssidBridgeEnable is None:
-            payload.ssidBridgeEnable = config_info.get("ssidBridgeEnable", None) == 1
-        if payload.ssidIsolationMode is None:
-            payload.ssidIsolationMode = config_info.get("ssidIsolationMode", None)
-        if payload.ssidGatewayMac is None:
-            payload.ssidGatewayMac = config_info.get("ssidGatewayMac", None)
-        if payload.ssidVoiceEnterprise is None:
-            payload.ssidVoiceEnterprise = config_info.get("ssidVoiceEnterprise", None) == 1
-        if payload.ssid11V is None:
-            payload.ssid11V = config_info.get("ssid11V", None) == 1
-        if payload.ssid11R is None:
-            payload.ssid11R = config_info.get("ssid11R", None) == 1
-        if payload.ssid11K is None:
-            payload.ssid11K = config_info.get("ssid11K", None) == 1
-        if payload.ssidDtimPeriod is None:
-            payload.ssidDtimPeriod = config_info.get("ssidDtimPeriod", None)
-        if payload.ssidMcastToUcast is None:
-            payload.ssidMcastToUcast = MultiCastToUnicast(config_info.get("ssidMcastToUcast"))
-        if payload.ssidProxyarp is None:
-            payload.ssidProxyarp = config_info.get("ssidProxyarp", None) == 1
-        if payload.ssidStaIdleTimeout is None:
-            payload.ssidStaIdleTimeout = config_info.get("ssidStaIdleTimeout", None) == 1
-        if payload.ssid11W is None:
-            payload.ssid11W = None if config_info.get("ssid11W", None) is None else SSID_11W(config_info.get("ssid11W", None))
-        if payload.ssidBms is None:
-            payload.ssidBms = None if config_info.get("ssidBms", None) is None else SSID_BMS(config_info.get("ssidBms", None))
-        if payload.ssidClientIPAssignment is None:
-            payload.ssidClientIPAssignment = config_info.get("ssidClientIPAssignment", None) == 1
-        if payload.ssidPortalEnable is None:
-            payload.ssidPortalEnable = config_info.get("ssidPortalEnable", None)
-        if payload.ssidPortalPolicy is None:
-            payload.ssidPortalPolicy = config_info.get("ssidPortalPolicy", None)
-        if payload.ssidMaclistBlacks is None:
-            payload.ssidMaclistBlacks = None if detailed_ssid_info is None else self._config_value(detailed_ssid_info["access_control"],"ssid_maclist_black")
-        if payload.ssidMaclistWhites is None:
-            payload.ssidMaclistWhites = None if detailed_ssid_info is None else self._config_value(detailed_ssid_info["access_control"],"ssid_maclist_white")
-        if payload.ssidMacFiltering is None:
-            payload.ssidMacFiltering = MacFiltering(config_info.get("ssidPortalPolicy", None))
-        if payload.scheduleId is None:
-            payload.scheduleId = None if detailed_ssid_info is None else self._config_value(detailed_ssid_info["basic"],"ssid_schedule")
-        if payload.bandwidthType is None:
-            payload.bandwidthType = config_info.get("bandwidthType", None)
-        if payload.bandwidthRules is None:
-            payload.bandwidthRules = config_info.get("bandwidthRules", None)
-        if payload.ssidSecurityType is None:
-            payload.ssidSecurityType = config_info.get("ssidSecurityType", None)
-        if payload.ppskProfile is None:
-            payload.ppskProfile = config_info.get("ppskProfile", None)
-        if payload.radiusProfile is None:
-            payload.radiusProfile = config_info.get("radiusProfile", None)
+        if detailed_ssid_info is not None:
+            if payload.ssidMaclistBlacks is None:
+                payload.ssidMaclistBlacks = self._config_list(detailed_ssid_info["access_control"],"ssid_maclist_black")
+            if payload.ssidMaclistWhites is None:
+                payload.ssidMaclistWhites = self._config_list(detailed_ssid_info["access_control"],"ssid_maclist_white")
+            if payload.scheduleId is None:
+                schedule_id = self._config_value(detailed_ssid_info["basic"],"ssid_schedule")
+                payload.scheduleId = None if schedule_id is None else int(schedule_id)
+        if config_info is not None:
+            if payload.ssidRemark is None:
+                payload.ssidRemark = config_info.get("ssidRemark", None)
+            if payload.ssidEnable is None:
+                payload.ssidEnable = self._get_bool_or_none(config_info,"ssidEnable")
+            if payload.ssidVlan is None:
+                payload.ssidVlan = self._get_bool_or_none(config_info,"ssidVlan")
+            if payload.ssidVlanid is None:
+                payload.ssidVlanid = self._get_int_or_none(config_info,"ssidVlanid")
+            if payload.ssidRadiusDynamicVlan is None:
+                payload.ssidRadiusDynamicVlan = config_info.get("ssidRadiusDynamicVlan", None)
+            if payload.ssidSsidHidden is None:
+                payload.ssidSsidHidden = self._get_bool_or_none(config_info,"ssidSsidHidden")
+            if payload.ssidWifiClientLimit is None:
+                payload.ssidWifiClientLimit = self._get_int_or_none(config_info,"ssidWifiClientLimit")
+            if payload.ssidWpaKeyMode is None:
+                payload.ssidWpaKeyMode = self._get_bool_or_none(config_info,"ssidWpaKeyMode")
+            if payload.ssidWpaEncryption is None:
+                payload.ssidWpaEncryption = self._get_bool_or_none(config_info,"ssidWpaEncryption")
+            if payload.ssidBridgeEnable is None:
+                payload.ssidBridgeEnable = self._get_bool_or_none(config_info,"ssidBridgeEnable")
+            if payload.ssidIsolationMode is None:
+                payload.ssidIsolationMode =  self._get_enum_or_none(config_info,"ssidIsolationMode", IsolationMode)
+            if payload.ssidGatewayMac is None:
+                payload.ssidGatewayMac = config_info.get("ssidGatewayMac", None)
+            if payload.ssidVoiceEnterprise is None:
+                payload.ssidVoiceEnterprise = self._get_bool_or_none(config_info,"ssidVoiceEnterprise")
+            if payload.ssid11V is None:
+                payload.ssid11V = self._get_bool_or_none(config_info,"ssid11V")
+            if payload.ssid11R is None:
+                payload.ssid11R = self._get_bool_or_none(config_info,"ssid11R")
+            if payload.ssid11K is None:
+                payload.ssid11K = self._get_bool_or_none(config_info,"ssid11K")
+            if payload.ssidDtimPeriod is None:
+                payload.ssidDtimPeriod = self._get_int_or_none(config_info,"ssidDtimPeriod")
+            if payload.ssidMcastToUcast is None:
+                payload.ssidMcastToUcast = self._get_enum_or_none(config_info,"ssidMcastToUcast", MultiCastToUnicast)
+            if payload.ssidProxyarp is None:
+                payload.ssidProxyarp = self._get_bool_or_none(config_info,"ssidProxyarp")
+            if payload.ssidStaIdleTimeout is None:
+                payload.ssidStaIdleTimeout = self._get_bool_or_none(config_info,"ssidStaIdleTimeout") 
+            if payload.ssid11W is None:
+                payload.ssid11W =  self._get_enum_or_none(config_info,"ssid11W", SSID_11W)
+            if payload.ssidBms is None:
+                payload.ssidBms =  self._get_enum_or_none(config_info,"ssidBms", SSID_BMS)
+            if payload.ssidClientIPAssignment is None:
+                payload.ssidClientIPAssignment = self._get_bool_or_none(config_info,"ssidClientIPAssignment")
+            if payload.ssidPortalEnable is None:
+                payload.ssidPortalEnable = self._get_bool_or_none(config_info,"ssidPortalEnable")
+            if payload.ssidPortalPolicy is None:
+                payload.ssidPortalPolicy = self._get_int_or_none(config_info,"ssidPortalPolicy")
+            if payload.ssidMacFiltering is None:
+                payload.ssidMacFiltering = self._get_enum_or_none(config_info,"ssidMacFiltering", MacFiltering)
+            if payload.bandwidthType is None:
+                payload.bandwidthType = self._get_enum_or_none(config_info,"bandwidthType", BandwidthType)
+            if payload.bandwidthRules is None:
+                payload.bandwidthRules = config_info.get("bandwidthRules", None)
+            if payload.ssidSecurityType is None:
+                payload.ssidSecurityType = self._get_enum_or_none(config_info,"ssidSecurityType", SSIDSecurityType)
+            if payload.ppskProfile is None:
+                payload.ppskProfile = config_info.get("ppskProfile", None)
+            if payload.radiusProfile is None:
+                payload.radiusProfile = config_info.get("radiusProfile", None)
 
         _LOGGER.debug(f"Building Payload for SSID {payload.id}")
         payload_dict = payload.build_payload()
@@ -659,4 +696,3 @@ class GwnClient:
         else:
             _LOGGER.error(f"Failed to update Network {payload.id}")
         return result
-        
