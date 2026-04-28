@@ -455,7 +455,7 @@ class GwnClient:
                     payload.ssidWpaKey = payload.ssidWpaKey
                 case _:
                     payload.ssidWpaKey = payload.ssid_key
-
+        
         # apply full payload defaults
         if payload.ssidEncryption is None:
             payload.ssidEncryption = ssid_encryption
@@ -530,7 +530,7 @@ class GwnClient:
                 payload.ppskProfile = config_info.get("ppskProfile", None)
             if payload.radiusProfile is None:
                 payload.radiusProfile = config_info.get("radiusProfile", None)
-
+            
         _LOGGER.debug(f"Building Payload for SSID {payload.id}")
         payload_dict = payload.build_payload()
         if len(payload_dict) == 0:

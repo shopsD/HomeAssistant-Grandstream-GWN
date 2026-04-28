@@ -74,7 +74,7 @@ class GwnInterface:
             signature = self._build_signature(
                 body=body_json,
                 access_token=self._token.access_token,
-                timestamp_ms=timestamp_ms,
+                timestamp_ms=timestamp_ms
             )
             params = {
                 "access_token": self._token.access_token,
