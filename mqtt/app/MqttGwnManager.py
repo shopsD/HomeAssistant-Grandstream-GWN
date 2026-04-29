@@ -121,8 +121,8 @@ class MqttGwnManager:
                 if (gwn_network.id in cached_ssids and
                     gwn_ssid.id in cached_ssids[gwn_network.id] and
                     (cached_payload[Constants.ASSIGNED_DEVICES] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.ASSIGNED_DEVICES] or
-                        (Constants.CACHE in cached_ssids[gwn_network.id][gwn_ssid.id] and
-                        cached_payload[Constants.CACHE] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.CACHE])
+                        Constants.CACHE not in cached_ssids[gwn_network.id][gwn_ssid.id] or
+                        cached_payload[Constants.CACHE] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.CACHE]
                     )
                 ):
                     _LOGGER.debug(f"Publishing Autodiscovery for SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")

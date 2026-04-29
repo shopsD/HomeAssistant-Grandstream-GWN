@@ -47,13 +47,13 @@ class GwnClient:
         if data is None or key not in data:
             return None
         value = data.get(key, None)
-        return None if value is None else str(value) == "1"
+        return None if value is None or value == "" else str(value) == "1"
 
     def _get_int_or_none(self, data: dict[str, Any], key: str) -> int | None:
         if data is None or key not in data:
             return None
         value = data.get(key, None)
-        return None if value is None else int(value)
+        return None if value is None or value == "" else int(value)
 
     def _get_enum_or_none(self, data: dict[str, Any], key: str, enum_type: type[TypedEnum]) -> TypedEnum | None:
         if key not in data or data[key] is None:

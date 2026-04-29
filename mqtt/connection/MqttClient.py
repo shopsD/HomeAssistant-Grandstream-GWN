@@ -41,13 +41,15 @@ class MqttClient:
                     _LOGGER.debug("Subscribed to %s", topic)
 
                 async for message in self._interface.messages:
+                    payload: str | bytes = message.payload
+                    message_topic: str = str(message.topic)
                     try:
-                        topic = str(message.topic)
-                        payload = message.payload.decode("utf-8")
-                        await self._handle_mqtt_command(topic, payload)
+                        decoded_payload = message.payload.decode("utf-8")
+                        payload = decoded_payload
+                        await self._handle_mqtt_command(message_topic, decoded_payload)
                     except Exception as e:
-                        _LOGGER.error(f"Failed to process MQTT command to {topic}: {e}")
-                        _LOGGER.debug(f"Failed MQTT command: {payload}")
+                        _LOGGER.error(f"Failed to process MQTT command to {message_topic}: {e}")
+                        _LOGGER.debug(f"Failed MQTT command: {payload!r}")
             except asyncio.CancelledError:
                 raise
             except Exception as e:
