@@ -92,7 +92,7 @@ class MqttGwnManager:
                 device_payload = self._serialise_device(gwn_network, gwn_device, assignments)
                 # copy the cache because all networks need to be recorded so that if a discovery publish fails, it will reattempt on next cycle
                 cached_payload = device_payload.copy()
-                cached_payload[Constants.CACHE] = dict(sorted(network_names.items())) # may need to be sorted
+                cached_payload[Constants.CACHE] = dict(sorted(network_names.items()))
                 if (force_republish or
                     self._config.publish_every_poll or
                     gwn_network.id not in cached_devices or
