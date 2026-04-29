@@ -361,7 +361,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
         device = self._ha_device_block(f"{device_payload_id}", device_name, device_model)
 
         return [
-            self._create_switch_payload(device, f"{device_payload_id}_wireless", "Wireless", state_topic, command_topic, Constants.WIRELESS),
+            self._create_binary_sensor_payload(device, f"{device_payload_id}_wireless", "Wireless", state_topic, Constants.WIRELESS),
             self._create_button_payload(device, f"{device_payload_id}_reboot", "Reboot", command_topic, Constants.REBOOT),
             self._create_button_payload(device, f"{device_payload_id}_reset", "Reset", command_topic, Constants.RESET, False, True),
             self._create_update_payload(device, f"{device_payload_id}_update_firmware","Update Firmware", state_topic, command_topic, "Firmware Update", Constants.UPDATE_FIRMWARE, Constants.CURRENT_FIRMWARE, Constants.NEW_FIRMWARE, False, True),

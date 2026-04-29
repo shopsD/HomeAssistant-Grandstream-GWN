@@ -78,6 +78,7 @@ class MqttInterface:
                 await client.publish(topic, payload, retain=retain)
             except Exception as e:
                 _LOGGER.warn(f"MQTT Publish failed. Retrying publish: {e}")
+                self.disconnect()
                 client = await self._authenticated_client()
                 await client.publish(topic, payload, retain=retain)
 
@@ -87,5 +88,6 @@ class MqttInterface:
             await client.subscribe(topic)
         except Exception as e:
             _LOGGER.warn(f"MQTT Subscribe failed. Retrying subscribe: {e}")
+            self.disconnect()
             client = await self._authenticated_client()
             await client.subscribe(topic)

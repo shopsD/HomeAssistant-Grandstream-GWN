@@ -44,7 +44,7 @@ class GwnNetworkPayload:
             if isinstance(value, bool):
                 payload[name] = int(value)
             else:
-                payload[name] = value
+                payload[name] = None if value is None else str(value)
 
         # if any required item is missing then just abort. The data is invalid
         for required in self.REQUIRED:

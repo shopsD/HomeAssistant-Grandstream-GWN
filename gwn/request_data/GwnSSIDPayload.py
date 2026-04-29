@@ -111,7 +111,7 @@ class GwnSSIDPayload:
             elif isinstance(value, Enum):
                 payload[name] = value.value
             else:
-                payload[name] = value
+                payload[name] = None if value is None else str(value)
 
         ssid_bands = "" if self.ssidNewSsidBand is None else self.ssidNewSsidBand
         if self.ghz2_4_enabled is not None:
