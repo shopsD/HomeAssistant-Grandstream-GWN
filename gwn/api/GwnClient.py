@@ -509,7 +509,7 @@ class GwnClient:
             if payload.ssidStaIdleTimeout is None:
                 payload.ssidStaIdleTimeout = self._get_int_or_none(config_info,"ssidStaIdleTimeout") 
             if payload.ssid11W is None:
-                payload.ssid11W =  self._get_enum_or_none(config_info,"ssid11W", SSID_11W)
+                payload.ssid11W = self._get_enum_or_none(config_info,"ssid11W", SSID_11W)
             if payload.ssidBms is None:
                 payload.ssidBms =  self._get_enum_or_none(config_info,"ssidBms", SSID_BMS)
             if payload.ssidClientIPAssignment is None:
@@ -609,8 +609,7 @@ class GwnClient:
         if payload.ap_2g4_channel is None:
             payload.ap_2g4_channel = 0 if device_info_channel is None or str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g24"]["channel"]["value"])
         if payload.ap_2g4_power is None:
-            payload.ap_2g4_power = None if device_info_client is None else RadioPower(int(device_info_client["g24"]["power"]))
-
+            payload.ap_2g4_power = self._config_enum(device_info_config, "ap_2g4_power", RadioPower)
         if payload.ap_2g4_ratelimit_enable is None:
             payload.ap_2g4_ratelimit_enable = self._config_enum(device_info_config, "ap_2g4_ratelimit_enable", BooleanEnum)
         if payload.ap_2g4_rssi is None:
@@ -625,7 +624,7 @@ class GwnClient:
         if payload.ap_5g_channel is None:
             payload.ap_5g_channel = 0 if device_info_channel is None or str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g5"]["channel"]["value"])
         if payload.ap_5g_power is None:
-            payload.ap_5g_power = None if device_info_client is None else RadioPower(int(device_info_client["g5"]["power"]))
+            payload.ap_5g_power = self._config_enum(device_info_config, "ap_5g_power", RadioPower)
         if payload.ap_5g_ratelimit_enable is None:
             payload.ap_5g_ratelimit_enable = self._config_enum(device_info_config, "ap_5g_ratelimit_enable", BooleanEnum)
         if payload.ap_5g_rssi is None:
@@ -638,9 +637,10 @@ class GwnClient:
             payload.ap_5g_width = self._config_enum(device_info_config, "ap_5g_width", Width5G)
 
         if payload.ap_6g_channel is None:
-            payload.ap_6g_channel = 0 if device_info_channel is None or str(device_info_channel["ap_6g_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g6"]["channel"]["value"])
+            retrieved_channel_6g = self._config_int(device_info_config, "ap_6g_channel")
+            payload.ap_6g_channel = 0 if retrieved_channel_6g or int(retrieved_channel_6g) == 0 else int(device_info_client["g6"]["channel"]["value"])
         if payload.ap_6g_power is None:
-            payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
+            payload.ap_6g_power = self._config_enum(device_info_config, "ap_6g_power", RadioPower)
         if payload.ap_6g_ratelimit_enable is None:
             payload.ap_6g_ratelimit_enable = self._config_enum(device_info_config, "ap_6g_ratelimit_enable", BooleanEnum)
         if payload.ap_6g_rssi is None:

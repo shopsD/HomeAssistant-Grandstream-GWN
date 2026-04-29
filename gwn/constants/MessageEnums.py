@@ -26,6 +26,8 @@ class BandSteering(Enum):
     Priority_2G4 = 1
     Priority_5G = 2
     Priority_Balance = 3
+    UseRadioSetting = 4 # undocumented
+    Priority_6G = 5 # undocumented
 
 # below are undocumented enums
 
