@@ -100,4 +100,6 @@ class WpaEncryption(Enum):
 class WpaKeyMode(Enum):
     MODE_PSK = 0
     MODE_802_1X = 1
-    MODE_PPSK = 2 # undocumented and unconfirmed
+    MODE_PSK_SAE = 2 # undocumented but confirmed via grandstream customer support
+    MODE_SAE = 3 # undocumented but confirmed via grandstream customer support
+    MODE_PPSK_RADIUS_MAC = 5 # undocumented but confirmed via grandstream customer support
