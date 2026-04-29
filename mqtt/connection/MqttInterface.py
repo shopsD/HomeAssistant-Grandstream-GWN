@@ -74,8 +74,18 @@ class MqttInterface:
     async def publish(self, topic: str, payload: str, retain: bool = False) -> None:
         if not self._config.no_publish:
             client = await self._authenticated_client()
-            await client.publish(topic, payload, retain=retain)
+            try:
+                await client.publish(topic, payload, retain=retain)
+            except Exception as e:
+                _LOGGER.warn(f"MQTT Publish failed. Retrying publish: {e}")
+                client = await self._authenticated_client()
+                await client.publish(topic, payload, retain=retain)
 
     async def subscribe(self, topic: str) -> None:
         client = await self._authenticated_client()
-        await client.subscribe(topic)
+        try:
+            await client.subscribe(topic)
+        except Exception as e:
+            _LOGGER.warn(f"MQTT Subscribe failed. Retrying subscribe: {e}")
+            client = await self._authenticated_client()
+            await client.subscribe(topic)

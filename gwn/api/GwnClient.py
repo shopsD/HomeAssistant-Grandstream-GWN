@@ -4,22 +4,22 @@ from typing import Any, TypeVar
 
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
-from gwn.constants import ( Constants, 
-                            IsolationMode, 
-                            MacFiltering, 
-                            SecurityMode, 
-                            RadioPower, 
-                            Width2G, 
-                            Width5G, 
-                            Width6G, 
-                            BandSteering, 
-                            BooleanEnum, 
-                            MultiCastToUnicast, 
-                            SSID_11W, 
-                            SSID_BMS, 
-                            SSIDSecurityType, 
-                            BandwidthType, 
-                            WpaEncryption, 
+from gwn.constants import ( Constants,
+                            IsolationMode,
+                            MacFiltering,
+                            SecurityMode,
+                            RadioPower,
+                            Width2G,
+                            Width5G,
+                            Width6G,
+                            BandSteering,
+                            BooleanEnum,
+                            MultiCastToUnicast,
+                            SSID_11W,
+                            SSID_BMS,
+                            SSIDSecurityType,
+                            BandwidthType,
+                            WpaEncryption,
                             WpaKeyMode)
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
@@ -201,7 +201,7 @@ class GwnClient:
                     _LOGGER.debug(f"Processed SSID: {id} - Key: {ssid_dictionary_key}")
             except Exception as e:
                 _LOGGER.error(f"Failed to Process SSID with ID {id}: {e}")
-                _LOGGER.debug(f"Basic Info of Failed SSID: {basic_info}")
+                _LOGGER.debug(f"Info of Failed SSID: {ssid_info[id]}")
         _LOGGER.info(f"Processed {len(ssid_list)} SSIDs")
         return ssid_list
 
