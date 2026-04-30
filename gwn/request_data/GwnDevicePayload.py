@@ -90,8 +90,8 @@ class GwnDevicePayload:
                 f"NON_SERIALISED={invalid_non_serialised}"
             )
 
-    def build_payload(self) -> dict[str, str]:
-        payload: dict[str, str] = {}
+    def build_payload(self) -> dict[str, str | None]:
+        payload: dict[str, str | None] = {}
         for field_info in fields(self):
             name = field_info.name
             if name in self.NON_SERIALISED:

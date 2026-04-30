@@ -43,6 +43,8 @@ class GwnNetworkPayload:
                 continue
             if isinstance(value, bool):
                 payload[name] = int(value)
+            elif isinstance(value, list):
+                payload[name] = value
             else:
                 payload[name] = None if value is None else str(value)
 

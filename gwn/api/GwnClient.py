@@ -638,7 +638,7 @@ class GwnClient:
 
         if payload.ap_6g_channel is None:
             retrieved_channel_6g = self._config_int(device_info_config, "ap_6g_channel")
-            payload.ap_6g_channel = 0 if retrieved_channel_6g or int(retrieved_channel_6g) == 0 else int(device_info_client["g6"]["channel"]["value"])
+            payload.ap_6g_channel = 0 if retrieved_channel_6g is None or int(retrieved_channel_6g) == 0 or device_info_client is None else int(device_info_client["g6"]["channel"]["value"])
         if payload.ap_6g_power is None:
             payload.ap_6g_power = self._config_enum(device_info_config, "ap_6g_power", RadioPower)
         if payload.ap_6g_ratelimit_enable is None:
