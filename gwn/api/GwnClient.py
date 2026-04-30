@@ -82,13 +82,13 @@ class GwnClient:
                 config_info_client: dict[str, Any] = device[2]
                 device_firmware: dict[str, Any] = device[3]
                 device_info_channel: dict[str, Any] = device[4]
-
+                device_detailed_info: dict[str, Any] = device[5]
                 # the sub tables are json objects with 3 parameters: type, key and value so use "key" as a dictionary key
                 config_info_port["result"] = self._normalise_dictionary_data(config_info_port["result"])
                 config_info_client["g24"] = self._normalise_dictionary_data(config_info_client["g24"])
                 config_info_client["g5"] = self._normalise_dictionary_data(config_info_client["g5"])
                 config_info_client["g6"] = self._normalise_dictionary_data(config_info_client["g6"])
-                
+
                 mac = GwnConfig.normalise_mac(basic_info["mac"])
                 if mac in self._config.exclude_device:
                     _LOGGER.debug(f"Ignoring Device: {mac}")
@@ -131,7 +131,8 @@ class GwnClient:
                         channelload_5g=config_info_client["channelload_5g"],
 
                         ap_2g4_channel= 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g24"]["channel"]["value"]),
-                        ap_5g_channel= 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"])
+                        ap_5g_channel= 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"]),
+                        ap_6g_channel= 0 if self._config_int(device_detailed_info, "ap_6g_channel") is None or self._config_int(device_detailed_info, "ap_6g_channel") == 0 else int(config_info_client["g6"]["channel"]["value"])
                     )
                     _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
                     device_list[mac] = gwn_device
@@ -229,8 +230,9 @@ class GwnClient:
                     device_info_port = await self._interface.get_device_info_port(network_id,mac) or {}
                     device_info_client = await self._interface.get_device_info_client(mac) or {}
                     device_info_channel = await self._interface.get_device_channel_info(mac) or []
+                    device_detailed_info = await self._interface.get_app_device_info(mac,device_info_client["apType"]) or []
 
-                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data.get(mac, {}), self._normalise_dictionary_data(device_info_channel)])
+                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data.get(mac, {}), self._normalise_dictionary_data(device_info_channel), self._normalise_dictionary_data(device_detailed_info)])
                 else:
                     _LOGGER.warning("Found response with missing MAC Address")
         return device_data
