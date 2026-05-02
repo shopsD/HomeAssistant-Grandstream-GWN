@@ -316,7 +316,7 @@ class MqttGwnManager:
             Constants.CHANNEL_LOAD_5G: gwn_device.channelload_5g,
             Constants.AP_2G4_CHANNEL: gwn_device.ap_2g4_channel,
             Constants.AP_5G_CHANNEL: gwn_device.ap_5g_channel,
-            Constants.AP_6G_CHANNEL: gwn_device.channel_6, # undocumented but confirmed by grandstream customer support
+            Constants.AP_6G_CHANNEL: gwn_device.ap_6g_channel, # undocumented but confirmed by grandstream customer support
             Constants.NETWORK_NAME: gwn_network.networkName,
             Constants.NETWORK_ID: gwn_network.id,
             Constants.SSIDS: [

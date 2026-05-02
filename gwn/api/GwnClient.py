@@ -230,7 +230,7 @@ class GwnClient:
                     device_info_port = await self._interface.get_device_info_port(network_id,mac) or {}
                     device_info_client = await self._interface.get_device_info_client(mac) or {}
                     device_info_channel = await self._interface.get_device_channel_info(mac) or []
-                    device_detailed_info = await self._interface.get_app_device_info(mac,device_info_client["apType"]) or []
+                    device_detailed_info = [] if len(device_info_client) == 0 or "apType" not in device_info_client else await self._interface.get_app_device_info(mac,device_info_client["apType"]) or []
 
                     device_data.append([basic_info,device_info_port,device_info_client, firmware_data.get(mac, {}), self._normalise_dictionary_data(device_info_channel), self._normalise_dictionary_data(device_detailed_info)])
                 else:
