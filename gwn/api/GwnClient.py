@@ -164,9 +164,9 @@ class GwnClient:
                         securityMode=SecurityMode(int(basic_info["securityMode"])),
                         macFilteringEnabled=MacFiltering(int(basic_info["macFilteringEnabled"])),
                         clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
-                        ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0" 
-                            else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1" 
-                            else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2" 
+                        ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0"
+                            else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1"
+                            else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2"
                             else None),
                         ssidIsolation=config_info["ssidIsolation"] is not None and int(config_info["ssidIsolation"])==1,
                         ssidSsidHidden=config_info["ssidSsidHidden"] is not None and int(config_info["ssidSsidHidden"])==1,
@@ -184,7 +184,7 @@ class GwnClient:
                         ghz6_Enabled=config_info["ssidNewSsidBand"] is not None and "6" in str(config_info["ssidNewSsidBand"]),
                         devices=[]
                     )
-                    
+
                     has_device_info = ssid_device_info is not None and len(ssid_device_info) > 0
 
                     if has_device_info:
@@ -457,7 +457,7 @@ class GwnClient:
                     payload.ssidWpaKey = payload.ssidWpaKey
                 case _:
                     payload.ssidWpaKey = payload.ssid_key
-        
+
         # apply full payload defaults
         if payload.ssidEncryption is None:
             payload.ssidEncryption = ssid_encryption
@@ -509,7 +509,7 @@ class GwnClient:
             if payload.ssidProxyarp is None:
                 payload.ssidProxyarp = self._get_bool_or_none(config_info,"ssidProxyarp")
             if payload.ssidStaIdleTimeout is None:
-                payload.ssidStaIdleTimeout = self._get_int_or_none(config_info,"ssidStaIdleTimeout") 
+                payload.ssidStaIdleTimeout = self._get_int_or_none(config_info,"ssidStaIdleTimeout")
             if payload.ssid11W is None:
                 payload.ssid11W = self._get_enum_or_none(config_info,"ssid11W", SSID_11W)
             if payload.ssidBms is None:
@@ -532,7 +532,7 @@ class GwnClient:
                 payload.ppskProfile = config_info.get("ppskProfile", None)
             if payload.radiusProfile is None:
                 payload.radiusProfile = config_info.get("radiusProfile", None)
-            
+
         _LOGGER.debug(f"Building Payload for SSID {payload.id}")
         payload_dict = payload.build_payload()
         if len(payload_dict) == 0:
