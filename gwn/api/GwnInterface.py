@@ -329,7 +329,10 @@ class GwnInterface:
         if response is None:
             return False
         data = response.get("data")
-        return data is not None and mac in data.get("success_upgrade_macs", [])
+        if data is None:
+            return False
+
+        return GwnConfig.normalise_mac(mac) in [GwnConfig.normalise_mac(upgraded_mac) for upgraded_mac in data.get("success_upgrade_macs", [])]
 
     async def move_device_to_network(self, mac: str, network_id: str) -> bool:
         if self._config.no_publish:
