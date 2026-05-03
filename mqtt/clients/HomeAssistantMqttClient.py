@@ -272,24 +272,26 @@ class HomeAssistantMqttClient(MqttPublisherClient):
             # otherwise use whatever was found previously
             normalised_device_mac = MqttPublisherClient.strip_mac(raw_device_mac)
             device_name = str(normalised_name_override_macs.get(normalised_device_mac, device_name))
-            
-            device_assignment.append(
-                (
-                    self._ha_discovery_topic("switch", f"{ssid_payload_id}_{normalised_device_mac}_device_enable"),
-                    {
-                        "name": f"Assign {device_name}",
-                        "unique_id": f"{ssid_payload_id}_{normalised_device_mac}_device_enable",
-                        "state_topic": state_topic,
-                        "command_topic": command_topic,
-                        "value_template": "{{ %s in value_json.%s }}" % (json.dumps(raw_device_mac), Constants.ASSIGNED_DEVICES),
-                        "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps(list(set([raw_device_mac] + raw_device_mac_list))), Constants.DEVICE_MACS, assigned_devices_json),
-                        "payload_off": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps([mac for mac in raw_device_mac_list if mac != raw_device_mac]), Constants.DEVICE_MACS, assigned_devices_json),
-                        "state_on": True,
-                        "state_off": False,
-                        "device": device
-                    }
+            if is_readonly:
+                device_assignment.append(self._create_binary_sensor_payload(device, f"{ssid_payload_id}_{normalised_device_mac}_device_enable", f"Assign {device_name}", state_topic, "{{ %s in value_json.%s }}" % (json.dumps(raw_device_mac), Constants.ASSIGNED_DEVICES), None, False, True))
+            else:
+                device_assignment.append(
+                    (
+                        self._ha_discovery_topic("switch", f"{ssid_payload_id}_{normalised_device_mac}_device_enable"),
+                        {
+                            "name": f"Assign {device_name}",
+                            "unique_id": f"{ssid_payload_id}_{normalised_device_mac}_device_enable",
+                            "state_topic": state_topic,
+                            "command_topic": command_topic,
+                            "value_template": "{{ %s in value_json.%s }}" % (json.dumps(raw_device_mac), Constants.ASSIGNED_DEVICES),
+                            "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps(list(set([raw_device_mac] + raw_device_mac_list))), Constants.DEVICE_MACS, assigned_devices_json),
+                            "payload_off": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps([mac for mac in raw_device_mac_list if mac != raw_device_mac]), Constants.DEVICE_MACS, assigned_devices_json),
+                            "state_on": True,
+                            "state_off": False,
+                            "device": device
+                        }
+                    )
                 )
-            )
 
         return device_assignment + [
             (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled", "Enabled", state_topic, Constants.SSID_ENABLE) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled", "Enabled", state_topic, command_topic, Constants.SSID_ENABLE, assigned_devices_json)),
