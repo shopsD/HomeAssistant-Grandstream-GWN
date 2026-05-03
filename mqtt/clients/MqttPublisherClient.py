@@ -12,10 +12,10 @@ class MqttPublisherClient():
     def build_network_discovery_payload(self, state_topic: str, network_topic: str, network_payload: dict[str, object], clear: bool) -> list[tuple[str, dict[str, object]]]:
         return []
 
-    def build_device_discovery_payload(self, state_topic: str, device_topic: str, device_payload: dict[str, object], network_names: dict[int, str], clear: bool) -> list[tuple[str, dict[str, object]]]:
+    def build_device_discovery_payload(self, state_topic: str, device_topic: str, device_payload: dict[str, object], network_names: dict[int, str], is_readonly: bool, clear: bool) -> list[tuple[str, dict[str, object]]]:
         return []
 
-    def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: dict[str, str], clear: bool) -> list[tuple[str, dict[str, object]]]:
+    def build_ssid_discovery_payload(self, state_topic: str, ssid_topic: str, ssid_payload: dict[str, object], devices: dict[str, str], is_readonly: bool, clear: bool) -> list[tuple[str, dict[str, object]]]:
         return []
 
     def application_published(self) -> None:

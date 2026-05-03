@@ -99,7 +99,7 @@ class MqttGwnManager:
                     gwn_device.mac not in cached_devices[gwn_network.id] or
                     cached_devices[gwn_network.id][gwn_device.mac] != cached_payload):
                     _LOGGER.debug(f"Publishing Device with MAC {gwn_device.mac} to MQTT")
-                    await self._mqtt_client.publish_device(device_payload, network_names)
+                    await self._mqtt_client.publish_device(device_payload, network_names, self._gwn_client.is_readonly)
                     _LOGGER.debug(f"Successfully published Device with MAC {gwn_device.mac} to MQTT")
                 self._cached_devices[gwn_network.id][gwn_device.mac] = cached_payload # only cache after publishing
             except Exception as e:
@@ -136,7 +136,7 @@ class MqttGwnManager:
                     cached_ssids[gwn_network.id][gwn_ssid.id] != cached_payload):
                     _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
 
-                    await self._mqtt_client.publish_ssid(ssid_payload, device_names)
+                    await self._mqtt_client.publish_ssid(ssid_payload, device_names, self._gwn_client.is_readonly)
                     _LOGGER.debug(f"Successfully published SSID {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
                 self._cached_ssids[gwn_network.id][gwn_ssid.id] = cached_payload # only cache after publishing
             except Exception as e:

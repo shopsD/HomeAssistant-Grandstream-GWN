@@ -325,6 +325,10 @@ class GwnClient:
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
 
+    @property
+    def is_readonly(self) -> bool:
+        return not self._interface.user_password_login
+
     async def close(self) -> None:
         await self._interface.close()
 
@@ -377,7 +381,7 @@ class GwnClient:
         original_bind_macs: list[str] = normalised_device_macs
         # try to update the snapshot in case the provided one is stale
         detailed_ssid_info: dict[str, Any] | None = None
-        if self._interface.user_password_login:
+        if not self.is_readonly:
             _LOGGER.debug(f"Fetching detailed data for SSID {payload.id}")
             stored_macs = await self._interface.get_ssid_devices(payload.id)
             ssid_info = await self._interface.get_app_ssid_info(payload.id)
@@ -600,7 +604,7 @@ class GwnClient:
             device_info_channel = self._normalise_dictionary_data(info_channel)
 
         device_info_config: dict[str, Any] | None = None
-        if self._interface.user_password_login and device_info_client is not None:
+        if not self.is_readonly and device_info_client is not None:
             _LOGGER.debug(f"Fetching detailed data for device {payload.ap_mac}")
             config_device_info = await self._interface.get_app_device_info(payload.ap_mac,device_info_client["apType"])
             if config_device_info is not None:

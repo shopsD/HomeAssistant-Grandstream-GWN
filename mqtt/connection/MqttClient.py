@@ -217,7 +217,7 @@ class MqttClient:
         if exception_occurred:
             raise Exception("Some exceptions occurred when publishing networks")
 
-    async def _publish_device_payload(self, device_payload: dict[str, object], network_names: dict[int,str], clear: bool, clear_autodiscovery: bool) -> None:
+    async def _publish_device_payload(self, device_payload: dict[str, object], network_names: dict[int,str], clear: bool, is_readonly: bool, clear_autodiscovery: bool) -> None:
         network_id: str = str(device_payload.get(Constants.NETWORK_ID))
         device_mac = str(device_payload.get(Constants.MAC))
         device_mac = MqttPublisherClient.strip_mac(device_mac)
@@ -232,7 +232,7 @@ class MqttClient:
         exception_occurred: bool = False
         for publisher_client in self._publisher_clients:
             try:
-                ha_payload_data = publisher_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names, clear_autodiscovery)
+                ha_payload_data = publisher_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names, is_readonly, clear_autodiscovery)
 
                 for topic, payload in ha_payload_data:
                     await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
@@ -244,7 +244,7 @@ class MqttClient:
         if exception_occurred:
             raise Exception("Some exceptions occurred when publishing devices")
 
-    async def _publish_ssid_payload(self, ssid_payload: dict[str, object], devices: dict[str, str], clear: bool, clear_autodiscovery: bool) -> None:
+    async def _publish_ssid_payload(self, ssid_payload: dict[str, object], devices: dict[str, str], clear: bool, is_readonly: bool, clear_autodiscovery: bool) -> None:
         network_id: str = str(ssid_payload.get(Constants.NETWORK_ID))
         ssid_id: str = str(ssid_payload.get(Constants.SSID_ID))
         ssid_topic = self._get_ssid_topic(network_id,ssid_id)
@@ -256,7 +256,7 @@ class MqttClient:
         exception_occurred: bool = False
         for publisher_client in self._publisher_clients:
             try:
-                ha_payload_data = publisher_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices, clear_autodiscovery)
+                ha_payload_data = publisher_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices, is_readonly, clear_autodiscovery)
                 for topic, payload in ha_payload_data:
                     await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
                 if not clear_autodiscovery and len(ha_payload_data) > 0:
@@ -306,11 +306,11 @@ class MqttClient:
     async def publish_network(self, network_payload: dict[str, object]) -> None:
         await self._publish_network_payload(network_payload, False, False)
 
-    async def publish_device(self, device_payload: dict[str, object], network_names: dict[int,str]) -> None:
-        await self._publish_device_payload(device_payload, network_names, False, False)
+    async def publish_device(self, device_payload: dict[str, object], network_names: dict[int,str], is_readonly: bool) -> None:
+        await self._publish_device_payload(device_payload, network_names, False, is_readonly, False)
 
-    async def publish_ssid(self, ssid_payload: dict[str, object], devices: dict[str, str]) -> None:
-        await self._publish_ssid_payload(ssid_payload, devices, False, False)
+    async def publish_ssid(self, ssid_payload: dict[str, object], devices: dict[str, str], is_readonly: bool) -> None:
+        await self._publish_ssid_payload(ssid_payload, devices, False, is_readonly, False)
 
     async def unpublish_online(self, application_payload: dict[str,object], propagate: bool) -> None:
         await self._publish_online_payload(application_payload, True, propagate) # Maybe if uninstalling?
@@ -319,10 +319,10 @@ class MqttClient:
         await self._publish_network_payload(network_payload, True, propagate)
 
     async def unpublish_device(self, device_payload: dict[str, object], propagate: bool) -> None:
-        await self._publish_device_payload(device_payload, {}, True, propagate)
+        await self._publish_device_payload(device_payload, {}, True, False, propagate)
 
     async def unpublish_ssid(self, ssid_payload: dict[str, object], devices: dict[str, str], propagate: bool) -> None:
-        await self._publish_ssid_payload(ssid_payload, devices, True, propagate)
+        await self._publish_ssid_payload(ssid_payload, devices, True, False, propagate)
 
     async def reset_networks(self, network_id: str | None = None) -> None:
         exception_occurred: bool = False
