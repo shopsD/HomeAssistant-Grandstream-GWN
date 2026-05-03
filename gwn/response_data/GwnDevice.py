@@ -45,3 +45,8 @@ class GwnDevice:
     ap_2g4_channel: int
     ap_5g_channel: int
     ap_6g_channel: int
+
+    # parsed channel info
+    channel_lists_2g4: dict[int, str]
+    channel_lists_5g: dict[int, str]
+    channel_lists_6g: dict[int, str]
