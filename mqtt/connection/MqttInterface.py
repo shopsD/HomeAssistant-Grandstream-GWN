@@ -65,10 +65,12 @@ class MqttInterface:
     async def disconnect(self) -> None:
         if self._client is None:
             return
-
-        await self._client.__aexit__(None, None, None)
+        client = self._client
         self._client = None
         self._connected = False
+
+        await client.__aexit__(None, None, None)
+
         _LOGGER.info("Disconnected from MQTT broker")
 
     async def publish(self, topic: str, payload: str, retain: bool = False) -> None:
