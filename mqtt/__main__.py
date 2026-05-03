@@ -43,8 +43,8 @@ def main() -> None:
         "-p"
         ,"--password"
         ,type=str
-        ,nargs="?",
-        const=""
+        ,nargs="?"
+        ,const=""
         ,help="Your password for logging in to GWN Manager. Supplying this option will hash then display the value to use in the config file gwn.hashed_password field, then exit the application"
     )
 

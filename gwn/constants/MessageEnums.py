@@ -26,6 +26,8 @@ class BandSteering(Enum):
     Priority_2G4 = 1
     Priority_5G = 2
     Priority_Balance = 3
+    UseRadioSetting = 4 # undocumented
+    Priority_6G = 5 # undocumented
 
 # below are undocumented enums
 
@@ -61,9 +63,9 @@ class MacFiltering(Enum):
     Blacklist = 2
 
 class IsolationMode(Enum):
-    Radio = 0
-    Internet = 1
-    Gateway = 2
+    Radio = "0"
+    Internet = "1"
+    Gateway = "2"
 
 class MultiCastToUnicast(Enum):
     Disabled = 0
@@ -92,3 +94,14 @@ class SSIDSecurityType(Enum):
     PPSKWithoutRADIUS = 3
     Hotspot2_0_OSEN = 4
     PPSKWithRADIUS = 5
+
+class WpaEncryption(Enum):
+    AES = 0
+    AES_TKIP = 1
+
+class WpaKeyMode(Enum):
+    MODE_PSK = 0
+    MODE_802_1X = 1
+    MODE_PSK_SAE = 2 # undocumented but confirmed via grandstream customer support
+    MODE_SAE = 3 # undocumented but confirmed via grandstream customer support
+    MODE_PPSK_RADIUS_MAC = 5 # undocumented but confirmed via grandstream customer support

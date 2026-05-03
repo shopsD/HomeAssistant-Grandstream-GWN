@@ -31,7 +31,7 @@ class GwnDevicePayload:
     ap_preferred_dns: str | None = None
     ap_static: bool | None = None
 
-    # 6GHz is Undocumented so not sure if this will work
+    # 6GHz is Undocumented but grandstream customer support said it is available
     ap_6g_channel: int | None = None
     ap_6g_power: RadioPower | None = None
     ap_6g_ratelimit_enable: BooleanEnum | None = None
@@ -65,7 +65,7 @@ class GwnDevicePayload:
         "ap_band_steering",
         "ap_mac",
         "ap_name",
-        # since 6GHz is undocumented it is not 100% this will work but added based on 2.4GHz and 5GHz
+        # since 6GHz is undocumented but grandstream customer support said it is available based on 2.4GHz and 5GHz
         "ap_6g_channel",
         "ap_6g_power",
         "ap_6g_ratelimit_enable",
@@ -90,8 +90,8 @@ class GwnDevicePayload:
                 f"NON_SERIALISED={invalid_non_serialised}"
             )
 
-    def build_payload(self) -> dict[str, str]:
-        payload: dict[str, str] = {}
+    def build_payload(self) -> dict[str, str | None]:
+        payload: dict[str, str | None] = {}
         for field_info in fields(self):
             name = field_info.name
             if name in self.NON_SERIALISED:
@@ -104,7 +104,7 @@ class GwnDevicePayload:
             elif isinstance(value, Enum):
                 payload[name] = str(value.value)
             else:
-                payload[name] = str(value)
+                payload[name] = None if value is None else str(value)
 
         # if any required item is missing then just abort. The data is invalid
         for required in self.REQUIRED:

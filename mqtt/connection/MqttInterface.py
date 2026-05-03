@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import ssl
 
@@ -13,16 +14,21 @@ class MqttInterface:
         self._config: MqttConfig = config
         self._client: Client | None = None
         self._connected: bool = False
+        self._mqtt_lock: asyncio.Lock = asyncio.Lock()
 
-    @property
-    def is_connected(self) -> bool:
-        return self._connected
-
-    @property
-    def client(self) -> Client:
+    def _ensure_client(self) -> Client:
         if self._client is None:
             raise RuntimeError("MQTT client is not connected")
         return self._client
+
+    async def _authenticated_client(self) -> Client:
+        if self._client is None:
+            await self.connect()
+        return self._ensure_client()
+
+    @property
+    def is_connected(self) -> bool:
+        return self._connected and self._client is not None
 
     @property
     def topic(self) -> str:
@@ -30,46 +36,66 @@ class MqttInterface:
 
     @property
     def messages(self):
-        return self.client.messages
+        return self._ensure_client().messages
 
     async def connect(self) -> bool:
-        _LOGGER.info("Connecting to MQTT")
-        if self._client is not None:
-            _LOGGER.error("Client is already connected")
-            return self._connected
-        tls_context = None
-        if self._config.tls:
-            tls_context = ssl.create_default_context()
-        client = Client(
-            hostname=self._config.host,
-            port=self._config.port,
-            username=self._config.username,
-            password=self._config.password,
-            identifier=self._config.client_id,
-            keepalive=self._config.keepalive,
-            tls_context = tls_context,
-            tls_insecure=not self._config.verify_tls,
-            logger = _LOGGER
-        )
+        async with self._mqtt_lock:
+            _LOGGER.info(f"Connecting to MQTT broker {self._config.host}:{self._config.port}")
+            if self._client is not None:
+                _LOGGER.error("Client is already connected")
+                return self._connected
+            tls_context = None
+            if self._config.tls:
+                tls_context = ssl.create_default_context()
+            client = Client(
+                hostname=self._config.host,
+                port=self._config.port,
+                username=self._config.username,
+                password=self._config.password,
+                identifier=self._config.client_id,
+                keepalive=self._config.keepalive,
+                tls_context = tls_context,
+                tls_insecure=not self._config.verify_tls,
+                logger = _LOGGER
+            )
 
-        await client.__aenter__()
-        self._client = client
-        self._connected = True
-        _LOGGER.info("Connected to MQTT broker at %s:%s", self._config.host, self._config.port)
+            await client.__aenter__()
+            self._client = client
+            self._connected = True
+            _LOGGER.info(f"Connected to MQTT broker at {self._config.host}:{self._config.port}")
         return self._connected
 
     async def disconnect(self) -> None:
-        if self._client is None:
-            return
+        async with self._mqtt_lock:
+            if self._client is None:
+                return
+            client = self._client
+            self._client = None
+            self._connected = False
 
-        await self._client.__aexit__(None, None, None)
-        self._client = None
-        self._connected = False
-        _LOGGER.info("Disconnected from MQTT broker")
+            await client.__aexit__(None, None, None)
+
+            _LOGGER.info("Disconnected from MQTT broker")
 
     async def publish(self, topic: str, payload: str, retain: bool = False) -> None:
         if not self._config.no_publish:
-            await self.client.publish(topic, payload, retain=retain)
+            client = await self._authenticated_client()
+            try:
+                async with self._mqtt_lock:
+                    await client.publish(topic, payload, retain=retain)
+            except Exception as e:
+                _LOGGER.warn(f"MQTT Publish failed. Retrying publish: {e}")
+                await self.disconnect()
+                client = await self._authenticated_client()
+                await client.publish(topic, payload, retain=retain)
 
     async def subscribe(self, topic: str) -> None:
-        await self.client.subscribe(topic)
+        client = await self._authenticated_client()
+        try:
+            async with self._mqtt_lock:
+                await client.subscribe(topic)
+        except Exception as e:
+            _LOGGER.warn(f"MQTT Subscribe failed. Retrying subscribe: {e}")
+            await self.disconnect()
+            client = await self._authenticated_client()
+            await client.subscribe(topic)

@@ -4,7 +4,23 @@ from typing import Any, TypeVar
 
 from gwn.api.GwnInterface import GwnInterface
 from gwn.authentication import GwnConfig
-from gwn.constants import Constants, IsolationMode, MacFiltering, SecurityMode, RadioPower, Width2G, Width5G, Width6G, BandSteering, BooleanEnum
+from gwn.constants import ( Constants,
+                            IsolationMode,
+                            MacFiltering,
+                            SecurityMode,
+                            RadioPower,
+                            Width2G,
+                            Width5G,
+                            Width6G,
+                            BandSteering,
+                            BooleanEnum,
+                            MultiCastToUnicast,
+                            SSID_11W,
+                            SSID_BMS,
+                            SSIDSecurityType,
+                            BandwidthType,
+                            WpaEncryption,
+                            WpaKeyMode)
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 
@@ -27,6 +43,35 @@ class GwnClient:
 
         return normalised
 
+    def _get_bool_or_none(self, data: dict[str, Any], key: str) -> bool | None:
+        if data is None or key not in data:
+            return None
+        value = data.get(key, None)
+        return None if value is None or value == "" else str(value) == "1"
+
+    def _get_int_or_none(self, data: dict[str, Any], key: str) -> int | None:
+        if data is None or key not in data:
+            return None
+        value = data.get(key, None)
+        return None if value is None or value == "" else int(value)
+
+    def _get_enum_or_none(self, data: dict[str, Any], key: str, enum_type: type[TypedEnum]) -> TypedEnum | None:
+        if key not in data or data[key] is None:
+            return None
+
+        value: Any = data[key]
+        try:
+            return enum_type(value)
+        except ValueError:
+            pass
+        if value == "":
+            return None
+        try:
+            return enum_type(int(value))
+        except (TypeError, ValueError):
+            _LOGGER.warning("Unable to parse %s=%r as %s", key, value, enum_type.__name__)
+            return None
+
     def _build_device_data(self, device_info: list[list[dict[str, Any]]]) -> dict[str, GwnDevice]:
         device_list: dict[str, GwnDevice] = {}
         _LOGGER.info(f"Processing {len(device_info)} Devices")
@@ -37,13 +82,13 @@ class GwnClient:
                 config_info_client: dict[str, Any] = device[2]
                 device_firmware: dict[str, Any] = device[3]
                 device_info_channel: dict[str, Any] = device[4]
-
+                device_detailed_info: dict[str, Any] = device[5]
                 # the sub tables are json objects with 3 parameters: type, key and value so use "key" as a dictionary key
                 config_info_port["result"] = self._normalise_dictionary_data(config_info_port["result"])
                 config_info_client["g24"] = self._normalise_dictionary_data(config_info_client["g24"])
                 config_info_client["g5"] = self._normalise_dictionary_data(config_info_client["g5"])
                 config_info_client["g6"] = self._normalise_dictionary_data(config_info_client["g6"])
-                
+
                 mac = GwnConfig.normalise_mac(basic_info["mac"])
                 if mac in self._config.exclude_device:
                     _LOGGER.debug(f"Ignoring Device: {mac}")
@@ -86,12 +131,14 @@ class GwnClient:
                         channelload_5g=config_info_client["channelload_5g"],
 
                         ap_2g4_channel= 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g24"]["channel"]["value"]),
-                        ap_5g_channel= 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"])
+                        ap_5g_channel= 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"]),
+                        ap_6g_channel= 0 if self._config_int(device_detailed_info, "ap_6g_channel") is None or self._config_int(device_detailed_info, "ap_6g_channel") == 0 else int(config_info_client["g6"]["channel"]["value"])
                     )
                     _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
                     device_list[mac] = gwn_device
             except Exception as e:
                 _LOGGER.error("Failed to process a device %s", e)
+                _LOGGER.debug(f"Basic Info of Failed Device: {basic_info}")
         _LOGGER.info(f"Processed {len(device_list)} Devices")
         return device_list
 
@@ -99,59 +146,63 @@ class GwnClient:
         ssid_list: dict[str | int,GwnSSID] = {}
         _LOGGER.info(f"Processing {len(ssid_info)} SSIDs")
         for id in ssid_info:
-            if int(id) in self._config.exclude_ssid:
-                _LOGGER.debug(f"Ignoring SSID: {id}")
-            else:
-                basic_info: dict[str, Any] = ssid_info[id][0]
-                config_info: dict[str, Any] = ssid_info[id][1]
-                ssid_device_info: list[dict[str, Any]] = ssid_info[id][2]
-
-                gwn_ssid = GwnSSID(
-                    id=id,
-                    ssidName=basic_info["ssidName"],
-                    wifiEnabled=int(basic_info["wifiEnabled"])==1,
-                    onlineDevices=int(basic_info["onlineDevices"]),
-                    scheduleEnabled=int(basic_info["scheduleEnabled"])==1,
-                    portalEnabled=int(basic_info["portalEnabled"])==1,
-                    securityMode=SecurityMode(int(basic_info["securityMode"])),
-                    macFilteringEnabled=MacFiltering(int(basic_info["macFilteringEnabled"])),
-                    clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
-                    ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0" 
-                        else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1" 
-                        else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2" 
-                        else None),
-                    ssidIsolation=int(config_info["ssidIsolation"])==1,
-                    ssidSsidHidden=int(config_info["ssidSsidHidden"])==1,
-                    ssidNewSsidBand=str(config_info["ssidNewSsidBand"]),
-                    ssidVlanid=int(config_info["ssidVlanid"]) if config_info["ssidVlanid"] is not None else None,
-                    ssidVlanEnabled=int(config_info["ssidVlan"])==1 if config_info["ssidVlan"] is not None else False,
-                    ssidEnable=int(config_info["ssidEnable"]) == 1,
-                    ssidRemark=str(config_info["ssidRemark"]),
-                    ssidKey=(None if int(id) in self._config.exclude_passphrase
-                        else str(config_info["ssidWpaKey"]) if config_info["ssidWpaKey"] is not None
-                        else str(config_info["ssidWepKey"]) if config_info["ssidWepKey"] is not None
-                        else None),
-                    ghz2_4_Enabled="2" in str(config_info["ssidNewSsidBand"]),
-                    ghz5_Enabled="5" in str(config_info["ssidNewSsidBand"]),
-                    ghz6_Enabled="6" in str(config_info["ssidNewSsidBand"]),
-                    devices=[]
-                )
-                
-                has_device_info = ssid_device_info is not None and len(ssid_device_info) > 0
-
-                if has_device_info:
-                    for device_info in ssid_device_info:
-                        mac = GwnConfig.normalise_mac(str(device_info.get("mac")))
-                        gwn_device = devices.get(mac, None)
-                        if gwn_device is not None and bool(device_info.get("checked")):
-                            gwn_ssid.devices.append(gwn_device)
-
-                ssid_dictionary_key = int(gwn_ssid.id) if has_device_info else str(gwn_ssid.ssidName)
-                if not has_device_info and ssid_dictionary_key in ssid_list:
-                    _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
+            try:
+                if int(id) in self._config.exclude_ssid:
+                    _LOGGER.debug(f"Ignoring SSID: {id}")
                 else:
-                    ssid_list[ssid_dictionary_key] = gwn_ssid
-                _LOGGER.debug(f"Processed SSID: {id} - Key: {ssid_dictionary_key}")
+                    basic_info: dict[str, Any] = ssid_info[id][0]
+                    config_info: dict[str, Any] = ssid_info[id][1]
+                    ssid_device_info: list[dict[str, Any]] = ssid_info[id][2]
+
+                    gwn_ssid = GwnSSID(
+                        id=id,
+                        ssidName=basic_info["ssidName"],
+                        wifiEnabled=int(basic_info["wifiEnabled"])==1,
+                        onlineDevices=int(basic_info["onlineDevices"]),
+                        scheduleEnabled=int(basic_info["scheduleEnabled"])==1,
+                        portalEnabled=int(basic_info["portalEnabled"])==1,
+                        securityMode=SecurityMode(int(basic_info["securityMode"])),
+                        macFilteringEnabled=MacFiltering(int(basic_info["macFilteringEnabled"])),
+                        clientIsolationEnabled=int(basic_info["clientIsolationEnabled"])==1,
+                        ssidIsolationMode=(IsolationMode.Radio if config_info["ssidIsolationMode"]=="0"
+                            else IsolationMode.Internet if config_info["ssidIsolationMode"]=="1"
+                            else IsolationMode.Gateway if config_info["ssidIsolationMode"]=="2"
+                            else None),
+                        ssidIsolation=config_info["ssidIsolation"] is not None and int(config_info["ssidIsolation"])==1,
+                        ssidSsidHidden=config_info["ssidSsidHidden"] is not None and int(config_info["ssidSsidHidden"])==1,
+                        ssidNewSsidBand=str(config_info["ssidNewSsidBand"]) if config_info["ssidNewSsidBand"] is not None else "",
+                        ssidVlanid=int(config_info["ssidVlanid"]) if config_info["ssidVlanid"] is not None else None,
+                        ssidVlanEnabled=int(config_info["ssidVlan"])==1 if config_info["ssidVlan"] is not None else False,
+                        ssidEnable=config_info["ssidEnable"] is not None and int(config_info["ssidEnable"]) == 1,
+                        ssidRemark=str(config_info["ssidRemark"]) if config_info["ssidRemark"] is not None else "",
+                        ssidKey=(None if int(id) in self._config.exclude_passphrase
+                            else str(config_info["ssidWpaKey"]) if config_info["ssidWpaKey"] is not None
+                            else str(config_info["ssidWepKey"]) if config_info["ssidWepKey"] is not None
+                            else None),
+                        ghz2_4_Enabled=config_info["ssidNewSsidBand"] is not None and "2" in str(config_info["ssidNewSsidBand"]),
+                        ghz5_Enabled=config_info["ssidNewSsidBand"] is not None and "5" in str(config_info["ssidNewSsidBand"]),
+                        ghz6_Enabled=config_info["ssidNewSsidBand"] is not None and "6" in str(config_info["ssidNewSsidBand"]),
+                        devices=[]
+                    )
+
+                    has_device_info = ssid_device_info is not None and len(ssid_device_info) > 0
+
+                    if has_device_info:
+                        for device_info in ssid_device_info:
+                            mac = GwnConfig.normalise_mac(str(device_info.get("mac")))
+                            gwn_device = devices.get(mac, None)
+                            if gwn_device is not None and bool(device_info.get("checked")):
+                                gwn_ssid.devices.append(gwn_device)
+
+                    ssid_dictionary_key = int(gwn_ssid.id) if has_device_info else str(gwn_ssid.ssidName)
+                    if not has_device_info and ssid_dictionary_key in ssid_list:
+                        _LOGGER.warning(f"SSIDs with duplicate names found '{gwn_ssid.ssidName}'. Ignoring SSID with ID {gwn_ssid.id}")
+                    else:
+                        ssid_list[ssid_dictionary_key] = gwn_ssid
+                    _LOGGER.debug(f"Processed SSID: {id} - Key: {ssid_dictionary_key}")
+            except Exception as e:
+                _LOGGER.error(f"Failed to Process SSID with ID {id}: {e}")
+                _LOGGER.debug(f"Info of Failed SSID: {ssid_info[id]}")
         _LOGGER.info(f"Processed {len(ssid_list)} SSIDs")
         return ssid_list
 
@@ -179,8 +230,9 @@ class GwnClient:
                     device_info_port = await self._interface.get_device_info_port(network_id,mac) or {}
                     device_info_client = await self._interface.get_device_info_client(mac) or {}
                     device_info_channel = await self._interface.get_device_channel_info(mac) or []
+                    device_detailed_info = [] if len(device_info_client) == 0 or "apType" not in device_info_client else await self._interface.get_app_device_info(mac,device_info_client["apType"]) or []
 
-                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data.get(mac, {}), self._normalise_dictionary_data(device_info_channel)])
+                    device_data.append([basic_info,device_info_port,device_info_client, firmware_data.get(mac, {}), self._normalise_dictionary_data(device_info_channel), self._normalise_dictionary_data(device_detailed_info)])
                 else:
                     _LOGGER.warning("Found response with missing MAC Address")
         return device_data
@@ -229,13 +281,16 @@ class GwnClient:
         _LOGGER.info(f"Found {len(ssids)} SSIDs for Network: {network_id}")
         return list(devices.values()), list(ssids.values())
 
-    def _config_value(self, config: dict[str, Any] | None, key: str) -> str | None:
+    def _config_raw_value(self, config: dict[str, Any] | None, key: str) -> Any | None:
         if config is None:
             return None
         item = config.get(key)
         if not isinstance(item, dict):
             return None
-        value = item.get("defaultValue")
+        return item.get("defaultValue")
+
+    def _config_value(self, config: dict[str, Any] | None, key: str) -> str | None:
+        value = self._config_raw_value(config, key)
         return None if value is None else str(value)
 
     def _config_int(self, config: dict[str, Any] | None, key: str) -> int | None:
@@ -257,7 +312,15 @@ class GwnClient:
         if value is None or value == "":
             return None
         return enum_type(int(value))
-   
+
+    def _config_list(self, config: dict[str, Any] | None, key: str) -> list[str] | None:
+        value = self._config_raw_value(config, key)
+        if value is None:
+            return None
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        return [str(value)]
+
     @property
     def refresh_period(self) -> int:
         return self._config.refresh_period_s
@@ -296,6 +359,7 @@ class GwnClient:
                             _LOGGER.debug(f"Processed Network '{gwn_network.networkName}' with ID {gwn_network.id}")
                 except Exception as e:
                     _LOGGER.error("Failed to process a Network: %s", e)
+                    _LOGGER.debug(f"Basic Info of Failed Network: {network}")
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
@@ -393,6 +457,82 @@ class GwnClient:
                     payload.ssidWpaKey = payload.ssidWpaKey
                 case _:
                     payload.ssidWpaKey = payload.ssid_key
+
+        # apply full payload defaults
+        if payload.ssidEncryption is None:
+            payload.ssidEncryption = ssid_encryption
+        if detailed_ssid_info is not None:
+            if payload.ssidMaclistBlacks is None:
+                payload.ssidMaclistBlacks = self._config_list(detailed_ssid_info["access_control"],"ssid_maclist_black")
+            if payload.ssidMaclistWhites is None:
+                payload.ssidMaclistWhites = self._config_list(detailed_ssid_info["access_control"],"ssid_maclist_white")
+            if payload.scheduleId is None:
+                schedule_id = self._config_value(detailed_ssid_info["basic"],"ssid_schedule")
+                payload.scheduleId = None if schedule_id is None or schedule_id == "" else int(schedule_id)
+        if config_info is not None:
+            if payload.ssidRemark is None:
+                payload.ssidRemark = config_info.get("ssidRemark", None)
+            if payload.ssidEnable is None:
+                payload.ssidEnable = self._get_bool_or_none(config_info,"ssidEnable")
+            if payload.ssidVlan is None:
+                payload.ssidVlan = self._get_bool_or_none(config_info,"ssidVlan")
+            if payload.ssidVlanid is None:
+                payload.ssidVlanid = self._get_int_or_none(config_info,"ssidVlanid")
+            if payload.ssidRadiusDynamicVlan is None:
+                payload.ssidRadiusDynamicVlan = config_info.get("ssidRadiusDynamicVlan", None)
+            if payload.ssidSsidHidden is None:
+                payload.ssidSsidHidden = self._get_bool_or_none(config_info,"ssidSsidHidden")
+            if payload.ssidWifiClientLimit is None:
+                payload.ssidWifiClientLimit = self._get_int_or_none(config_info,"ssidWifiClientLimit")
+            if payload.ssidWpaKeyMode is None:
+                payload.ssidWpaKeyMode = self._get_enum_or_none(config_info,"ssidWpaKeyMode", WpaKeyMode)
+            if payload.ssidWpaEncryption is None:
+                payload.ssidWpaEncryption = self._get_enum_or_none(config_info,"ssidWpaEncryption", WpaEncryption)
+            if payload.ssidBridgeEnable is None:
+                payload.ssidBridgeEnable = self._get_bool_or_none(config_info,"ssidBridgeEnable")
+            if payload.ssidIsolationMode is None:
+                payload.ssidIsolationMode =  self._get_enum_or_none(config_info,"ssidIsolationMode", IsolationMode)
+            if payload.ssidGatewayMac is None:
+                payload.ssidGatewayMac = config_info.get("ssidGatewayMac", None)
+            if payload.ssidVoiceEnterprise is None:
+                payload.ssidVoiceEnterprise = self._get_bool_or_none(config_info,"ssidVoiceEnterprise")
+            if payload.ssid11V is None:
+                payload.ssid11V = self._get_bool_or_none(config_info,"ssid11V")
+            if payload.ssid11R is None:
+                payload.ssid11R = self._get_bool_or_none(config_info,"ssid11R")
+            if payload.ssid11K is None:
+                payload.ssid11K = self._get_bool_or_none(config_info,"ssid11K")
+            if payload.ssidDtimPeriod is None:
+                payload.ssidDtimPeriod = self._get_int_or_none(config_info,"ssidDtimPeriod")
+            if payload.ssidMcastToUcast is None:
+                payload.ssidMcastToUcast = self._get_enum_or_none(config_info,"ssidMcastToUcast", MultiCastToUnicast)
+            if payload.ssidProxyarp is None:
+                payload.ssidProxyarp = self._get_bool_or_none(config_info,"ssidProxyarp")
+            if payload.ssidStaIdleTimeout is None:
+                payload.ssidStaIdleTimeout = self._get_int_or_none(config_info,"ssidStaIdleTimeout")
+            if payload.ssid11W is None:
+                payload.ssid11W = self._get_enum_or_none(config_info,"ssid11W", SSID_11W)
+            if payload.ssidBms is None:
+                payload.ssidBms =  self._get_enum_or_none(config_info,"ssidBms", SSID_BMS)
+            if payload.ssidClientIPAssignment is None:
+                payload.ssidClientIPAssignment = self._get_bool_or_none(config_info,"ssidClientIPAssignment")
+            if payload.ssidPortalEnable is None:
+                payload.ssidPortalEnable = self._get_bool_or_none(config_info,"ssidPortalEnable")
+            if payload.ssidPortalPolicy is None:
+                payload.ssidPortalPolicy = self._get_int_or_none(config_info,"ssidPortalPolicy")
+            if payload.ssidMacFiltering is None:
+                payload.ssidMacFiltering = self._get_enum_or_none(config_info,"ssidMacFiltering", MacFiltering)
+            if payload.bandwidthType is None:
+                payload.bandwidthType = self._get_enum_or_none(config_info,"bandwidthType", BandwidthType)
+            if payload.bandwidthRules is None:
+                payload.bandwidthRules = config_info.get("bandwidthRules", None)
+            if payload.ssidSecurityType is None:
+                payload.ssidSecurityType = self._get_enum_or_none(config_info,"ssidSecurityType", SSIDSecurityType)
+            if payload.ppskProfile is None:
+                payload.ppskProfile = config_info.get("ppskProfile", None)
+            if payload.radiusProfile is None:
+                payload.radiusProfile = config_info.get("radiusProfile", None)
+
         _LOGGER.debug(f"Building Payload for SSID {payload.id}")
         payload_dict = payload.build_payload()
         if len(payload_dict) == 0:
@@ -471,8 +611,7 @@ class GwnClient:
         if payload.ap_2g4_channel is None:
             payload.ap_2g4_channel = 0 if device_info_channel is None or str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g24"]["channel"]["value"])
         if payload.ap_2g4_power is None:
-            payload.ap_2g4_power = None if device_info_client is None else RadioPower(int(device_info_client["g24"]["power"]))
-
+            payload.ap_2g4_power = self._config_enum(device_info_config, "ap_2g4_power", RadioPower)
         if payload.ap_2g4_ratelimit_enable is None:
             payload.ap_2g4_ratelimit_enable = self._config_enum(device_info_config, "ap_2g4_ratelimit_enable", BooleanEnum)
         if payload.ap_2g4_rssi is None:
@@ -487,7 +626,7 @@ class GwnClient:
         if payload.ap_5g_channel is None:
             payload.ap_5g_channel = 0 if device_info_channel is None or str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g5"]["channel"]["value"])
         if payload.ap_5g_power is None:
-            payload.ap_5g_power = None if device_info_client is None else RadioPower(int(device_info_client["g5"]["power"]))
+            payload.ap_5g_power = self._config_enum(device_info_config, "ap_5g_power", RadioPower)
         if payload.ap_5g_ratelimit_enable is None:
             payload.ap_5g_ratelimit_enable = self._config_enum(device_info_config, "ap_5g_ratelimit_enable", BooleanEnum)
         if payload.ap_5g_rssi is None:
@@ -500,9 +639,10 @@ class GwnClient:
             payload.ap_5g_width = self._config_enum(device_info_config, "ap_5g_width", Width5G)
 
         if payload.ap_6g_channel is None:
-            payload.ap_6g_channel = 0 if device_info_channel is None or str(device_info_channel["ap_6g_channel"]["defaultValue"]) == "Use Radio Settings" else 0 if device_info_client is None else int(device_info_client["g6"]["channel"]["value"])
+            retrieved_channel_6g = self._config_int(device_info_config, "ap_6g_channel")
+            payload.ap_6g_channel = 0 if retrieved_channel_6g is None or int(retrieved_channel_6g) == 0 or device_info_client is None else int(device_info_client["g6"]["channel"]["value"])
         if payload.ap_6g_power is None:
-            payload.ap_6g_power = None if device_info_client is None else RadioPower(int(device_info_client["g6"]["power"]))
+            payload.ap_6g_power = self._config_enum(device_info_config, "ap_6g_power", RadioPower)
         if payload.ap_6g_ratelimit_enable is None:
             payload.ap_6g_ratelimit_enable = self._config_enum(device_info_config, "ap_6g_ratelimit_enable", BooleanEnum)
         if payload.ap_6g_rssi is None:
@@ -580,4 +720,3 @@ class GwnClient:
         else:
             _LOGGER.error(f"Failed to update Network {payload.id}")
         return result
-        

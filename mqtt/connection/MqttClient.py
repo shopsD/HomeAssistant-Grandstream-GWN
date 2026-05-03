@@ -32,18 +32,30 @@ class MqttClient:
             f"{base}/{Constants.NETWORKS}/+/{Constants.SSIDS}/+/{Constants.SET}",
             f"{base}/{Constants.GWN}/{Constants.SET}"
         ]
-
-        for topic in topics:
-            await self._interface.subscribe(topic)
-            _LOGGER.debug("Subscribed to %s", topic)
-
-        async for message in self._interface.messages:
+        while True:
             try:
-                topic = str(message.topic)
-                payload = message.payload.decode("utf-8")
-                await self._handle_mqtt_command(topic, payload)
+                if not self._interface.is_connected:
+                    await self._interface.connect()
+                for topic in topics:
+                    await self._interface.subscribe(topic)
+                    _LOGGER.debug("Subscribed to %s", topic)
+
+                async for message in self._interface.messages:
+                    payload: str | bytes = message.payload
+                    message_topic: str = str(message.topic)
+                    try:
+                        decoded_payload = message.payload.decode("utf-8")
+                        payload = decoded_payload
+                        await self._handle_mqtt_command(message_topic, decoded_payload)
+                    except Exception as e:
+                        _LOGGER.error(f"Failed to process MQTT command to {message_topic}: {e}")
+                        _LOGGER.debug(f"Failed MQTT command: {payload!r}")
+            except asyncio.CancelledError:
+                raise
             except Exception as e:
-                _LOGGER.error("Failed to process MQTT command: %s", e)
+                _LOGGER.warning(f"MQTT listener disconnected: {e}")
+                await self._interface.disconnect()
+                await asyncio.sleep(5)
 
     async def _handle_mqtt_command(self, topic: str, payload: str) -> None:
         # only process anything that is a set command and starts with the topic
@@ -314,6 +326,7 @@ class MqttClient:
 
     async def reset_networks(self, network_id: str | None = None) -> None:
         exception_occurred: bool = False
+        _LOGGER.debug(f"Resetting {len(self._publisher_clients)} clients MQTT data for Network with ID {network_id}")
         for publisher_client in self._publisher_clients:
             try:
                 publisher_client.reset_networks(None if network_id is None else self._get_network_topic(network_id))
@@ -326,7 +339,7 @@ class MqttClient:
     async def reset_devices(self, network_id: str | None = None, device_mac: str | None = None) -> None:
         if (network_id is not None and device_mac is None) or (device_mac is not None and network_id is None):
             raise KeyError("Network ID and MAC must both be none or both be supplied")
-
+        _LOGGER.debug(f"Resetting {len(self._publisher_clients)} clients MQTT data for Device with MAC {device_mac}")
         exception_occurred: bool = False
         device_topic: str | None = None if device_mac is None or network_id is None else self._get_device_topic(network_id, device_mac)
         for publisher_client in self._publisher_clients:
@@ -344,6 +357,7 @@ class MqttClient:
 
         exception_occurred: bool = False
         ssid_topic: str | None = None if ssid_id is None or network_id is None else self._get_ssid_topic(network_id, ssid_id)
+        _LOGGER.debug(f"Resetting {len(self._publisher_clients)} clients MQTT data for SSID with ID {ssid_id}")
         for publisher_client in self._publisher_clients:
             try:
                 publisher_client.reset_ssids(ssid_topic)

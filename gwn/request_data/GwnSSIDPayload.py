@@ -9,7 +9,9 @@ from gwn.constants import (SecurityMode,
                             BandwidthType, 
                             SSIDSecurityType, 
                             SSID_11W, 
-                            SSID_BMS)
+                            SSID_BMS,
+                            WpaEncryption,
+                            WpaKeyMode)
 
 @dataclass(slots=True)
 class GwnSSIDPayload:
@@ -26,8 +28,8 @@ class GwnSSIDPayload:
     ssidWifiClientLimit: int | None = None # that is serialised as a string
     ssidEncryption: SecurityMode | None = None
     ssidWepKey: str | None = None
-    ssidWpaKeyMode: bool | None = None
-    ssidWpaEncryption: bool | None = None
+    ssidWpaKeyMode: WpaKeyMode | None = None
+    ssidWpaEncryption: WpaEncryption | None = None
     ssidWpaKey: str | None = None
     ssidBridgeEnable: bool | None = None
     ssidIsolation: bool | None = None
@@ -40,14 +42,14 @@ class GwnSSIDPayload:
     ssidDtimPeriod: int | None = None
     ssidMcastToUcast: MultiCastToUnicast | None = None
     ssidProxyarp: bool | None = None
-    ssidStaIdleTimeout: bool | None = None
+    ssidStaIdleTimeout: int | None = None
     ssid11W: SSID_11W | None = None
     ssidBms: SSID_BMS | None = None
     ssidClientIPAssignment: bool | None = None
     bindMacs: list[str] | None = None # documentation says string. tbc via testing. documentation example shows an array
     removeMacs: list[str] | None = None
     ssidPortalEnable: bool | None = None # bool that is serialised as a string
-    ssidPortalPolicy: bool | None = None
+    ssidPortalPolicy: int | None = None
     ssidMaclistBlacks: list[str] | None = None
     ssidMaclistWhites: list[str] | None = None
     ssidMacFiltering: MacFiltering | None = None
@@ -108,8 +110,10 @@ class GwnSSIDPayload:
                 payload[name] = int(value)
             elif isinstance(value, Enum):
                 payload[name] = value.value
-            else:
+            elif isinstance(value, list):
                 payload[name] = value
+            else:
+                payload[name] = None if value is None else str(value)
 
         ssid_bands = "" if self.ssidNewSsidBand is None else self.ssidNewSsidBand
         if self.ghz2_4_enabled is not None:

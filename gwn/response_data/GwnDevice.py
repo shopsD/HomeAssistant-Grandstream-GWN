@@ -44,3 +44,4 @@ class GwnDevice:
     # channel info
     ap_2g4_channel: int
     ap_5g_channel: int
+    ap_6g_channel: int

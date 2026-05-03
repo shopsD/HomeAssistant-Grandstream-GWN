@@ -13,7 +13,9 @@ from .MessageEnums import (
     BandwidthType,
     SSIDSecurityType,
     BandSteering,
-    BooleanEnum
+    BooleanEnum,
+    WpaEncryption,
+    WpaKeyMode
 )
 
 
@@ -33,5 +35,7 @@ __all__ = [
     "BandwidthType",
     "SSIDSecurityType",
     "BandSteering",
-    "BooleanEnum"
+    "BooleanEnum",
+    "WpaEncryption",
+    "WpaKeyMode"
 ]

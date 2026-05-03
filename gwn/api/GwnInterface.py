@@ -74,7 +74,7 @@ class GwnInterface:
             signature = self._build_signature(
                 body=body_json,
                 access_token=self._token.access_token,
-                timestamp_ms=timestamp_ms,
+                timestamp_ms=timestamp_ms
             )
             params = {
                 "access_token": self._token.access_token,
@@ -154,7 +154,7 @@ class GwnInterface:
             if "access_token" not in data:
                 _LOGGER.error(f"Token response missing access_token: {data}")
                 return None
-
+            _LOGGER.info("Headless authentication succeeded")
             return GwnToken.from_response(data)
 
     async def _user_password_login(self) -> str | None:
@@ -173,8 +173,9 @@ class GwnInterface:
         }
         response = await self._do_post("/user/app/login",{},json.dumps(body),{"Content-Type": "application/json"})
         if response is None:
-            _LOGGER.warning("Username/Password Login failed")
+            _LOGGER.warning("Username/Password authentication failed")
             return None
+        _LOGGER.info("Username/Password authentication succeeded")
         return response.get("authorisation", None)
 
     @property
@@ -324,7 +325,7 @@ class GwnInterface:
         if self._config.no_publish:
             _LOGGER.debug(f"Publish is disabled. Update not sent. Payload {mac}")
             return True
-        response = await self._post("oapi/v1.0.0/upgrade/add",{"mac":[mac]})
+        response = await self._post("oapi/v1.0.0/upgrade/add",{"macs":[mac]})
         if response is None:
             return False
         data = response.get("data")

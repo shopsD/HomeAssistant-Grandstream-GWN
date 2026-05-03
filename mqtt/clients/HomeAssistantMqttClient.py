@@ -254,21 +254,18 @@ class HomeAssistantMqttClient(MqttPublisherClient):
         
         raw_device_mac_list: list[str] = []
         # first build a list of assigned devices
-        local_device_data: dict[str, tuple[str, bool]] = {} # dont modify existing due to changing device info
+        local_device_data: dict[str, str] = {} # dont modify existing due to changing device info
         for data_device_mac, data_device_name in device_data.items():
-            data_is_assigned: bool = assigned_devices is not None and data_device_mac in assigned_devices
 
-            if data_is_assigned:
+            if assigned_devices is not None and data_device_mac in assigned_devices:
                 raw_device_mac_list.append(data_device_mac)
-            local_device_data[data_device_mac] = (data_device_name, data_is_assigned)
+            local_device_data[data_device_mac] = data_device_name
 
 
         assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
 
-        for raw_device_mac in local_device_data.keys():
+        for raw_device_mac, device_name in local_device_data.items():
             # see if the device has a custom name assigned in GWN Manager
-            device_name: str = local_device_data[raw_device_mac][0]
-            is_assigned: bool = local_device_data[raw_device_mac][1]
             if len(device_name) == 0: # No custom name so use the MAC
                 device_name = str(raw_device_mac)
             # Last check, see if the config overrides the name and always use this override in display
@@ -284,7 +281,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
                         "unique_id": f"{ssid_payload_id}_{normalised_device_mac}_device_enable",
                         "state_topic": state_topic,
                         "command_topic": command_topic,
-                        "value_template": "{{ %s == 1 }}" % int(is_assigned),
+                        "value_template": "{{ %s in value_json.%s }}" % (json.dumps(raw_device_mac), Constants.ASSIGNED_DEVICES),
                         "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps(list(set([raw_device_mac] + raw_device_mac_list))), Constants.DEVICE_MACS, assigned_devices_json),
                         "payload_off": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps([mac for mac in raw_device_mac_list if mac != raw_device_mac]), Constants.DEVICE_MACS, assigned_devices_json),
                         "state_on": True,
@@ -364,7 +361,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
         device = self._ha_device_block(f"{device_payload_id}", device_name, device_model)
 
         return [
-            self._create_switch_payload(device, f"{device_payload_id}_wireless", "Wireless", state_topic, command_topic, Constants.WIRELESS),
+            self._create_binary_sensor_payload(device, f"{device_payload_id}_wireless", "Wireless", state_topic, Constants.WIRELESS),
             self._create_button_payload(device, f"{device_payload_id}_reboot", "Reboot", command_topic, Constants.REBOOT),
             self._create_button_payload(device, f"{device_payload_id}_reset", "Reset", command_topic, Constants.RESET, False, True),
             self._create_update_payload(device, f"{device_payload_id}_update_firmware","Update Firmware", state_topic, command_topic, "Firmware Update", Constants.UPDATE_FIRMWARE, Constants.CURRENT_FIRMWARE, Constants.NEW_FIRMWARE, False, True),
