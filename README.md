@@ -10,7 +10,7 @@ This repository has three main areas:
 
 | Path | Purpose |
 | --- | --- |
-| `gwn/` | Core GWN Manager client, authentication, constants, response models, and request payload models. |
+| `gwn/` | Core GWN Manager client, authentication, constants, response models, and request payload models. It also serves as a library/API for interacting with GWN Manager via its API |
 | `mqtt/` | Runnable GWN-to-MQTT bridge application. This polls GWN Manager, publishes MQTT state, receives MQTT commands, and optionally publishes Home Assistant discovery payloads. |
 | `custom_components/grandstream_gwn/` | Native Home Assistant integration workspace. This is not the main working integration yet. |
 
@@ -20,21 +20,6 @@ The MQTT bridge does four jobs:
 2. Optionally performs the username/password browser-style login for richer device/SSID configuration data.
 3. Publishes retained MQTT state for the application, networks, devices, and SSIDs.
 4. Listens for MQTT commands and forwards supported updates back to GWN Manager.
-
-## Current Status
-
-The MQTT bridge supports:
-
-| Area | Status |
-| --- | --- |
-| MQTT publishing | Working. |
-| MQTT command handling | Working for application, network, device, and SSID commands. |
-| Home Assistant MQTT discovery | Working and configurable. |
-| GWN app credential authentication | Required and working. |
-| GWN username/password authentication | Optional, but required for full write-capable device/SSID discovery. |
-| Poll caching | Working. Payloads publish only when changed unless configured otherwise. |
-| Native Home Assistant integration | Early scaffold, not the primary supported path yet. |
-| Docker support | Not currently provided by this project. |
 
 ## Requirements
 
@@ -99,21 +84,15 @@ Password hashing examples:
 uv run gwn_mqtt --password
 ```
 
-This prompts for the password without echoing it and asks for confirmation.
+This prompts for the password and then displays the output hashed password.
 
 ```bash
 uv run gwn_mqtt --password "plain-text-password"
 ```
 
-This hashes the provided value directly. The output can be used as `gwn.hashed_password`.
+This hashes the provided value directly. The output can be used as `gwn.hashed_password` of the config.
 
-The hashing scheme matches the current GWN browser-style login flow used by this project:
-
-```text
-sha256(md5(password).hexdigest().encode()).hexdigest()
-```
-
-This hash is fast and unsalted, so treat it as sensitive.
+This hash is fast and unsalted, so treat it as sensitive and do not expose it.
 
 ## Configuration
 
@@ -701,6 +680,8 @@ ppskProfile
 radiusProfile
 ```
 
+For details on the supported values of these fields, refer to [Grandstream GWN API](https://doc.grandstream.dev/GWN-API/EN/#api-160094196075101000035)
+
 `bindMacs` and `removeMacs` are low-level GWN payload fields. Home Assistant assignment controls normally use `toggle_device` plus fetched assignment state rather than requiring a user to manually build those fields.
 
 ## Publishing, Caching, And Unpublishing
@@ -779,6 +760,5 @@ Likely future work:
 | --- | --- |
 | Native Home Assistant integration | Build a real config flow, coordinator, read-only entities, then write-capable entities. |
 | Full MQTT write coverage | The GWN client supports richer payloads than the current MQTT discovery UI exposes. External MQTT commands can already use many low-level fields. |
-| Channel UX | Keep separating current channel in use from configured channel setting. Channel select options depend on the data returned by GWN. |
 | Tests | Add pytest coverage once the behaviour settles. |
 | Web UI | Possible stretch goal, not MVP. |
