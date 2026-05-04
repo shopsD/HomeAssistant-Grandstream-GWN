@@ -22,7 +22,8 @@ class GwnInterface:
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        await self._session.close()
+        if not self._session.closed:
+            await self._session.close()
 
     def _build_signature(self, body: str, access_token: str, timestamp_ms: int) -> str:
         """
@@ -329,7 +330,10 @@ class GwnInterface:
         if response is None:
             return False
         data = response.get("data")
-        return data is not None and mac in data.get("success_upgrade_macs", [])
+        if data is None:
+            return False
+
+        return GwnConfig.normalise_mac(mac) in [GwnConfig.normalise_mac(upgraded_mac) for upgraded_mac in data.get("success_upgrade_macs", [])]
 
     async def move_device_to_network(self, mac: str, network_id: str) -> bool:
         if self._config.no_publish:

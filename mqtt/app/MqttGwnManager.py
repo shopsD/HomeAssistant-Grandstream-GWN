@@ -31,12 +31,13 @@ class MqttGwnManager:
 
     async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
+        await self._unpublish_all_data()
         while True:
             try:
                 networks = await self._gwn_client.get_gwn_data()
                 await self._publish_gwn_data(networks)
             except Exception as e:
-                _LOGGER.error("Error retreiving GWN Data: %s", e)
+                _LOGGER.error(f"Error retreiving GWN Data: {e}")
             _LOGGER.info(f"Will refresh in {self._gwn_client.refresh_period}s")
             try:
                 await asyncio.wait_for(self._poll_trigger.wait(), timeout=self._gwn_client.refresh_period)
@@ -54,6 +55,42 @@ class MqttGwnManager:
         await self._mqtt_client.publish_online(payload)
         await asyncio.Event().wait()
         _LOGGER.info("Stopped listening to MQTT")
+
+    async def _unpublish_all_data(self) -> None:
+        _LOGGER.info("Cleaning out old data")
+        gwn_networks = await self._gwn_client.get_gwn_data()
+        _LOGGER.info(f"Cleaning out old data for {len(gwn_networks)} Networks")
+        for gwn_network in gwn_networks:
+            device_assignments: dict[str, list[GwnSSID]] = self._build_device_assignments(gwn_network.ssids)
+            ssid_device_info: dict[str, str] = {}
+            _LOGGER.info(f"Cleaning out old data for {len(gwn_network.devices)} Devices for Network with ID {gwn_network.id}")
+            for gwn_device in gwn_network.devices:
+                try:
+                    _LOGGER.debug(f"Unpublishing old Device with MAC {gwn_device.mac}")
+                    assignments: list[GwnSSID] = device_assignments.get(gwn_device.mac, [])
+                    ssid_device_info[gwn_device.mac] = gwn_device.name # doesnt need to be set to name but do so for consistency
+                    device_payload = self._serialise_device(gwn_network, gwn_device, assignments)
+                    await self._mqtt_client.unpublish_device(device_payload, True)
+                    _LOGGER.debug(f"Unpublished old Device with MAC {gwn_device.mac}")
+                except Exception as e:
+                    _LOGGER.warn(f"Failed to unpublish Device with MAC {gwn_device.mac}: {e}")
+            _LOGGER.info(f"Cleaning out old data for {len(gwn_network.ssids)} SSIDs for Network with ID {gwn_network.id}")
+            for gwn_ssid in gwn_network.ssids:
+                try:
+                    _LOGGER.debug(f"Unpublishing old SSID with ID {gwn_ssid.id}")
+                    ssid_payload = self._serialise_ssid(gwn_network, gwn_ssid)
+                    await self._mqtt_client.unpublish_ssid(ssid_payload, ssid_device_info, True)
+                    _LOGGER.debug(f"Unpublished old SSID with ID {gwn_ssid.id}")
+                except Exception as e:
+                    _LOGGER.warn(f"Failed to unpublish SSID with ID {gwn_ssid.id}: {e}")
+            try:
+                _LOGGER.debug(f"Unpublishing old Network with ID {gwn_network.id}")
+                network_payload = self._serialise_network(gwn_network)
+                await self._mqtt_client.unpublish_network(network_payload, True)
+                _LOGGER.debug(f"Unpublished old Network with ID {gwn_network.id}")
+            except Exception as e:
+                _LOGGER.warn(f"Failed to unpublish Network with ID {gwn_network.id}: {e}")
+        _LOGGER.info("Cleaned out old data")
 
     def _build_device_assignments(self, ssids: list[GwnSSID]) -> dict[str, list[GwnSSID]]:
         device_assignments: dict[str, list[GwnSSID]] = {}
@@ -99,7 +136,7 @@ class MqttGwnManager:
                     gwn_device.mac not in cached_devices[gwn_network.id] or
                     cached_devices[gwn_network.id][gwn_device.mac] != cached_payload):
                     _LOGGER.debug(f"Publishing Device with MAC {gwn_device.mac} to MQTT")
-                    await self._mqtt_client.publish_device(device_payload, network_names)
+                    await self._mqtt_client.publish_device(device_payload, network_names, self._gwn_client.is_readonly)
                     _LOGGER.debug(f"Successfully published Device with MAC {gwn_device.mac} to MQTT")
                 self._cached_devices[gwn_network.id][gwn_device.mac] = cached_payload # only cache after publishing
             except Exception as e:
@@ -136,7 +173,7 @@ class MqttGwnManager:
                     cached_ssids[gwn_network.id][gwn_ssid.id] != cached_payload):
                     _LOGGER.debug(f"Publishing SSID: {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
 
-                    await self._mqtt_client.publish_ssid(ssid_payload, device_names)
+                    await self._mqtt_client.publish_ssid(ssid_payload, device_names, self._gwn_client.is_readonly)
                     _LOGGER.debug(f"Successfully published SSID {gwn_ssid.ssidName} with ID {gwn_ssid.id} to MQTT")
                 self._cached_ssids[gwn_network.id][gwn_ssid.id] = cached_payload # only cache after publishing
             except Exception as e:
@@ -406,8 +443,9 @@ class MqttGwnManager:
             _LOGGER.info("Successfully connected to MQTT and GWN Manager")
             return True
         except Exception as e:
-            _LOGGER.error("Failed to connect: %s", e)
+            _LOGGER.error(f"Failed to connect: {e}")
             await self._mqtt_client.disconnect()
+            await self._gwn_client.close()
         return False
 
     async def run(self) -> None:
