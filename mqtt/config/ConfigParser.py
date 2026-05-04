@@ -1,8 +1,8 @@
+import logging
+import platform
+import yaml
 from pathlib import Path
 from typing import cast
-
-import logging
-import yaml
 
 from gwn.authentication import GwnConfig
 from gwn.constants import Constants
@@ -290,10 +290,13 @@ class ConfigParser:
             logging_location = logging_section.get("location")
             if logging_location:
                 logging_location = str(logging_location)
-                if logging_location not in {"syslog", "file", "console"}:
-                    raise ConfigParserError( "logging.location must be one of: syslog, file, console")
+                if logging_location not in {"system", "file", "console"}:
+                    raise ConfigParserError( "logging.location must be one of: system, file, console")
                 log_config.location = cast(LogLocation, logging_location)
-            if log_config.location == "file":
+            if log_config.location == "system":
+                if platform.system() != "Windows" and not Path("/dev/log").exists():
+                    raise ConfigParserError("logging.location is 'system' but /dev/log does not exist")
+            elif log_config.location == "file":
                 output_path = logging_section.get("output_path")
                 if not output_path:
                     raise ConfigParserError("logging.output_path is required when logging.location is 'file'")

@@ -2,6 +2,8 @@ import argparse
 import asyncio
 import getpass
 import logging
+import platform
+from logging.handlers import RotatingFileHandler, SysLogHandler
 from pathlib import Path
 
 from gwn.api import GwnClient
@@ -15,8 +17,29 @@ _LOGGER = logging.getLogger(Constants.LOG)
 
 def init_logger(config: LoggingConfig) -> None:
     _LOGGER.info("Initialising Logging")
-    logging.basicConfig(level=config.level, force=True)
-    logging.getLogger(Constants.LOG).setLevel(config.level)
+    handler: logging.Handler
+    log_level = logging.CRITICAL + 1 if config.level == "NONE" else getattr(logging, config.level)
+    formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(name)s:%(message)s")
+    if config.location == "file" and config.output_path is not None:
+        config.output_path.resolve().parent.mkdir(parents=True, exist_ok=True)
+        if config.size > 0:
+            handler = RotatingFileHandler(config.output_path, maxBytes=config.size, backupCount=config.files)
+        else:
+            handler = logging.FileHandler(config.output_path)
+    elif config.location == "system":
+        if platform.system() == "Windows":
+            from logging.handlers import NTEventLogHandler
+            handler = NTEventLogHandler(Constants.LOG)
+        else:
+            handler = SysLogHandler(address="/dev/log")
+    else:
+        handler = logging.StreamHandler()
+
+    handler.setLevel(log_level)
+    handler.setFormatter(formatter)
+
+    logging.basicConfig(level=log_level, handlers=[handler], force=True)
+    logging.getLogger(Constants.LOG).setLevel(log_level)
     _LOGGER.info("Logging Initialised")
 
 async def async_main(config_path: Path) -> None:

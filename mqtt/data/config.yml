@@ -75,6 +75,6 @@ gwn: # required
   no_publish: False # default False. Polls for data from GWN Manager but does not send commands. Good for monitoring logs for application data. Primarily a dev/debug setting
 logging:
   level: DEBUG # default INFO
-  location: syslog # syslog/file/console default: syslog
-  #size: 10000 # number of log entries before rotation: default 0 (no rotation)
+  location: system # system/file/console default: system
+  #size: 10000 # number of bytes in the log file before rotation: default 0 (no rotation)
   #files: 1 # number of files to keep on disk before rotation: default 1 (no rotation)
