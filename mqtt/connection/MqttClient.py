@@ -297,7 +297,8 @@ class MqttClient:
             except asyncio.CancelledError:
                 pass
             self._listen_task = None
-        await self._publish_offline()
+        if self._interface.is_connected:
+            await self._publish_offline()
         return await self._interface.disconnect()
 
     async def publish_online(self, application_payload: dict[str,object]) -> None:

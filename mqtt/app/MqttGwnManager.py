@@ -443,7 +443,7 @@ class MqttGwnManager:
             _LOGGER.info("Successfully connected to MQTT and GWN Manager")
             return True
         except Exception as e:
-            _LOGGER.error("Failed to connect: %s", e)
+            _LOGGER.error(f"Failed to connect: {e}")
             await self._mqtt_client.disconnect()
         return False
 

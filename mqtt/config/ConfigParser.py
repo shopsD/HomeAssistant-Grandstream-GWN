@@ -144,9 +144,10 @@ class ConfigParser:
         elif gwn_hashed_password:
             gwn_config.password = str(gwn_hashed_password)
         if gwn_config.username and not gwn_config.password:
-            raise ConfigParserError("gwn.username specified but gwn.password is missing")
+            raise ConfigParserError("gwn.username specified but gwn.password/gwn.hashed_password is missing")
         if gwn_config.password and not gwn_config.username:
-            raise ConfigParserError("gwn.password specified but gwn.username is missing")
+            error_str: str = f"gwn.{"hashed_" if gwn_password is None else ""}password specified but gwn.username is missing"
+            raise ConfigParserError(error_str)
         # gwn ignore failed fetch before update
         ignore_failed_fetch_before_update = gwn_section.get("ignore_failed_fetch_before_update")
         if ignore_failed_fetch_before_update is not None:
