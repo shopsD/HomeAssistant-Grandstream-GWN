@@ -130,6 +130,20 @@ class MqttGwnManager:
                 # copy the cache because all networks need to be recorded so that if a discovery publish fails, it will reattempt on next cycle
                 cached_payload = device_payload.copy()
                 cached_payload[Constants.CACHE] = dict(sorted(network_names.items()))
+
+                if (gwn_network.id in cached_devices and
+                    gwn_device.mac in cached_devices[gwn_network.id] and
+                    (
+                        # these are baked into the payloads so only change with auto discovery. This must therefore, be explicitly checked here
+                        cached_payload[Constants.CHANNEL_LISTS_2G4] != cached_devices[gwn_network.id][gwn_device.mac].get(Constants.CHANNEL_LISTS_2G4) or
+                        cached_payload[Constants.CHANNEL_LISTS_5G] != cached_devices[gwn_network.id][gwn_device.mac].get(Constants.CHANNEL_LISTS_5G) or
+                        cached_payload[Constants.CHANNEL_LISTS_6G] != cached_devices[gwn_network.id][gwn_device.mac].get(Constants.CHANNEL_LISTS_6G)
+                    )
+                ):
+                    _LOGGER.debug(f"Publishing Autodiscovery for Device with MAC {gwn_device.mac} to MQTT")
+                    # since channel options are baked into the data for every option list, if the channel width changes, and thus the available select options,
+                    # discovery needs to be republished
+                    await self._mqtt_client.reset_devices(gwn_network.id, gwn_device.mac)
                 if (force_republish or
                     self._config.publish_every_poll or
                     gwn_network.id not in cached_devices or
@@ -157,7 +171,10 @@ class MqttGwnManager:
                 cached_payload[Constants.CACHE] = device_names
                 if (gwn_network.id in cached_ssids and
                     gwn_ssid.id in cached_ssids[gwn_network.id] and
-                    (cached_payload[Constants.ASSIGNED_DEVICES] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.ASSIGNED_DEVICES] or
+                    (
+                        # these are baked into the payloads so only change with auto discovery. This must therefore, be explicitly checked here
+                        cached_payload[Constants.ASSIGNED_DEVICES] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.ASSIGNED_DEVICES] or
+                        # check the cached key data as if it is different then the previous auto discovery publish failed, so try again
                         Constants.CACHE not in cached_ssids[gwn_network.id][gwn_ssid.id] or
                         cached_payload[Constants.CACHE] != cached_ssids[gwn_network.id][gwn_ssid.id][Constants.CACHE]
                     )

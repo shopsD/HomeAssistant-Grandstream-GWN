@@ -133,7 +133,7 @@ class GwnClient:
                         ap_2g4_channel= 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g24"]["channel"]["value"]),
                         ap_5g_channel= 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"]),
                         ap_6g_channel= 0 if self._config_int(device_detailed_info, "ap_6g_channel") is None or self._config_int(device_detailed_info, "ap_6g_channel") == 0 else int(config_info_client["g6"]["channel"]["value"]),
-                        
+
                         channel_lists_2g4 = self._config_channel_list(device_detailed_info, "ap_2g4_channel", "ap_2g4_width"),
                         channel_lists_5g = self._config_channel_list(device_detailed_info, "ap_5g_channel", "ap_5g_width"),
                         channel_lists_6g = self._config_channel_list(device_detailed_info, "ap_6g_channel", "ap_6g_width")
