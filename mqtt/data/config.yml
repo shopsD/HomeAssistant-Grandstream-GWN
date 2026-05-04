@@ -76,5 +76,5 @@ gwn: # required
 logging:
   level: DEBUG # default INFO
   location: syslog # syslog/file/console default: syslog
-  #size: 10000 # number of log entries before rotation: default 0 (no rotation)
+  #size: 10000 # number of bytes in the log file before rotation: default 0 (no rotation)
   #files: 1 # number of files to keep on disk before rotation: default 1 (no rotation)
