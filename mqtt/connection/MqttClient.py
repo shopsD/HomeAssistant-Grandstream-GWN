@@ -322,7 +322,7 @@ class MqttClient:
         await self._publish_device_payload(device_payload, {}, True, False, propagate)
         await self._publish_device_payload(device_payload, {}, True, True, propagate) # always clear read only
 
-    async def unpublish_ssid(self, ssid_payload: dict[str, object], devices: dict[str, str], is_readonly: bool, propagate: bool) -> None:
+    async def unpublish_ssid(self, ssid_payload: dict[str, object], devices: dict[str, str], propagate: bool) -> None:
         await self._publish_ssid_payload(ssid_payload, devices, True, False, propagate)
         await self._publish_ssid_payload(ssid_payload, devices, True, True, propagate) # always clear read only
 
