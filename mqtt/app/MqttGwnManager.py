@@ -409,6 +409,7 @@ class MqttGwnManager:
     async def _handle_device_command(self, device_mac: str, data: dict[str, Any], network_id: str) -> None:    
         payload: GwnDevicePayload = GwnDevicePayload(ap_mac=device_mac, networkId=int(network_id))
         
+        # Discovery Payload Data
         payload.reboot = Constants.REBOOT in data
         payload.update = Constants.UPDATE_FIRMWARE in data
         payload.reset = Constants.RESET in data
@@ -417,6 +418,37 @@ class MqttGwnManager:
         payload.ap_5g_channel = data.get(Constants.AP_5G_CHANNEL, None)
         payload.ap_6g_channel = data.get(Constants.AP_6G_CHANNEL, None)
 
+        # Non-Discovery Payload Data
+        payload.ap_2g4_power = data.get(Constants.AP_2G4_POWER, None)
+        payload.ap_2g4_ratelimit_enable = data.get(Constants.AP_2G4_RATELIMIT_ENABLE, None)
+        payload.ap_2g4_rssi = data.get(Constants.AP_2G4_RSSI, None)
+        payload.ap_2g4_rssi_enable = data.get(Constants.AP_2G4_RSSI_ENABLE, None)
+        payload.ap_2g4_tag = data.get(Constants.AP_2G4_TAG, None)
+        payload.ap_2g4_width = data.get(Constants.AP_2G4_WIDTH, None)
+
+        payload.ap_5g_power = data.get(Constants.AP_5G_POWER, None)
+        payload.ap_5g_ratelimit_enable = data.get(Constants.AP_5G_RATELIMIT_ENABLE, None)
+        payload.ap_5g_rssi = data.get(Constants.AP_5G_RSSI, None)
+        payload.ap_5g_rssi_enable = data.get(Constants.AP_5G_RSSI_ENABLE, None)
+        payload.ap_5g_tag = data.get(Constants.AP_5G_TAG, None)
+        payload.ap_5g_width = data.get(Constants.AP_5G_WIDTH, None)
+
+        payload.ap_alternate_dns = data.get(Constants.AP_ALTERNATE_DNS, None)
+        payload.ap_band_steering = data.get(Constants.AP_BAND_STEERING, None)
+        payload.ap_ipv4_route = data.get(Constants.AP_IPV4_ROUTE, None)
+        payload.ap_ipv4_static = data.get(Constants.AP_IPV4_STATIC, None)
+        payload.ap_ipv4_static_mask = data.get(Constants.AP_IPV4_STATIC_MASK, None)
+        payload.ap_name = data.get(Constants.AP_NAME, None)
+        payload.ap_preferred_dns = data.get(Constants.AP_PREFERRED_DNS, None)
+        payload.ap_static = data.get(Constants.AP_STATIC, None)
+
+        payload.ap_6g_power = data.get(Constants.AP_6G_POWER, None)
+        payload.ap_6g_ratelimit_enable = data.get(Constants.AP_6G_RATELIMIT_ENABLE, None)
+        payload.ap_6g_rssi = data.get(Constants.AP_6G_RSSI, None)
+        payload.ap_6g_rssi_enable = data.get(Constants.AP_6G_RSSI_ENABLE, None)
+        payload.ap_6g_tag = data.get(Constants.AP_6G_TAG, None)
+        payload.ap_6g_width = data.get(Constants.AP_6G_WIDTH, None)
+
         if await self._gwn_client.set_device_data(payload) and not self._poll_trigger.is_set():
             # immediately refresh/update the data
             self._poll_trigger.set()
@@ -424,6 +456,7 @@ class MqttGwnManager:
     async def _handle_ssid_command(self, ssid_id: str, device_macs:list[str], network_id: str, data: dict[str, Any]) -> None:
         payload: GwnSSIDPayload = GwnSSIDPayload(id=int(ssid_id), networkId=int(network_id))
 
+        # Discovery Payload Data
         payload.ssidEnable = data.get(Constants.SSID_ENABLE, None)
         payload.ssidPortalEnable = data.get(Constants.PORTAL_ENABLED, None)
         payload.ssidVlanid = data.get(Constants.SSID_VLAN_ID, None)
@@ -434,9 +467,47 @@ class MqttGwnManager:
         payload.ssid_key = data.get(Constants.SSID_KEY, None)
         payload.ssidSsidHidden = data.get(Constants.SSID_HIDDEN, None)
         payload.ssidSsid = data.get(Constants.SSID_NAME, None)
-        payload.ssidIsolation = data.get(Constants.CLIENT_ISOLATION_ENABLED, None)
+        payload.ssidIsolation = data.get(Constants.SSID_ISOLATION, data.get(Constants.CLIENT_ISOLATION_ENABLED, None))
         payload.toggled_macs = data.get(Constants.TOGGLE_DEVICE, None)
-        
+
+        # Non-Discovery Payload Data
+        payload.ssidRemark = data.get(Constants.SSID_REMARK, None)
+        payload.ssidRadiusDynamicVlan = data.get(Constants.SSID_RADIUS_DYNAMIC_VLAN, None)
+        payload.ssidNewSsidBand = data.get(Constants.SSID_NEW_SSID_BAND, None)
+        payload.ssidWifiClientLimit = data.get(Constants.SSID_WIFI_CLIENT_LIMIT, None)
+        payload.ssidEncryption = data.get(Constants.SSID_ENCRYPTION, None)
+        payload.ssidWepKey = data.get(Constants.SSID_WEP_KEY, None)
+        payload.ssidWpaKeyMode = data.get(Constants.SSID_WPA_KEY_MODE, None)
+        payload.ssidWpaEncryption = data.get(Constants.SSID_WPA_ENCRYPTION, None)
+        payload.ssidWpaKey = data.get(Constants.SSID_WPA_KEY, None)
+        payload.ssidBridgeEnable = data.get(Constants.SSID_BRIDGE_ENABLE, None)
+        payload.ssidIsolationMode = data.get(Constants.SSID_ISOLATION_MODE, None)
+        payload.ssidGatewayMac = data.get(Constants.SSID_GATEWAY_MAC, None)
+        payload.ssidVoiceEnterprise = data.get(Constants.SSID_VOICE_ENTERPRISE, None)
+        payload.ssid11V = data.get(Constants.SSID_11V, None)
+        payload.ssid11R = data.get(Constants.SSID_11R, None)
+        payload.ssid11K = data.get(Constants.SSID_11K, None)
+        payload.ssidDtimPeriod = data.get(Constants.SSID_DTIM_PERIOD, None)
+        payload.ssidMcastToUcast = data.get(Constants.SSID_MCAST_TO_UCAST, None)
+        payload.ssidProxyarp = data.get(Constants.SSID_PROXYARP, None)
+        payload.ssidStaIdleTimeout = data.get(Constants.SSID_STA_IDLE_TIMEOUT, None)
+        payload.ssid11W = data.get(Constants.SSID_11W, None)
+        payload.ssidBms = data.get(Constants.SSID_BMS, None)
+        payload.ssidClientIPAssignment = data.get(Constants.SSID_CLIENT_IP_ASSIGNMENT, None)
+        payload.bindMacs = data.get(Constants.BIND_MACS, None)
+        payload.removeMacs = data.get(Constants.REMOVE_MACS, None)
+        payload.ssidPortalPolicy = data.get(Constants.SSID_PORTAL_POLICY, None)
+        payload.ssidMaclistBlacks = data.get(Constants.SSID_MACLIST_BLACKS, None)
+        payload.ssidMaclistWhites = data.get(Constants.SSID_MACLIST_WHITES, None)
+        payload.ssidMacFiltering = data.get(Constants.SSID_MAC_FILTERING, None)
+        payload.scheduleId = data.get(Constants.SCHEDULE_ID, None)
+        payload.ssidTimedClientPolicy = data.get(Constants.SSID_TIMED_CLIENT_POLICY, None)
+        payload.bandwidthType = data.get(Constants.BANDWIDTH_TYPE, None)
+        payload.bandwidthRules = data.get(Constants.BANDWIDTH_RULES, None)
+        payload.ssidSecurityType = data.get(Constants.SSID_SECURITY_TYPE, None)
+        payload.ppskProfile = data.get(Constants.PPSK_PROFILE, None)
+        payload.radiusProfile = data.get(Constants.RADIUS_PROFILE, None)
+       
         if await self._gwn_client.set_ssid_data(device_macs, payload) and not self._poll_trigger.is_set():
             
             # immediately refresh/update the data
