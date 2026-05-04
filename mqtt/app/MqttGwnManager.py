@@ -401,7 +401,15 @@ class MqttGwnManager:
 
     async def _handle_network_command(self, network_id: str, data: dict[str, Any]) -> None:
         payload: GwnNetworkPayload = GwnNetworkPayload(id=int(network_id))
+
+        # Discovery Payload Data
         payload.networkName = data.get(Constants.NETWORK_NAME, None)
+
+        # Non-Discovery Payload Data
+        payload.country = data.get(Constants.COUNTRY, None)
+        payload.timezone = data.get(Constants.TIMEZONE, None)
+        payload.networkAdministrators = data.get(Constants.NETWORK_ADMINS, None)
+
         if await self._gwn_client.set_network_data(payload) and not self._poll_trigger.is_set():
             # immediately refresh/update the data
             self._poll_trigger.set()
@@ -507,7 +515,7 @@ class MqttGwnManager:
         payload.ssidSecurityType = data.get(Constants.SSID_SECURITY_TYPE, None)
         payload.ppskProfile = data.get(Constants.PPSK_PROFILE, None)
         payload.radiusProfile = data.get(Constants.RADIUS_PROFILE, None)
-       
+
         if await self._gwn_client.set_ssid_data(device_macs, payload) and not self._poll_trigger.is_set():
             
             # immediately refresh/update the data

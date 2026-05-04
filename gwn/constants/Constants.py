@@ -159,6 +159,10 @@ class Constants:
     AP_6G_TAG: ClassVar[str] = "ap_6g_tag"
     AP_6G_WIDTH: ClassVar[str] = "ap_6g_width"
 
+    # Non-Discovery Network Payload Inputs
+    COUNTRY: ClassVar[str] = "country"
+    NETWORK_ADMINS: ClassVar[str] = "networkAdministrators"
+
     # MQTT Topics
     APPLICATION: ClassVar[str] = "application"
     DEVICES: ClassVar[str] = "devices"
