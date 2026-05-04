@@ -298,7 +298,10 @@ class MqttClient:
                 pass
             self._listen_task = None
         if self._interface.is_connected:
-            await self._publish_offline()
+            try:
+                await self._publish_offline()
+            except Exception as e:
+                _LOGGER.warn(f"Failed to publish offline message: {e}")
         return await self._interface.disconnect()
 
     async def publish_online(self, application_payload: dict[str,object]) -> None:
