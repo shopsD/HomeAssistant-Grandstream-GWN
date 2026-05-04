@@ -337,7 +337,11 @@ class GwnClient:
 
     async def get_gwn_data(self) -> list[GwnNetwork]:
         _LOGGER.info("Getting Networks")
-        networks = await self._interface.get_all_networks()
+        networks: list[dict[str, Any]] | None = None
+        try:
+            networks = await self._interface.get_all_networks()
+        except Exception as e:
+            _LOGGER.error(f"Failed to get the list of networks: {e}")
         gwn_networks: list[GwnNetwork] = []
         if networks is not None:
             for network in networks:
