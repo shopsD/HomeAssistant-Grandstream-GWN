@@ -330,7 +330,11 @@ class ConfigParser:
             publish_every_poll = app_section.get("publish_every_poll")
             if publish_every_poll is not None:
                 app_config.publish_every_poll = bool(publish_every_poll)
-        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'")
+            # app verify publish every poll
+            discovery_manifest_path = app_section.get("discovery_manifest_path")
+            if discovery_manifest_path is not None:
+                app_config.discovery_manifest_path = Path(discovery_manifest_path)
+        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'|Discovery Manifest Path: '{app_config.discovery_manifest_path}'")
         return app_config
 
     @staticmethod
