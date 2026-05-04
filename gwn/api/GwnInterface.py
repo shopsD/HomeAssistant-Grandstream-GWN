@@ -22,7 +22,8 @@ class GwnInterface:
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        await self._session.close()
+        if not self._session.closed:
+            await self._session.close()
 
     def _build_signature(self, body: str, access_token: str, timestamp_ms: int) -> str:
         """

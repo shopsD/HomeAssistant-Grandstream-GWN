@@ -445,6 +445,7 @@ class MqttGwnManager:
         except Exception as e:
             _LOGGER.error(f"Failed to connect: {e}")
             await self._mqtt_client.disconnect()
+            await self._gwn_client.close()
         return False
 
     async def run(self) -> None:
