@@ -468,7 +468,7 @@ class MqttGwnManager:
         payload.ssidEnable = data.get(Constants.SSID_ENABLE, None)
         payload.ssidPortalEnable = data.get(Constants.PORTAL_ENABLED, None)
         payload.ssidVlanid = data.get(Constants.SSID_VLAN_ID, None)
-        payload.ssidVlan = None if payload.ssidVlanid is None else int(payload.ssidVlanid) > 0
+        payload.ssidVlan = data.get(Constants.SSID_VLAN_ENABLED, None if payload.ssidVlanid is None else int(payload.ssidVlanid) > 0)
         payload.ghz2_4_enabled = data.get(Constants.GHZ2_4_ENABLED, None)
         payload.ghz5_enabled = data.get(Constants.GHZ5_ENABLED, None)
         payload.ghz6_enabled = data.get(Constants.GHZ6_ENABLED, None)
