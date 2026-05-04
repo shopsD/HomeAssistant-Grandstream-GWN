@@ -222,7 +222,7 @@ This section is required.
   - Supported: `FATAL`, `ERROR`, `WARNING`, `INFO`, `DEBUG`, `NONE`
   - Default: `INFO`
 - `location`: Log output location.
-  - Supported: `syslog`, `file`, `console`
+  - Supported: `system`, `file`, `console`
   - Default: `console`
 - `output_path`: Required when `location: file`.
   - Default: `null`
