@@ -641,7 +641,6 @@ class GwnClient:
                 _LOGGER.info(f"Moving device {payload.ap_mac} to {payload.target_network}")
                 return await self._interface.move_device_to_network(payload.ap_mac,str(payload.target_network))
 
-
         # first fetch existing data
         _LOGGER.debug(f"Fetching current data for device {payload.ap_mac}")
         device_info_port = await self._interface.get_device_info_port(payload.networkId,payload.ap_mac)
