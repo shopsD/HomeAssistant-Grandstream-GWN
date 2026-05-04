@@ -132,7 +132,11 @@ class GwnClient:
 
                         ap_2g4_channel= 0 if str(device_info_channel["ap_2g4_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g24"]["channel"]["value"]),
                         ap_5g_channel= 0 if str(device_info_channel["ap_5g_channel"]["defaultValue"]) == "Use Radio Settings" else int(config_info_client["g5"]["channel"]["value"]),
-                        ap_6g_channel= 0 if self._config_int(device_detailed_info, "ap_6g_channel") is None or self._config_int(device_detailed_info, "ap_6g_channel") == 0 else int(config_info_client["g6"]["channel"]["value"])
+                        ap_6g_channel= 0 if self._config_int(device_detailed_info, "ap_6g_channel") is None or self._config_int(device_detailed_info, "ap_6g_channel") == 0 else int(config_info_client["g6"]["channel"]["value"]),
+
+                        channel_lists_2g4 = self._config_channel_list(device_detailed_info, "ap_2g4_channel", "ap_2g4_width"),
+                        channel_lists_5g = self._config_channel_list(device_detailed_info, "ap_5g_channel", "ap_5g_width"),
+                        channel_lists_6g = self._config_channel_list(device_detailed_info, "ap_6g_channel", "ap_6g_width")
                     )
                     _LOGGER.debug(f"Processed device with MAC {gwn_device.mac}")
                     device_list[mac] = gwn_device
@@ -320,6 +324,55 @@ class GwnClient:
         if isinstance(value, list):
             return [str(item) for item in value]
         return [str(value)]
+
+    def _config_channel_list(self, config: dict[str, Any] | None, channel_key: str, width_key: str) -> dict[int, str]:
+        if config is None:
+            return {}
+
+        width_value: str | None = self._config_value(config, width_key)
+        width_config: dict[str, Any] = config.get(width_key, {})
+        channel_config: dict[str, Any] = config.get(channel_key, {})
+
+        if width_value is None:
+            return {}
+
+        width_values: list[dict[str, Any]] = width_config.get("values", [])
+
+        width_label: str | None = None
+        for item in width_values:
+            if str(item.get("value")) == width_value:
+                width_label = str(item.get("key"))
+                break
+
+        if width_label is None:
+            return {}
+        raw_values: list[dict[str, Any]] = []
+        if width_label == "Use Radio Settings":
+            # first build a list of all possible values
+            for key, values in channel_config.items():
+                if key.startswith("value") and isinstance(values, list) and len(values) > 0:
+                    raw_values = raw_values + values
+            # now keep only the items with duplicate keys in raw_values
+            value_counts: dict[str, int] = {}
+            for item in raw_values:
+                value = item.get("value")
+                if value is not None:
+                    # count how many times it occurred (only care if its more than 1)
+                    value_counts[str(value)] = value_counts.get(str(value), 0) + 1
+            # now rebuild the raw values with only the items that occurred more than once. This is the minimal/subset list
+            raw_values = [item for item in raw_values if value_counts.get(str(item.get("value")), 0) > 1 ]
+        else:
+            channel_list_key = f"value{width_label.replace('MHz', '').replace('/', '_')}"
+            for channel_key, channel_dicts in channel_config.items():
+                if channel_key.startswith(channel_list_key):
+                    # duplicates get handled in the return so its fine to build a large list
+                    raw_values = raw_values + channel_dicts
+
+        return {
+            int(item["value"]): str(item["key"])
+            for item in raw_values if item.get("value") not in (None, "") and item.get("key") is not None
+        }
+
 
     @property
     def refresh_period(self) -> int:
@@ -587,7 +640,6 @@ class GwnClient:
             if payload.target_network is not None:
                 _LOGGER.info(f"Moving device {payload.ap_mac} to {payload.target_network}")
                 return await self._interface.move_device_to_network(payload.ap_mac,str(payload.target_network))
-
 
         # first fetch existing data
         _LOGGER.debug(f"Fetching current data for device {payload.ap_mac}")

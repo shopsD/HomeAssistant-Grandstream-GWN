@@ -104,4 +104,5 @@ class WpaKeyMode(Enum):
     MODE_802_1X = 1
     MODE_PSK_SAE = 2 # undocumented but confirmed via grandstream customer support
     MODE_SAE = 3 # undocumented but confirmed via grandstream customer support
+    MODE_UNKNOWN = 4 # grandstream customer support could not determine what this value actually is
     MODE_PPSK_RADIUS_MAC = 5 # undocumented but confirmed via grandstream customer support

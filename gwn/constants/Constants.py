@@ -65,6 +65,10 @@ class Constants:
     AP_6G_CHANNEL: ClassVar[str] = "ap_6g_channel" # potentially unsupported
     # NETWORK_NAME (In Network)
     SSIDS: ClassVar[str] = "ssids"
+    # Used for selection
+    CHANNEL_LISTS_2G4: ClassVar[str] = "channel_lists_2g4"
+    CHANNEL_LISTS_5G: ClassVar[str] = "channel_lists_5g"
+    CHANNEL_LISTS_6G: ClassVar[str] = "channel_lists_6g"
 
     # buttons/commands (no GWN Inputs)
     REBOOT: ClassVar[str] = "reboot"

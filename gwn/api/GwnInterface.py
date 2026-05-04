@@ -120,8 +120,11 @@ class GwnInterface:
             if response is None:
                 return None
             data = response.get("data", {})
-            page_results = data.get("result", [])
+            if not isinstance (data, dict):
+                _LOGGER.warning(f"No data in paginated response message: {response}")
+                return None
 
+            page_results = data.get("result", [])
             if not isinstance(page_results, list):
                 _LOGGER.warning(f"Unexpected paginated response message: {response}")
                 return None
