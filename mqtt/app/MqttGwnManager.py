@@ -517,10 +517,11 @@ class MqttGwnManager:
 
     async def run(self) -> None:
         _LOGGER.info("Starting Poll of GWN Manager and MQTT")
+        await self._mqtt_client.unpublish_manifest()
         gwn_task = asyncio.create_task(self._run_gwn_interface())
         mqtt_task = asyncio.create_task(self._run_mqtt_interface())
         try:
-            await self._mqtt_client.unpublish_manifest()
+            
             await asyncio.gather(gwn_task, mqtt_task)
         finally:
             await self._mqtt_client.disconnect()
