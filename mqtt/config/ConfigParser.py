@@ -334,7 +334,11 @@ class ConfigParser:
             publish_every_poll = app_section.get("publish_every_poll")
             if publish_every_poll is not None:
                 app_config.publish_every_poll = bool(publish_every_poll)
-        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'")
+            # app unpublish initial data
+            unpublish_initial_data = app_section.get("unpublish_initial_data")
+            if unpublish_initial_data is not None:
+                app_config.unpublish_initial_data = bool(unpublish_initial_data)
+        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'|Unpublish Initial Data: '{app_config.unpublish_initial_data}'")
         return app_config
 
     @staticmethod
