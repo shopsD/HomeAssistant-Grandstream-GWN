@@ -19,7 +19,7 @@ class MqttClient:
         self._application_callback: Callable[[dict[str, Any]], None] | None = None
         self._network_callback: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None
         self._device_callback: Callable[[str, dict[str, Any], str], Awaitable[None]] | None = None
-        self._ssid_callback: Callable[[str, list[str], str, dict[str, Any]], Awaitable[None]] | None = None
+        self._ssid_callback: Callable[[str, dict[str, Any], str], Awaitable[None]] | None = None
         self._listen_task: asyncio.Task[None] | None = None
         self._publisher_clients: list[MqttPublisherClient] = [
             HomeAssistantMqttClient(config.homeassistant)
@@ -77,7 +77,6 @@ class MqttClient:
             network_id: str | None = None
             device_mac: str | None = None
             ssid_id: str | None = None
-            device_macs: list[str] = []
             formatted_data: dict[str, Any] = {}
             application_command: bool = False
             if parts_count == 1 and parts[0] == Constants.GWN:
@@ -96,18 +95,6 @@ class MqttClient:
                     return _LOGGER.warning(f"Malformed command. If {Constants.NETWORK_ID} is absent then {Constants.MAC} and {Constants.SSID_ID} must also be absent")
 
                 action_data = data.get(Constants.ACTION)
-                input_device_macs: object = ()
-                if ssid_id is None and data.get(Constants.DEVICE_MACS, None) is not None:
-                    _LOGGER.debug(f"Malformed Payload: {data}")
-                    return _LOGGER.warning(f"Malformed command. {Constants.DEVICE_MACS} can only be supplied with {Constants.SSID_ID}")
-
-                if ssid_id is not None:
-                    input_device_macs = data.get(Constants.DEVICE_MACS)
-
-                    if not isinstance(input_device_macs, list) or not all(isinstance(item, str) for item in input_device_macs):
-                        _LOGGER.debug(f"Malformed {Constants.DEVICE_MACS} entry. Received: {input_device_macs}")
-                        raise KeyError(f"{Constants.DEVICE_MACS} must be an array/list of strings")
-                    device_macs = input_device_macs
 
                 if not isinstance(action_data, list) or not all(isinstance(item, dict) for item in action_data):
                     _LOGGER.debug(f"Malformed {Constants.ACTION} entry. Received: {action_data}")
@@ -133,24 +120,12 @@ class MqttClient:
                     _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}")
                 else:
                     return _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
-                raw_action_data: object = ()
-                raw_device_macs: object = ()
-                if ssid_id is None:
-                    raw_action_data = data
-                else:
-                    raw_device_macs = data.get(Constants.DEVICE_MACS)
-                    raw_action_data = data.get(Constants.ACTION)
-
-                    if not isinstance(raw_device_macs, list) or not all(isinstance(item, str) for item in raw_device_macs):
-                        _LOGGER.debug(f"Malformed {Constants.DEVICE_MACS} entry. Received: {raw_device_macs}")
-                        raise KeyError(f"{Constants.DEVICE_MACS} must be an array/list of strings")
-                    device_macs = raw_device_macs
-
-                if not isinstance(raw_action_data, dict):
-                    _LOGGER.debug(f"Malformed {Constants.ACTION} entry. Received: {raw_action_data}")
+    
+                if not isinstance(data, dict):
+                    _LOGGER.debug(f"Malformed {Constants.ACTION} entry. Received: {data}")
                     raise KeyError(f"{Constants.ACTION} must be an object")
 
-                formatted_data = {raw_action_data[Constants.ACTION]: raw_action_data.get(Constants.VALUE, None) }
+                formatted_data = {data[Constants.ACTION]: data.get(Constants.VALUE, None) }
                 _LOGGER.debug("Formatted Payload: %s", formatted_data)
 
             if application_command and self._application_callback is not None:
@@ -158,7 +133,7 @@ class MqttClient:
             elif network_id is None:
                 _LOGGER.warning("No Network ID specified")
             elif self._ssid_callback is not None and ssid_id is not None:
-                await self._ssid_callback(ssid_id, device_macs, network_id, formatted_data)
+                await self._ssid_callback(ssid_id, formatted_data, network_id)
             elif self._device_callback is not None and device_mac is not None:
                 await self._device_callback(device_mac, formatted_data, network_id)
             elif self._network_callback is not None:
@@ -295,7 +270,7 @@ class MqttClient:
     def set_device_callback(self, callback: Callable[[str, dict[str, Any], str], Awaitable[None]]) -> None:
         self._device_callback = callback
 
-    def set_ssid_callback(self, callback: Callable[[str, list[str], str, dict[str, Any]], Awaitable[None]]) -> None:
+    def set_ssid_callback(self, callback: Callable[[str, dict[str, Any], str], Awaitable[None]]) -> None:
         self._ssid_callback = callback
 
     async def connect(self) -> bool:

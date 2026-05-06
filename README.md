@@ -495,7 +495,7 @@ If `exclude_passphrase` includes the SSID ID, `ssidKey` is not published.
 Below are examples of what the commands from MQTT should look like
 ### Single-Action Command Format
 
-Application, network, and device topic commands use a single action object:
+Application, network, device and ssid topic commands use a single action object:
 
 ```json
 {
@@ -509,20 +509,6 @@ Button commands may omit `value`:
 ```json
 {
   "action": "reboot"
-}
-```
-
-### SSID Topic Command Format
-
-SSID topic commands include `device_macs` plus a single nested action object:
-
-```json
-{
-  "device_macs": ["AA:BB:CC:DD:EE:FF"],
-  "action": {
-    "action": "ssidEnable",
-    "value": true
-  }
 }
 ```
 
@@ -555,7 +541,6 @@ For SSID multi-commands, use `ssid_id` instead of `mac` and include `device_macs
 {
   "network_id": "1",
   "ssid_id": "3",
-  "device_macs": ["AA:BB:CC:DD:EE:FF"],
   "action": [
     {
       "action": "ssidName",
@@ -660,7 +645,7 @@ Discovery-backed actions:
 | `ssidSsidHidden` | boolean | Hide or show SSID. |
 | `ssidName` | string | Rename SSID. |
 | `ssidIsolation` | boolean/int depending on GWN payload | Set SSID isolation value. |
-| `toggle_device` | list of devices to assign the SSID to | Toggle SSID assignment for one or more devices. |
+| `toggle_device` | dictionary of devices to toggle assignment. {Device MAC: True/False to assign/unassign} | Toggle SSID assignment for one or more devices. |
 
 Additional low-level SSID actions accepted by the MQTT manager:
 

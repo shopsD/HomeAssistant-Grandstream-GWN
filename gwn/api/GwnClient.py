@@ -424,7 +424,7 @@ class GwnClient:
         _LOGGER.info(f"Found {len(gwn_networks)} Networks")
         return gwn_networks
 
-    async def set_ssid_data(self, device_macs: list[str], payload: GwnSSIDPayload) -> bool:
+    async def set_ssid_data(self, payload: GwnSSIDPayload) -> bool:
 
         # first fetch existing data
         _LOGGER.debug(f"Fetching current data for SSID {payload.id}")
@@ -434,8 +434,7 @@ class GwnClient:
             return False
 
         # normalise the macs for processing and for transport in the payload
-        normalised_device_macs: list[str] = [GwnConfig.normalise_mac(mac) for mac in device_macs]
-        original_bind_macs: list[str] = normalised_device_macs
+        original_bind_macs: set[str] = set()
         # try to update the snapshot in case the provided one is stale
         detailed_ssid_info: dict[str, Any] | None = None
         if not self.is_readonly:
@@ -454,12 +453,10 @@ class GwnClient:
                 _LOGGER.error(f"Failed to fetch existing detailed SSID config for ID {payload.id}. Update will not be applied")
                 return False
             if stored_macs is not None:
-                flattened_stored_macs: list[str] = []
                 for device_info in stored_macs:
                     mac = GwnConfig.normalise_mac(str(device_info.get("mac")))
                     if bool(device_info.get("checked")):
-                        flattened_stored_macs.append(mac)
-                original_bind_macs = flattened_stored_macs
+                        original_bind_macs.add(mac)
             elif not self._config.ignore_failed_fetch_before_update:
                 _LOGGER.error(f"Failed to fetch existing SSID to device mapping for ID {payload.id}. Update will not be applied")
                 return False
@@ -467,18 +464,25 @@ class GwnClient:
         _LOGGER.debug(f"Initialising default payload data for SSID {payload.id}")
         # these keys are required as a basic list of the payload so build them up either from the existing payload
         # or perform a pre-update fetch and use the updated version
+
         if payload.bindMacs is None:
-            payload.bindMacs = original_bind_macs
+            payload.bindMacs = list(set(original_bind_macs))
 
         if payload.toggled_macs is not None:
-            payload.toggled_macs = [GwnConfig.normalise_mac(mac) for mac in payload.toggled_macs]
-            added_macs = [mac for mac in payload.toggled_macs if mac not in normalised_device_macs]
-            removed_macs = [mac for mac in normalised_device_macs if mac not in payload.toggled_macs]
-            final_bind_macs = [mac for mac in original_bind_macs if mac not in removed_macs]
-            final_bind_macs.extend([mac for mac in added_macs if mac not in final_bind_macs])
-            payload.bindMacs = final_bind_macs
+            for payload_mac, add_mac in payload.toggled_macs.items():
+                new_bind_macs: set[str] = set(payload.bindMacs)
+                payload_mac = GwnConfig.normalise_mac(payload_mac)
+                if add_mac:
+                    new_bind_macs.add(payload_mac)
+                else:
+                    new_bind_macs.discard(payload_mac)
+            removed_macs = [mac for mac in new_bind_macs if mac not in original_bind_macs]
+            payload.bindMacs = list(new_bind_macs)
             if len(removed_macs) > 0:
-                payload.removeMacs = removed_macs
+                if payload.removeMacs is None:
+                    payload.removeMacs = removed_macs
+                else:
+                    payload.removeMacs = payload.removeMacs + removed_macs
 
         if payload.ssidSsid is None:
             payload.ssidSsid = None if config_info is None else config_info.get("ssidSsid")
