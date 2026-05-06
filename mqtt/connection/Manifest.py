@@ -45,6 +45,8 @@ class Manifest:
             _LOGGER.info(f"Reading Manifest from: {self._manifest_path}")
             with self._manifest_path.open("r", encoding="utf-8") as file_handle:
                 raw = yaml.safe_load(file_handle) or {}
+            if not instance(raw, dict):
+                return _LOGGER.error("Invalid Manifest. Expected a YAML File with 'version' and 'topic'")
             version = raw.get(ManifestConstants.VERSION, None)
             if not isinstance(version, str):
                 return _LOGGER.error("Invalid version found in the Manifest. Version must be text")
