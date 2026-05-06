@@ -389,16 +389,17 @@ class MqttClient:
             raise Exception("Some exceptions occurred when resetting SSIDs")
 
     async def unpublish_manifest(self) -> None:
-        _LOGGER.info(f"Unpublishing {len(self._manifest.published_topics)} Topics from the Manifest")
         count = 0
         # _do_publish will modify this list so take a copy of it to iterate through
         topics = list(self._manifest.published_topics)
+        _LOGGER.info(f"Unpublishing {len(topics)} Topics from the Manifest")
         for topic in topics:
             try:
                 await self._do_publish(topic, None)
                 count = count + 1
             except Exception as e:
                 _LOGGER.warn(f"Failed to unpublish Topic '{topic}': {e}")
+        self.write_manifest()
         _LOGGER.info(f"Unpublished {count} Topics from the Manifest")
 
     def write_manifest(self) -> None:

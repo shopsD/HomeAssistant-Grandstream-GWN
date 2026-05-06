@@ -27,11 +27,9 @@ class Manifest:
         if self._config.discovery_manifest_path is None:
             _LOGGER.info("No Manifest Path Specified")
             return None
-        manifest_path = Path(self._config.discovery_manifest_path)
+        manifest_path = Path(self._config.discovery_manifest_path).resolve()
         if manifest_path.is_dir():
             manifest_path = manifest_path / "manifest.yml"
-        if not manifest_path.exists():
-            Path.mkdir(manifest_path.parent, parents=True, exist_ok=True)
         _LOGGER.info(f"Manifest file set to {manifest_path}")
         return manifest_path
 
@@ -47,6 +45,11 @@ class Manifest:
             _LOGGER.info(f"Reading Manifest from: {self._manifest_path}")
             with self._manifest_path.open("r", encoding="utf-8") as file_handle:
                 raw = yaml.safe_load(file_handle) or {}
+            version = raw.get(ManifestConstants.VERSION, None)
+            if not isinstance(version, str):
+                return _LOGGER.error("Invalid version found in the Manifest. Version must be text")
+            if version != Constants.APP_VERSION:
+                _LOGGER.warn(f"Manifest was created with a different application version. Manifest Version: '{version}' - Application Version: '{Constants.APP_VERSION}'")
             topic_section = raw.get(ManifestConstants.TOPIC, None)
             if not isinstance(topic_section, list):
                 return _LOGGER.error("Invalid topic section found in the Manifest. Topic must be a list")
@@ -58,6 +61,9 @@ class Manifest:
 
     def write_manifest(self) -> None:
         if self._manifest_path is not None and self._has_changes:
+            if not self._manifest_path.exists():
+                _LOGGER.info(f"Creating manifest file at {self._manifest_path}")
+                Path.mkdir(self._manifest_path.parent, parents=True, exist_ok=True)
             _LOGGER.info(f"Writing {len(self.published_topics)} topics to the manifest")
             with self._manifest_path.open("w", encoding="utf-8") as file_handle:
                 manifest_data: dict[str, list[str] | str] = {}
