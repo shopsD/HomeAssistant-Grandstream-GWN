@@ -467,7 +467,7 @@ class MqttGwnManager:
             # immediately refresh/update the data
             self._poll_trigger.set()
 
-    async def _handle_ssid_command(self, ssid_id: str, device_macs:list[str], network_id: str, data: dict[str, Any]) -> None:
+    async def _handle_ssid_command(self, ssid_id: str, data: dict[str, Any], network_id: str) -> None:
         payload: GwnSSIDPayload = GwnSSIDPayload(id=int(ssid_id), networkId=int(network_id))
 
         # Discovery Payload Data
@@ -522,7 +522,7 @@ class MqttGwnManager:
         payload.ppskProfile = data.get(Constants.PPSK_PROFILE, None)
         payload.radiusProfile = data.get(Constants.RADIUS_PROFILE, None)
 
-        if await self._gwn_client.set_ssid_data(device_macs, payload) and not self._poll_trigger.is_set():
+        if await self._gwn_client.set_ssid_data(payload) and not self._poll_trigger.is_set():
             
             # immediately refresh/update the data
             self._poll_trigger.set()

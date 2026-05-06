@@ -34,14 +34,8 @@ class HomeAssistantMqttClient(MqttPublisherClient):
     def _ha_discovery_topic(self, component: str, object_id: str) -> str:
         return f"{self._config.discovery_topic}/{component}/{object_id}/{Constants.CONFIG}"
 
-    def _create_switch_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str, assigned_devices_json: str | None = None ) -> tuple[str, dict[str, object]]:
-        
-        payload_on: str = '{"%s":"%s","%s":true}' % (Constants.ACTION, payload_key, Constants.VALUE)
-        payload_off: str = '{"%s":"%s","%s":false}' % (Constants.ACTION, payload_key, Constants.VALUE)
-        if assigned_devices_json is not None:
-            payload_on = '{"%s":%s, "%s":%s}' % (Constants.ACTION, payload_on, Constants.DEVICE_MACS, assigned_devices_json)
-            payload_off = '{"%s":%s, "%s":%s}' % (Constants.ACTION, payload_off, Constants.DEVICE_MACS, assigned_devices_json)
-        
+    def _create_switch_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str) -> tuple[str, dict[str, object]]:
+
         return (
             self._ha_discovery_topic("switch", unique_id),
             {
@@ -50,19 +44,16 @@ class HomeAssistantMqttClient(MqttPublisherClient):
                 "state_topic": state_topic,
                 "command_topic": command_topic,
                 "value_template": "{{ value_json.%s == 1}}" % payload_key,
-                "payload_on": payload_on,
-                "payload_off": payload_off,
+                "payload_on": '{"%s":"%s","%s":true}' % (Constants.ACTION, payload_key, Constants.VALUE),
+                "payload_off": '{"%s":"%s","%s":false}' % (Constants.ACTION, payload_key, Constants.VALUE),
                 "state_on": True,
                 "state_off": False,
                 "device": device
             }
         )
 
-    def _create_number_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str, min: int, max: int, value_template: str | None = None, assigned_devices_json: str | None = None ) -> tuple[str, dict[str, object]]:
-        
-        command_template: str = '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, payload_key, Constants.VALUE)
-        if assigned_devices_json is not None:
-            command_template = '{"%s":%s, "%s":%s}' % (Constants.ACTION, command_template, Constants.DEVICE_MACS, assigned_devices_json)
+    def _create_number_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str, min: int, max: int, value_template: str | None = None) -> tuple[str, dict[str, object]]:
+
         if value_template is None:
             value_template =  "{{ value_json.%s | int(0) }}" % payload_key
 
@@ -74,7 +65,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
                 "state_topic": state_topic,
                 "command_topic": command_topic,
                 "value_template": value_template,
-                "command_template": command_template,
+                "command_template": '{"%s":"%s","%s":{{ value | int }}}' % (Constants.ACTION, payload_key, Constants.VALUE),
                 "min": min,
                 "max": max,
                 "step": 1,
@@ -83,10 +74,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
             }
         )
 
-    def _create_text_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str, assigned_devices_json: str | None = None ) -> tuple[str, dict[str, object]]:
-        command_template: str = '{"%s":"%s","%s":{{ value | tojson }}}' % (Constants.ACTION, payload_key, Constants.VALUE)
-        if assigned_devices_json is not None:
-            command_template = '{"%s":%s, "%s":%s}' % (Constants.ACTION, command_template, Constants.DEVICE_MACS, assigned_devices_json)
+    def _create_text_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str) -> tuple[str, dict[str, object]]:
 
         return (
             self._ha_discovery_topic("text", unique_id),
@@ -96,20 +84,17 @@ class HomeAssistantMqttClient(MqttPublisherClient):
                 "state_topic": state_topic,
                 "command_topic": command_topic,
                 "value_template": "{{ value_json.%s }}" % payload_key,
-                "command_template": command_template,
+                "command_template": '{"%s":"%s","%s":{{ value | tojson }}}' % (Constants.ACTION, payload_key, Constants.VALUE),
                 "device": device
             }
         )
 
-    def _create_button_payload(self, device: dict[str, object], unique_id: str, name: str, command_topic:str, payload_key: str, enabled_by_default: bool | None = None, is_config: bool = False, assigned_devices_json: str | None = None ) -> tuple[str, dict[str, object]]:
-        payload_press: str = '{"%s": "%s"}' % (Constants.ACTION, payload_key)
-        if assigned_devices_json is not None:
-            payload_press = '{"%s":%s, "%s":%s}' % (Constants.ACTION, payload_press, Constants.DEVICE_MACS, assigned_devices_json)
+    def _create_button_payload(self, device: dict[str, object], unique_id: str, name: str, command_topic:str, payload_key: str, enabled_by_default: bool | None = None, is_config: bool = False) -> tuple[str, dict[str, object]]:
 
         payload: dict[str, object] = {
             "name": name,
             "unique_id": unique_id,
-            "payload_press": payload_press,
+            "payload_press": '{"%s": "%s"}' % (Constants.ACTION, payload_key),
             "command_topic": command_topic,
             "device": device
         }
@@ -121,12 +106,8 @@ class HomeAssistantMqttClient(MqttPublisherClient):
 
         return (self._ha_discovery_topic("button", unique_id),payload)
 
-    def _create_select_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str, select_options: list[str], command_options: dict[str, Any], value_template: str | None = None, enabled_by_default: bool | None = None, is_config: bool = False, assigned_devices_json: str | None = None ) -> tuple[str, dict[str, object]]:
-        
-        command_template: str = '{"%s":"%s","%s":{{ %s[value] | tojson }}}'% (Constants.ACTION, payload_key, Constants.VALUE, json.dumps(command_options))
-        if assigned_devices_json is not None:
-            command_template = '{"%s":%s, "%s":%s}' % (Constants.ACTION, command_template, Constants.DEVICE_MACS, assigned_devices_json)
-        
+    def _create_select_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, payload_key: str, select_options: list[str], command_options: dict[str, Any], value_template: str | None = None, enabled_by_default: bool | None = None, is_config: bool = False) -> tuple[str, dict[str, object]]:
+
         if value_template is None:
             value_template =  "{{ value_json.%s }}" % payload_key
 
@@ -137,7 +118,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
                 "command_topic": command_topic,
                 "value_template": value_template,
                 "options": select_options,
-                "command_template": command_template,
+                "command_template": '{"%s":"%s","%s":{{ %s[value] | tojson }}}'% (Constants.ACTION, payload_key, Constants.VALUE, json.dumps(command_options)),
                 "device": device
             }
 
@@ -148,17 +129,13 @@ class HomeAssistantMqttClient(MqttPublisherClient):
 
         return (self._ha_discovery_topic("select", unique_id), payload)
     
-    def _create_update_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, title: str, payload_key: str, payload_key_current: str, payload_key_new: str, enabled_by_default: bool | None = None, is_config: bool = False, assigned_devices_json: str | None = None ) -> tuple[str, dict[str, object]]:
-        payload_install: str = '{"%s": "%s"}' % (Constants.ACTION, payload_key)
+    def _create_update_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, command_topic:str, title: str, payload_key: str, payload_key_current: str, payload_key_new: str, enabled_by_default: bool | None = None, is_config: bool = False) -> tuple[str, dict[str, object]]:
 
-        if assigned_devices_json is not None: # currently unused. Possibly useful if creating an Apply button
-            payload_install = '{"%s":%s, "%s":%s}' % (Constants.ACTION, payload_install, Constants.DEVICE_MACS, assigned_devices_json)
-        
         payload: dict[str, object] = {
             "name": name,
             "unique_id": unique_id,
             "value_template": '{{ {"installed_version": value_json.%s,"latest_version": value_json.%s} | tojson }}' % (payload_key_current, payload_key_new),
-            "payload_install": payload_install,
+            "payload_install": '{"%s": "%s"}' % (Constants.ACTION, payload_key),
             "state_topic": state_topic,
             "command_topic": command_topic,
             "title": title,
@@ -172,7 +149,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
         return (self._ha_discovery_topic("update", unique_id),payload)
 
     def _create_sensor_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, payload_key_template: str, enabled_by_default: bool | None = None, is_config: bool = False, payload_is_template: bool = False) -> tuple[str, dict[str, object]]:
-        
+
         if not payload_is_template:
             payload_key_template = "{{ value_json.%s }}" % payload_key_template
 
@@ -190,7 +167,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
         return (self._ha_discovery_topic("sensor", unique_id),payload)
 
     def _create_numeric_sensor_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, payload_key_template: str, measurement_unit: str | None = None, enabled_by_default: bool | None = None, is_config: bool = False, payload_is_template: bool = False ) -> tuple[str, dict[str, object]]:
-        
+
         if not payload_is_template:
             payload_key_template = "{{ value_json.%s | int(0) }}" % payload_key_template
 
@@ -204,7 +181,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
         return payload
 
     def _create_binary_sensor_payload(self, device: dict[str, object], unique_id: str, name: str, state_topic: str, payload_key_template: str, enabled_by_default: bool | None = None, is_config: bool = False, payload_is_template: bool = False ) -> tuple[str, dict[str, object]]:
-        
+
         if not payload_is_template:
             payload_key_template = "{{ value_json.%s }}" % payload_key_template
 
@@ -262,7 +239,6 @@ class HomeAssistantMqttClient(MqttPublisherClient):
             local_device_data[data_device_mac] = data_device_name
 
         hide_ssid_passphrase: bool = payload[Constants.SSID_KEY] is None # it is None if the config has it excluded or it is set to Open (if Open, dont allow setting SSID Key here either)
-        assigned_devices_json = json.dumps(raw_device_mac_list) # this is for knowing which device this is for as part of a round-trip check
 
         for raw_device_mac, device_name in local_device_data.items():
             # see if the device has a custom name assigned in GWN Manager
@@ -284,8 +260,8 @@ class HomeAssistantMqttClient(MqttPublisherClient):
                             "state_topic": state_topic,
                             "command_topic": command_topic,
                             "value_template": "{{ %s in value_json.%s }}" % (json.dumps(raw_device_mac), Constants.ASSIGNED_DEVICES),
-                            "payload_on": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps(list(set([raw_device_mac] + raw_device_mac_list))), Constants.DEVICE_MACS, assigned_devices_json),
-                            "payload_off": '{"%s":{"%s":"%s","%s":%s}, "%s": %s}' % (Constants.ACTION, Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps([mac for mac in raw_device_mac_list if mac != raw_device_mac]), Constants.DEVICE_MACS, assigned_devices_json),
+                            "payload_on": '{"%s":"%s","%s":%s}' % (Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps({raw_device_mac: True})),
+                            "payload_off": '{"%s":"%s","%s":%s}' % (Constants.ACTION, Constants.TOGGLE_DEVICE, Constants.VALUE, json.dumps({raw_device_mac: False})),
                             "state_on": True,
                             "state_off": False,
                             "device": device
@@ -294,16 +270,16 @@ class HomeAssistantMqttClient(MqttPublisherClient):
                 )
 
         return device_assignment + [
-            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled", "Enabled", state_topic, Constants.SSID_ENABLE) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled", "Enabled", state_topic, command_topic, Constants.SSID_ENABLE, assigned_devices_json)),
-            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_portal", "Captive Portal", state_topic, Constants.PORTAL_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_portal", "Captive Portal", state_topic, command_topic, Constants.PORTAL_ENABLED, assigned_devices_json)),
-            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_client_isolation_enabled", "Client Isolation", state_topic, Constants.CLIENT_ISOLATION_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_client_isolation_enabled", "Client Isolation", state_topic, command_topic, Constants.CLIENT_ISOLATION_ENABLED, assigned_devices_json)),
-            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled_2_4", "2.4GHz Station", state_topic, Constants.GHZ2_4_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled_2_4", "2.4GHz Station", state_topic, command_topic, Constants.GHZ2_4_ENABLED, assigned_devices_json)),
-            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled_5", "5GHz Station", state_topic, Constants.GHZ5_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled_5", "5GHz Station", state_topic, command_topic, Constants.GHZ5_ENABLED, assigned_devices_json)),
-            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled_6", "6GHz Station", state_topic, Constants.GHZ6_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled_6", "6GHz Station", state_topic, command_topic, Constants.GHZ6_ENABLED, assigned_devices_json)),
-            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_hidden", "Hide WiFi", state_topic, Constants.SSID_HIDDEN) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_hidden", "Hide WiFi", state_topic, command_topic, Constants.SSID_HIDDEN, assigned_devices_json)),
-            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_vlan", "VLAN ID", state_topic, Constants.SSID_VLAN_ID) if is_readonly else self._create_number_payload(device, f"{ssid_payload_id}_vlan", "VLAN ID", state_topic, command_topic, Constants.SSID_VLAN_ID, 0, 4094, "{{ value_json.%s if value_json.get('%s') else null }}" % (Constants.SSID_VLAN_ID, Constants.SSID_VLAN_ENABLED), assigned_devices_json)),
-            (self._create_sensor_payload(device, f"{ssid_payload_id}_passphrase", "WiFi Passphrase", state_topic, Constants.SSID_KEY) if is_readonly or hide_ssid_passphrase else self._create_text_payload(device, f"{ssid_payload_id}_passphrase", "WiFi Passphrase", state_topic, command_topic, Constants.SSID_KEY, assigned_devices_json)),
-            (self._create_sensor_payload(device, f"{ssid_payload_id}_ssid_name", "SSID", state_topic, Constants.SSID_NAME) if is_readonly else self._create_text_payload(device, f"{ssid_payload_id}_ssid_name", "SSID", state_topic, command_topic, Constants.SSID_NAME, assigned_devices_json)),
+            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled", "Enabled", state_topic, Constants.SSID_ENABLE) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled", "Enabled", state_topic, command_topic, Constants.SSID_ENABLE)),
+            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_portal", "Captive Portal", state_topic, Constants.PORTAL_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_portal", "Captive Portal", state_topic, command_topic, Constants.PORTAL_ENABLED)),
+            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_client_isolation_enabled", "Client Isolation", state_topic, Constants.CLIENT_ISOLATION_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_client_isolation_enabled", "Client Isolation", state_topic, command_topic, Constants.CLIENT_ISOLATION_ENABLED)),
+            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled_2_4", "2.4GHz Station", state_topic, Constants.GHZ2_4_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled_2_4", "2.4GHz Station", state_topic, command_topic, Constants.GHZ2_4_ENABLED)),
+            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled_5", "5GHz Station", state_topic, Constants.GHZ5_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled_5", "5GHz Station", state_topic, command_topic, Constants.GHZ5_ENABLED)),
+            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_enabled_6", "6GHz Station", state_topic, Constants.GHZ6_ENABLED) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_enabled_6", "6GHz Station", state_topic, command_topic, Constants.GHZ6_ENABLED)),
+            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_hidden", "Hide WiFi", state_topic, Constants.SSID_HIDDEN) if is_readonly else self._create_switch_payload(device, f"{ssid_payload_id}_hidden", "Hide WiFi", state_topic, command_topic, Constants.SSID_HIDDEN)),
+            (self._create_binary_sensor_payload(device, f"{ssid_payload_id}_vlan", "VLAN ID", state_topic, Constants.SSID_VLAN_ID) if is_readonly else self._create_number_payload(device, f"{ssid_payload_id}_vlan", "VLAN ID", state_topic, command_topic, Constants.SSID_VLAN_ID, 0, 4094, "{{ value_json.%s if value_json.get('%s') else null }}" % (Constants.SSID_VLAN_ID, Constants.SSID_VLAN_ENABLED))),
+            (self._create_sensor_payload(device, f"{ssid_payload_id}_passphrase", "WiFi Passphrase", state_topic, Constants.SSID_KEY) if is_readonly or hide_ssid_passphrase else self._create_text_payload(device, f"{ssid_payload_id}_passphrase", "WiFi Passphrase", state_topic, command_topic, Constants.SSID_KEY)),
+            (self._create_sensor_payload(device, f"{ssid_payload_id}_ssid_name", "SSID", state_topic, Constants.SSID_NAME) if is_readonly else self._create_text_payload(device, f"{ssid_payload_id}_ssid_name", "SSID", state_topic, command_topic, Constants.SSID_NAME)),
             self._create_numeric_sensor_payload(device, f"{ssid_payload_id}_client_count", "Clients Online", state_topic, Constants.CLIENT_COUNT),
             self._create_sensor_payload(device, f"{ssid_payload_id}_network_name", "Network", state_topic, "{{ %s }}" % json.dumps(network_name),None,False,True)
         ]

@@ -1,7 +1,7 @@
 # HomeAssistant-Grandstream-GWN
 <img src="./assets/logo.png" alt="GWN to MQTT Bridge" width="300px"/>
 
-Grandstream GWN Manager tooling for publishing GWN network, access point, and SSID data over MQTT, with optional Home Assistant MQTT discovery.
+Grandstream GWN Manager tooling for publishing GWN network, access point, and SSID data over MQTT, with optional Home Assistant MQTT discovery. This tool is not endorsed, affiliated nor supported by Grandstream.
 
 The MQTT bridge is the primary working application in this repository. The native Home Assistant custom component is present as a workspace/scaffold, but the MQTT bridge is currently the main implementation path.
 
@@ -29,6 +29,9 @@ The MQTT bridge does five jobs:
 - A reachable MQTT broker.
 - A reachable Grandstream GWN Manager instance.
 - GWN Manager `app_id` and `secret_key`.
+
+### GWN Manager tested versions
+- 1.1.35.10
 
 ## Install
 
@@ -94,6 +97,16 @@ uv run gwn_mqtt --password "plain-text-password"
 This hashes the provided value directly. The output can be used as `gwn.hashed_password` of the config.
 
 This hash is fast and unsalted, so treat it as sensitive and do not expose it.
+
+## Getting The API Key
+The application requires an API key and App ID from GWN Manager to work
+To get these details follow the steps below:
+1. Login to GWN Manager
+2. On the left navigation bar, click on `Organization` to expand it
+3. Click on `Global`
+4. Scroll down to `API Developer` and click `Enable API Developer Mode`
+5. Note your `APP ID` and `Secret Key` (These fields can always be retrieved)
+6. If you enable `Restrict APIs to specific networks` then you must set the `restricted_api` to `True` in the config file
 
 ## Configuration
 
@@ -495,7 +508,7 @@ If `exclude_passphrase` includes the SSID ID, `ssidKey` is not published.
 Below are examples of what the commands from MQTT should look like
 ### Single-Action Command Format
 
-Application, network, and device topic commands use a single action object:
+Application, network, device and ssid topic commands use a single action object:
 
 ```json
 {
@@ -511,22 +524,6 @@ Button commands may omit `value`:
   "action": "reboot"
 }
 ```
-
-### SSID Topic Command Format
-
-SSID topic commands include `device_macs` plus a single nested action object:
-
-```json
-{
-  "device_macs": ["AA:BB:CC:DD:EE:FF"],
-  "action": {
-    "action": "ssidEnable",
-    "value": true
-  }
-}
-```
-
-`device_macs` must be a list of strings. It represents the current device assignment context needed for safe SSID edits. Home Assistant discovery builds this context from fetched state. External MQTT publishers should provide the current assignment list when using SSID topic commands.
 
 ### Multi-Command Format
 
@@ -549,13 +546,12 @@ The multi-command topic is useful for external publishers that want to send seve
 }
 ```
 
-For SSID multi-commands, use `ssid_id` instead of `mac` and include `device_macs`:
+For SSID multi-commands, use `ssid_id` instead of `mac`:
 
 ```json
 {
   "network_id": "1",
   "ssid_id": "3",
-  "device_macs": ["AA:BB:CC:DD:EE:FF"],
   "action": [
     {
       "action": "ssidName",
@@ -573,10 +569,8 @@ Rules for `gwn/gwn/set`:
 
 | Rule | Behaviour |
 | --- | --- |
-| `network_id` missing | Treated as an application command. `mac`, `ssid_id`, and `device_macs` must also be absent. |
+| `network_id` missing | Treated as an application command. `mac` and `ssid_id` must also be absent. |
 | `mac` and `ssid_id` both present | Invalid. Only one target type can be used. |
-| `device_macs` supplied without `ssid_id` | Invalid. |
-| `ssid_id` present without `device_macs` | Invalid. |
 | `action` is not a list of objects | Invalid. |
 | Duplicate action keys | Later values overwrite earlier values before the handler is called. |
 
@@ -610,7 +604,7 @@ Discovery-backed actions:
 | `networkName` | network ID/name mapping value | Move the AP to another network. Home Assistant discovery shows the configured display name while sending the selected network ID. |
 | `ap_2g4_channel` | integer | Set the configured 2.4 GHz channel. `0` means `Use Radio Settings`. |
 | `ap_5g_channel` | integer | Set the configured 5 GHz channel. `0` means `Use Radio Settings`. |
-| `ap_6g_channel` | integer | Set the configured 6 GHz channel where supported by GWN/API data. |
+| `ap_6g_channel` | integer | Set the configured 6 GHz channel. `0` means `Use Radio Settings` |
 
 Additional low-level device actions accepted by the MQTT manager:
 
@@ -660,7 +654,7 @@ Discovery-backed actions:
 | `ssidSsidHidden` | boolean | Hide or show SSID. |
 | `ssidName` | string | Rename SSID. |
 | `ssidIsolation` | boolean/int depending on GWN payload | Set SSID isolation value. |
-| `toggle_device` | list of devices to assign the SSID to | Toggle SSID assignment for one or more devices. |
+| `toggle_device` | dictionary of devices to toggle assignment. `{"AA:BB:CC:DD:EE:F0": true}` | Toggle SSID assignment for one or more devices. Key is the device MAC. Set the dictionary value to `True` to add the assignment, `False` to remove the assignment |
 
 Additional low-level SSID actions accepted by the MQTT manager:
 
@@ -774,7 +768,18 @@ If you want to run tools directly from the virtual environment:
 - Prefer `gwn.hashed_password` over storing plaintext `gwn.password`.
 - Do not set both `gwn.password` and `gwn.hashed_password`.
 - Excluding the SSID passphrase from MQTT state does not remove GWN Manager's requirement for a complete SSID edit payload. The application will attempt to acquire the SSID passphrase before making updates per the configuration settings.
-- MQTT command topics can change real GWN settings. Protect the broker accordingly.
+- MQTT command topics can change real GWN settings. Protect the broker accordingly. If in doubt, use `no_publish: True`  in the MQTT section of the config.
+- Using `no_publish: True` in the config will result in the full payload being written to the log if the log is set to `debug`. This is unencrypted and un-obscured, so SSID passwords will be made visible in this log regardless of if the SSID was excluded from passkey publishing. `GWN Manager` passwords (Plaintext or Hashed) are never written to the log
+- Receiving a malformed MQTT payload will display the entire payload in the log if the log is set to `debug`. This is unencrypted and un-obscured, so SSID passwords will be made visible in this log regardless of if the SSID was excluded from passkey publishing. `GWN Manager` passwords (Plaintext or Hashed) are never written to the log
+
+## Additional Notes
+
+- Due to the way the Grandstream API works, several values cannot be retrieved via an API key alone. This is why username and password are required. This includes identifying what SSIDs are assigned to a device by SSID ID rather than name since the GWN Manager allows SSIDs with the same name
+- When using the Home Assistant MQTT payloads, sometimes a value will briefly toggle to its old value after editing. This is because after changing a value, the application retrieves the latest values from GWN Manager and republishes it over MQTT. This delay makes Home Assistant reset to the old value, but it should change to the new value within a few seconds
+- MAC Addresses must either use `:` or `-` as separators. No separators are also supported. The application does attempt to normalise them, so the values are not case sensitive
+- Many GWN API Commands/Response parameters are not fully documented or officially supported. This is particularly true with 6GHz related parameters. While Grandstream customer support have provided additional confirmation of some variables and behaviours, some items use workarounds such as the "browser based calls" (calls that copy what the GWN Manager Web App does) using username/password have been implemented. However, since these are not part of the official API, they may be prone to breaking in future updates. This was tested against Version `1.1.35.10` of the official GWN Manager Application
+- Boolean values in the config must never be in quotes otherwise they can be incorrectly processed
+- GWN Cloud has not been tested with this application
 
 ## Roadmap Notes
 

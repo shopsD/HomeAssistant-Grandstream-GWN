@@ -66,7 +66,7 @@ class GwnSSIDPayload:
     ghz5_enabled: bool | None = None 
     ghz6_enabled: bool | None = None 
     ssid_key: str | None = None 
-    toggled_macs: list[str] | None = None 
+    toggled_macs: dict[str, bool] | None = None
 
     REQUIRED: ClassVar[list[str]] = [
         "id",

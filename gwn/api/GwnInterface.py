@@ -147,6 +147,13 @@ class GwnInterface:
             "client_secret": self._config.secret_key,
             "grant_type": "client_credentials"
         }
+        if self._config.restricted_api:
+            if self._config.username is None or self._config.password is None:
+                _LOGGER.fatal("Restricted API was set to True but username and password are missing")
+                return None
+            params["grant_type"] = "password"
+            params["username"] = self._config.username
+            params["password"] = self._config.password
 
         async with self._session.get(url, params=params) as response:
             data = await response.json(content_type=None)

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 class GwnConfig:
     app_id: str
     secret_key: str
+    restricted_api: bool = False
     username: str | None = None
     password: str | None = None
     base_url: str = "https://localhost:8443"
