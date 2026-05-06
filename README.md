@@ -1,4 +1,5 @@
 # HomeAssistant-Grandstream-GWN
+<img src="./assets/logo.png" alt="GWN to MQTT Bridge" width="300px"/>
 
 Grandstream GWN Manager tooling for publishing GWN network, access point, and SSID data over MQTT, with optional Home Assistant MQTT discovery.
 
@@ -6,25 +7,25 @@ The MQTT bridge is the primary working application in this repository. The nativ
 
 ## Project Overview
 
-This repository has three main areas:
-
 | Path | Purpose |
 | --- | --- |
-| `gwn/` | Core GWN Manager client, authentication, constants, response models, and request payload models. It also serves as a library/API for interacting with GWN Manager via its API |
-| `mqtt/` | Runnable GWN-to-MQTT bridge application. This polls GWN Manager, publishes MQTT state, receives MQTT commands, and optionally publishes Home Assistant discovery payloads. |
+| `gwn/` | Core GWN Manager client, authentication, constants, response models, and request payload models. It also serves as a library/API for interacting with GWN Manager via its API|
+| `mqtt/` | Runnable GWN-to-MQTT bridge. It polls GWN Manager, publishes retained MQTT state, receives MQTT commands, and optionally publishes Home Assistant discovery payloads. |
 | `custom_components/grandstream_gwn/` | Native Home Assistant integration workspace. This is not the main working integration yet. |
+| `mqtt/data/config.yml` | Example MQTT bridge config. Do not store real secrets in this sample. |
 
-The MQTT bridge does four jobs:
+The MQTT bridge does five jobs:
 
 1. Authenticates with GWN Manager using `app_id` and `secret_key`.
-2. Optionally performs the username/password browser-style login for richer device/SSID configuration data.
-3. Publishes retained MQTT state for the application, networks, devices, and SSIDs.
-4. Listens for MQTT commands and forwards supported updates back to GWN Manager.
+2. Optionally performs the username/password browser-style login for richer device, SSID, and edit payload data.
+3. Publishes retained MQTT state for the bridge application, networks, devices, and SSIDs.
+4. Publishes optional Home Assistant MQTT discovery payloads.
+5. Listens for MQTT commands and forwards supported updates back to GWN Manager.
 
 ## Requirements
 
-- Python `3.13` or newer.
-- `uv` is recommended for dependency management and running the console script.
+- Python `3.14.2` or newer, matching `pyproject.toml`.
+- `uv` for dependency management and running the console script.
 - A reachable MQTT broker.
 - A reachable Grandstream GWN Manager instance.
 - GWN Manager `app_id` and `secret_key`.
@@ -37,13 +38,13 @@ Install `uv` if it is not already available:
 pip install uv
 ```
 
-Install the project dependencies:
+Install dependencies:
 
 ```bash
 uv sync
 ```
 
-Install development dependencies as well:
+Install development dependencies:
 
 ```bash
 uv sync --group dev
@@ -57,7 +58,7 @@ uv build
 
 ## Run
 
-Run the bridge with the packaged sample config path:
+Run with the packaged sample config:
 
 ```bash
 uv run gwn_mqtt --config_path mqtt/data/config.yml
@@ -75,10 +76,10 @@ The packaged config contains placeholders. For real use, create a private config
 
 | Option | Required | Behaviour |
 | --- | --- | --- |
-| `-c`, `--config_path PATH` | Optional | Path to the YAML config file. Defaults to `mqtt/data/config.yml` inside the package. |
-| `-p`, `--password [PASSWORD]` | Optional | Hashes a GWN Manager password and prints the value to use in `gwn.hashed_password`, then exits. |
+| `-c`, `--config_path PATH` | No | Path to the YAML config file. Defaults to `mqtt/data/config.yml` inside the package. |
+| `-p`, `--password [PASSWORD]` | No | Hashes a GWN Manager password and prints the value to use in `gwn.hashed_password`, then exits. |
 
-Password hashing examples:
+Password hashing with an interactive prompt:
 
 ```bash
 uv run gwn_mqtt --password
@@ -100,8 +101,8 @@ The config file is YAML. The supported top-level sections are:
 
 | Section | Required | Purpose |
 | --- | --- | --- |
-| `gwn` | Yes | GWN Manager connection, authentication, polling, exclusions, and update behaviour. |
-| `mqtt` | No | MQTT broker connection and Home Assistant discovery settings. |
+| `gwn` | Yes | GWN Manager authentication, polling, exclusions, and update behaviour. |
+| `mqtt` | No | MQTT broker connection, manifest path, and Home Assistant discovery settings. |
 | `app` | No | Bridge-level runtime behaviour. |
 | `logging` | No | Logging level and destination. |
 
@@ -114,23 +115,26 @@ gwn:
   secret_key: CHANGE_ME
 ```
 
-With only this config, the bridge can use the official API credentials, but username/password-only data is unavailable. In that mode, Home Assistant discovery should be considered read-only for fields that require the richer browser-fetched data.
+With only `app_id` and `secret_key`, the bridge can poll data available through the official API. Browser-fetched data is unavailable, so features that require username/password login are treated as read-only in Home Assistant discovery.
 
 ### Full Example
 
 ```yaml
 app:
   publish_every_poll: false
+  unpublish_initial_data: false
 
 mqtt:
   host: 127.0.0.1
   port: 1883
   username: mqtt-user
   password: mqtt-password
+  client_id: gwn-mqtt
   keepalive: 60
   topic: gwn
   tls: false
   verify_tls: true
+  topic_manifest_path: ./manifest/
   no_publish: false
   homeassistant:
     discovery_topic: homeassistant
@@ -184,6 +188,7 @@ logging:
 | Field | Required | Default | Behaviour |
 | --- | --- | --- | --- |
 | `publish_every_poll` | No | `false` | If `false`, MQTT state is published only when the received GWN payload differs from the previous poll. If `true`, state is published after every GWN poll. |
+| `unpublish_initial_data` | No | `false` | If `true`, the bridge fetches the current GWN data on startup, clears matching retained MQTT state/discovery, then republishes fresh state. This is normally not required when `mqtt.topic_manifest_path` is configured. |
 
 ## `mqtt` Config
 
@@ -193,14 +198,43 @@ logging:
 | `port` | No | `1883` | MQTT broker port. |
 | `username` | No | `null` | MQTT username. |
 | `password` | No | `null` | MQTT password. |
-| `client_id` | No | `null` | MQTT client ID. If omitted, the MQTT library decides the client ID. |
+| `client_id` | No | `null` | MQTT client ID. If omitted, the MQTT library generates one. |
 | `keepalive` | No | `60` | MQTT keepalive in seconds. |
 | `topic` | No | `gwn` | Root MQTT topic used by the bridge. |
 | `tls` | No | `false` | Enables TLS for MQTT. |
 | `verify_tls` | No | `true` | Verifies MQTT TLS certificates when TLS is enabled. |
+| `topic_manifest_path` | No | `null` | Path used to persist published MQTT topics for cleanup across restarts. See `Topic Manifest` below. |
 | `no_publish` | No | `false` | Connects and listens for MQTT commands, but does not publish MQTT state/discovery. Useful for debugging. |
 
 If the `mqtt` section is missing, all MQTT defaults are used.
+
+### Topic Manifest
+
+`topic_manifest_path` records every retained topic that the bridge has published. On the next startup, the bridge reads that manifest and clears those retained topics before publishing current data. This prevents stale Home Assistant discovery entities and stale state topics from surviving restarts after networks, devices, SSIDs, or entity shapes have changed.
+
+Path behaviour:
+
+| Value | Behaviour |
+| --- | --- |
+| Missing or `null` | Manifest support is disabled. No manifest is read or written. |
+| Existing folder | `manifest.yml` is created inside that folder. |
+| Path ending with `/` or `\` | Treated as a folder path, even if it does not exist yet. `manifest.yml` is created inside it. |
+| Any other path | Treated as the manifest file path. Parent folders are created if needed. |
+
+Use `topic_manifest_path: null` or omit the field to disable the manifest.
+
+The manifest file contains entries such as:
+
+```yaml
+version: "0.0.1"
+topic:
+  - gwn/application/status
+  - gwn/networks/1/state
+```
+
+Invalid manifests are logged and ignored.
+
+`app.unpublish_initial_data` is a separate fallback cleanup mode. It clears topics for whatever data GWN currently returns but only runs once on startup. It is usually not required if `topic_manifest_path` is used. Using `topic_manifest_path` is more suitable because it can also clear topics for objects that were deleted while the bridge was stopped. While `app.unpublish_initial_data` can only unpublish correctly detected topics (Networks, Devices and SSIDs)
 
 ### `mqtt.homeassistant` Config
 
@@ -236,8 +270,6 @@ device_name_override:
   - "AA:BB:CC:DD:EE:FF": "Lobby AP"
 ```
 
-MAC addresses are normalised for device discovery and device name overrides.
-
 ## `gwn` Config
 
 | Field | Required | Default | Behaviour |
@@ -263,9 +295,7 @@ MAC addresses are normalised for device discovery and device name overrides.
 
 `app_id` and `secret_key` are always required.
 
-`username` plus either `password` or `hashed_password` is optional, but enables richer browser-style queries. Those queries are used to fetch required edit payload details, channel option data, and more accurate SSID/device association data.
-
-Credential rules:
+`username` plus either `password` or `hashed_password` is optional. When present, the bridge can perform browser-style queries for additional data. Those queries are used for complete edit payloads, channel option data, and more accurate SSID/device association data.
 
 | Config Combination | Result |
 | --- | --- |
@@ -276,7 +306,7 @@ Credential rules:
 | `username` set without a password field | Invalid. Config load fails. |
 | Password field set without `username` | Invalid. Config load fails. |
 
-When username/password login is missing, Home Assistant discovery is generated in read-only form for settings that require that richer data. The bridge can still publish state. Reboot, reset, and firmware update buttons are command actions and are not treated as settings writes.
+When username/password login is missing, Home Assistant discovery is generated in read-only form for settings that require additional/non-API data. The bridge can still publish state. Reboot, reset, and firmware update buttons are command actions and are not treated as settings writes.
 
 ### SSID Name To Device Binding
 
@@ -288,9 +318,7 @@ When `ssid_name_to_device_binding` is `false` and username/password login is una
 
 GWN edit endpoints often require complete payloads, not only the changed field. Before writing network, device, or SSID settings, the bridge fetches current GWN data and builds a fuller payload to avoid resetting unrelated settings.
 
-`ignore_failed_fetch_before_update` controls failure behaviour:
-
-| Value | Behaviour |
+| `ignore_failed_fetch_before_update` | Behaviour |
 | --- | --- |
 | `false` | If the pre-update fetch fails, the update is cancelled. |
 | `true` | If the pre-update fetch fails, the bridge still attempts the update with the data it has. Missing values may be sent as `null`. This is mainly for external MQTT publishers that provide full payload data themselves. |
@@ -309,7 +337,7 @@ Logging destinations:
 
 | Location | Behaviour |
 | --- | --- |
-| `console` | Logs to stderr/stdout through a stream handler. |
+| `console` | Logs to the terminal/console. |
 | `file` | Logs to `output_path`. If `size > 0`, a rotating file handler is used. |
 | `system` | On Windows, logs to Windows Event Log. On non-Windows systems, logs to `/dev/log`; config loading fails if `/dev/log` does not exist. |
 
@@ -326,10 +354,10 @@ Assume `mqtt.topic: gwn`. If you change `mqtt.topic`, replace `gwn` in the examp
 | Application status | `gwn/application/status` | `{"status": "online"}` or `{"status": "offline"}`. Retained. |
 | Application state | `gwn/application/state` | Application state JSON. Retained. |
 | Network state | `gwn/networks/{network_id}/state` | Network state JSON. Retained. |
-| Device state | `gwn/networks/{network_id}/devices/{mac}/state` | Device state JSON. Retained. MAC is stripped and lowercase in the topic. |
+| Device state | `gwn/networks/{network_id}/devices/{mac}/state` | Device state JSON. Retained. MAC is stripped of ":" and "-" and converted to lower-case in the topic. |
 | SSID state | `gwn/networks/{network_id}/ssids/{ssid_id}/state` | SSID state JSON. Retained. |
 
-When an object is removed, the retained state payload is cleared by publishing an empty payload to the previous state topic. Home Assistant discovery payloads are also cleared when the discovery cache is reset or an object is unpublished.
+When an object is removed, the retained state payload is cleared by publishing an empty retained payload to the previous state topic. Home Assistant discovery payloads are also cleared when the discovery cache is reset or an object is unpublished.
 
 ### Subscribed Command Topics
 
@@ -344,6 +372,8 @@ When an object is removed, the retained state payload is cleared by publishing a
 All command payloads must be valid JSON objects.
 
 ## MQTT State Payloads
+
+The exact values come from GWN Manager and can vary by device model, firmware, API support, and whether username/password login is available.
 
 ### Application State
 
@@ -404,12 +434,12 @@ All command payloads must be valid JSON objects.
   "ap_5g_channel": 36,
   "ap_6g_channel": 0,
   "channel_lists_2g4": {
-    "0": "Use Radio Settings",
-    "1": "Ch1-2.412GHz"
+    "Use Radio Settings": 0,
+    "Ch1-2.412GHz": 1
   },
   "channel_lists_5g": {
-    "0": "Use Radio Settings",
-    "36": "Ch36-5.180GHz"
+    "Use Radio Settings": 0,
+    "Ch36-5.180GHz": 36
   },
   "channel_lists_6g": {},
   "networkName": "Office",
@@ -423,7 +453,7 @@ All command payloads must be valid JSON objects.
 }
 ```
 
-`channel_2_4`, `channel_5`, and `channel_6` are the channels currently in use. `ap_2g4_channel`, `ap_5g_channel`, and `ap_6g_channel` are the configured channel settings. A configured value of `0` means "Use Radio Settings".
+`channel_2_4`, `channel_5`, and `channel_6` are the channels currently in use. `ap_2g4_channel`, `ap_5g_channel`, and `ap_6g_channel` are the configured channel settings. A configured value of `0` means `Use Radio Settings`.
 
 ### SSID State
 
@@ -479,14 +509,6 @@ Button commands may omit `value`:
 }
 ```
 
-The bridge converts this to:
-
-```json
-{
-  "reboot": null
-}
-```
-
 ### SSID Topic Command Format
 
 SSID topic commands include `device_macs` plus a single nested action object:
@@ -501,9 +523,7 @@ SSID topic commands include `device_macs` plus a single nested action object:
 }
 ```
 
-`device_macs` must be a list of strings. It represents the current device assignment context needed for safe SSID edits.
-
-Home Assistant discovery builds the `device_macs` context from fetched state. External MQTT publishers should provide the current assignment list when using SSID topic commands.
+`device_macs` must be a list of strings. It represents the current device assignment context needed for safe SSID edits. Home Assistant discovery builds this context from fetched state. External MQTT publishers should provide the current assignment list when using SSID topic commands.
 
 ### Multi-Command Format
 
@@ -584,9 +604,9 @@ Discovery-backed actions:
 | `reboot` | omitted/null | Reboot the AP. |
 | `update_firmware` | omitted/null | Trigger firmware update. |
 | `reset` | omitted/null | Reset the AP. |
-| `networkName` | network ID/name mapping value | Move the AP to another network. Home Assistant discovery sends the selected network ID while showing the configured display name. |
-| `ap_2g4_channel` | integer | Set the configured 2.4 GHz channel. `0` means "Use Radio Settings". |
-| `ap_5g_channel` | integer | Set the configured 5 GHz channel. `0` means "Use Radio Settings". |
+| `networkName` | network ID/name mapping value | Move the AP to another network. Home Assistant discovery shows the configured display name while sending the selected network ID. |
+| `ap_2g4_channel` | integer | Set the configured 2.4 GHz channel. `0` means `Use Radio Settings`. |
+| `ap_5g_channel` | integer | Set the configured 5 GHz channel. `0` means `Use Radio Settings`. |
 | `ap_6g_channel` | integer | Set the configured 6 GHz channel where supported by GWN/API data. |
 
 Additional low-level device actions accepted by the MQTT manager:
@@ -630,14 +650,14 @@ Discovery-backed actions:
 | `portalEnabled` | boolean | Enable or disable captive portal. |
 | `ssidVlanid` | integer | Set VLAN ID. |
 | `ssidVlanEnabled` | boolean | Enable or disable VLAN. If omitted while `ssidVlanid` is supplied, the bridge infers it from whether VLAN ID is greater than `0`. |
-| `ghz2_4_Enabled` | boolean | Enable or disable 2.4 GHz station support. |
-| `ghz5_Enabled` | boolean | Enable or disable 5 GHz station support. |
-| `ghz6_Enabled` | boolean | Enable or disable 6 GHz station support where supported. |
+| `ghz2_4_Enabled` | boolean | Enable or disable 2.4 GHz radio support for the SSID. |
+| `ghz5_Enabled` | boolean | Enable or disable 5 GHz radio support for the SSID. |
+| `ghz6_Enabled` | boolean | Enable or disable 6 GHz radio support where supported. |
 | `ssidKey` | string | Set passphrase/key. |
 | `ssidSsidHidden` | boolean | Hide or show SSID. |
 | `ssidName` | string | Rename SSID. |
 | `ssidIsolation` | boolean/int depending on GWN payload | Set SSID isolation value. |
-| `toggle_device` | list/string depending on caller | Toggle SSID assignment for one or more devices. |
+| `toggle_device` | list of devices to assign the SSID to | Toggle SSID assignment for one or more devices. |
 
 Additional low-level SSID actions accepted by the MQTT manager:
 
@@ -690,7 +710,8 @@ The bridge caches the last published network, device, and SSID payloads.
 
 | Event | Behaviour |
 | --- | --- |
-| First startup publish | The bridge clears retained data/discovery first, then publishes fresh data from GWN. |
+| Startup with `topic_manifest_path` | Topics listed in the previous manifest are cleared before the bridge starts its polling/listening tasks. |
+| Startup with `unpublish_initial_data: true` | Current GWN data is fetched and matching retained topics/discovery are cleared before fresh data is published. |
 | Normal poll with no changes | No state is published unless `app.publish_every_poll` is `true`. |
 | Normal poll with changes | Only changed network/device/SSID payloads are published. |
 | Object removed from GWN | The old retained MQTT state and matching discovery payloads are cleared. |
@@ -746,19 +767,16 @@ If you want to run tools directly from the virtual environment:
 
 ## Security Notes
 
-- Treat `app_id`, `secret_key`, MQTT credentials, GWN credentials, and `hashed_password` as secrets.
+- Treat `app_id`, `secret_key`, MQTT credentials, GWN credentials, `hashed_password`, and the topic manifest as sensitive operational data.
 - Prefer `gwn.hashed_password` over storing plaintext `gwn.password`.
 - Do not set both `gwn.password` and `gwn.hashed_password`.
-- Excluding a passphrase from MQTT state does not remove GWN's requirement for a complete SSID edit payload.
+- Excluding the SSID passphrase from MQTT state does not remove GWN Manager's requirement for a complete SSID edit payload. The application will attempt to acquire the SSID passphrase before making updates per the configuration settings.
 - MQTT command topics can change real GWN settings. Protect the broker accordingly.
 
 ## Roadmap Notes
 
-Likely future work:
-
 | Area | Notes |
 | --- | --- |
 | Native Home Assistant integration | Build a real config flow, coordinator, read-only entities, then write-capable entities. |
-| Full MQTT write coverage | The GWN client supports richer payloads than the current MQTT discovery UI exposes. External MQTT commands can already use many low-level fields. |
 | Tests | Add pytest coverage once the behaviour settles. |
-| Web UI | Possible stretch goal, not MVP. |
+| Web UI | Possible stretch goal |
