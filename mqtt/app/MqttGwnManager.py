@@ -31,13 +31,19 @@ class MqttGwnManager:
 
     async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
-        await self._unpublish_all_data()
+        if self._config.unpublish_initial_data:
+            await self._unpublish_all_data()
         while True:
             try:
                 networks = await self._gwn_client.get_gwn_data()
                 await self._publish_gwn_data(networks)
             except Exception as e:
                 _LOGGER.error(f"Error retreiving GWN Data: {e}")
+            try:
+                _LOGGER.info("Checking manifest")
+                self._mqtt_client.write_manifest()
+            except Exception as e:
+                _LOGGER.error(f"Error updating manifest: {e}")
             _LOGGER.info(f"Will refresh in {self._gwn_client.refresh_period}s")
             try:
                 await asyncio.wait_for(self._poll_trigger.wait(), timeout=self._gwn_client.refresh_period)
@@ -549,6 +555,7 @@ class MqttGwnManager:
 
     async def run(self) -> None:
         _LOGGER.info("Starting Poll of GWN Manager and MQTT")
+        await self._mqtt_client.unpublish_manifest()
         gwn_task = asyncio.create_task(self._run_gwn_interface())
         mqtt_task = asyncio.create_task(self._run_mqtt_interface())
         try:
@@ -557,4 +564,3 @@ class MqttGwnManager:
             await self._mqtt_client.disconnect()
             await self._gwn_client.close()
         _LOGGER.info("Application shutting down")
-

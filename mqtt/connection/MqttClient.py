@@ -3,10 +3,11 @@ import logging
 import json
 from typing import Any, Awaitable, Callable
 
+from .Manifest import Manifest
+from .MqttInterface import MqttInterface
 from gwn.constants import Constants
 from mqtt.config import MqttConfig
 from mqtt.clients import HomeAssistantMqttClient, MqttPublisherClient
-from mqtt.connection.MqttInterface import MqttInterface
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
@@ -14,6 +15,7 @@ class MqttClient:
     def __init__(self, config: MqttConfig) -> None:
         self._config: MqttConfig = config
         self._interface: MqttInterface = MqttInterface(config)
+        self._manifest: Manifest = Manifest(config)
         self._application_callback: Callable[[dict[str, Any]], None] | None = None
         self._network_callback: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None
         self._device_callback: Callable[[str, dict[str, Any], str], Awaitable[None]] | None = None
@@ -22,6 +24,7 @@ class MqttClient:
         self._publisher_clients: list[MqttPublisherClient] = [
             HomeAssistantMqttClient(config.homeassistant)
         ]
+        self._manifest.read_manifest() # load the manifest on client creation
 
     async def _listen_to_topics(self) -> None:
         base = self._interface.topic
@@ -162,7 +165,7 @@ class MqttClient:
                 await self._network_callback(network_id, formatted_data)
 
     async def _publish_offline(self) -> None:
-        await self._interface.publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}", '{"status": "offline"}', retain=True)
+        await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}", {"status": "offline"})
 
     def _get_network_topic(self, network_id: str) -> str:
         return f"{self._interface.topic}/{Constants.NETWORKS}/{network_id}"
@@ -175,9 +178,9 @@ class MqttClient:
 
     async def _publish_online_payload(self, application_payload: dict[str,object], clear: bool, clear_autodiscovery: bool) -> None:
         application_topic = f"{self._interface.topic}/{Constants.APPLICATION}"
-        await self._interface.publish(f"{application_topic}/{Constants.STATUS}", "" if clear else '{"status": "online"}', retain=True)
+        await self._do_publish(f"{application_topic}/{Constants.STATUS}", None if clear else {"status": "online"})
         state_topic: str = f"{application_topic}/{Constants.STATE}"
-        await self._interface.publish(state_topic, "" if clear else json.dumps(application_payload), retain=True)
+        await self._do_publish(state_topic, None if clear else application_payload)
         if clear and not clear_autodiscovery:
             return
 
@@ -186,7 +189,8 @@ class MqttClient:
             try:
                 ha_payload_data = publisher_client.build_application_discovery_payload(state_topic, application_topic, application_payload, clear_autodiscovery)
                 for topic, payload in ha_payload_data:
-                    await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
+                    await self._do_publish(topic, None if clear_autodiscovery else payload)
+
                 if not clear_autodiscovery and len(ha_payload_data) > 0:
                     publisher_client.application_published()
             except Exception as e:
@@ -199,7 +203,7 @@ class MqttClient:
         network_id: str = str(network_payload.get(Constants.NETWORK_ID))
         network_topic: str = self._get_network_topic(network_id)
         state_topic: str = f"{network_topic}/{Constants.STATE}"
-        await self._interface.publish(state_topic, "" if clear else json.dumps(network_payload),retain=True)
+        await self._do_publish(state_topic, None if clear else network_payload)
         if clear and not clear_autodiscovery:
             return
 
@@ -208,7 +212,8 @@ class MqttClient:
             try:
                 ha_payload_data = publisher_client.build_network_discovery_payload(state_topic, network_topic, network_payload, clear_autodiscovery)
                 for topic, payload in ha_payload_data:
-                    await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
+                    await self._do_publish(topic, None if clear_autodiscovery else payload)
+
                 if not clear_autodiscovery and len(ha_payload_data) > 0:
                     publisher_client.networks_published(network_topic)
             except Exception as e:
@@ -224,18 +229,19 @@ class MqttClient:
         device_topic = self._get_device_topic(network_id,device_mac)
 
         state_topic: str = f"{device_topic}/{Constants.STATE}"
-        await self._interface.publish(state_topic, "" if clear else json.dumps(device_payload), retain=True)
+        exception_occurred: bool = False
+        await self._do_publish(state_topic, None if clear else device_payload)
         
         if clear and not clear_autodiscovery:
             return
 
-        exception_occurred: bool = False
         for publisher_client in self._publisher_clients:
             try:
                 ha_payload_data = publisher_client.build_device_discovery_payload(state_topic, device_topic, device_payload, network_names, is_readonly, clear_autodiscovery)
 
                 for topic, payload in ha_payload_data:
-                    await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
+                    await self._do_publish(topic, None if clear_autodiscovery else payload)
+
                 if not clear_autodiscovery and len(ha_payload_data) > 0:
                     publisher_client.devices_published(device_topic)
             except Exception as e:
@@ -250,7 +256,7 @@ class MqttClient:
         ssid_topic = self._get_ssid_topic(network_id,ssid_id)
 
         state_topic: str = f"{ssid_topic}/{Constants.STATE}"
-        await self._interface.publish(state_topic, "" if clear else json.dumps(ssid_payload), retain=True)
+        await self._do_publish(state_topic, None if clear else ssid_payload)
         if clear and not clear_autodiscovery:
             return
         exception_occurred: bool = False
@@ -258,7 +264,8 @@ class MqttClient:
             try:
                 ha_payload_data = publisher_client.build_ssid_discovery_payload(state_topic, ssid_topic, ssid_payload, devices, is_readonly, clear_autodiscovery)
                 for topic, payload in ha_payload_data:
-                    await self._interface.publish(topic, "" if clear_autodiscovery else json.dumps(payload), retain=True)
+                    await self._do_publish(topic, None if clear_autodiscovery else payload)
+
                 if not clear_autodiscovery and len(ha_payload_data) > 0:
                     publisher_client.ssids_published(ssid_topic)
             except Exception as e:
@@ -266,6 +273,14 @@ class MqttClient:
                 _LOGGER.error(f"Failed to publish Client specific payload - {state_topic}: {e}")
         if exception_occurred:
             raise Exception("Some exceptions occurred when publishing SSIDs")
+
+    async def _do_publish(self, topic: str, payload: dict[str,object] | None) -> None:
+        if payload is None:
+            await self._interface.publish(topic, "", retain=True)
+            self._manifest.remove_topic(topic)
+        else:
+            await self._interface.publish(topic, json.dumps(payload), retain=True)
+            self._manifest.add_topic(topic)
 
     @property
     def is_connected(self) -> bool:
@@ -372,3 +387,20 @@ class MqttClient:
                 _LOGGER.error(f"Failed to reset client specific SSID with ID {ssid_id}: {e}")
         if exception_occurred:
             raise Exception("Some exceptions occurred when resetting SSIDs")
+
+    async def unpublish_manifest(self) -> None:
+        count = 0
+        # _do_publish will modify this list so take a copy of it to iterate through
+        topics = list(self._manifest.published_topics)
+        _LOGGER.info(f"Unpublishing {len(topics)} Topics from the Manifest")
+        for topic in topics:
+            try:
+                await self._do_publish(topic, None)
+                count = count + 1
+            except Exception as e:
+                _LOGGER.warn(f"Failed to unpublish Topic '{topic}': {e}")
+        self.write_manifest()
+        _LOGGER.info(f"Unpublished {count} Topics from the Manifest")
+
+    def write_manifest(self) -> None:
+        self._manifest.write_manifest()
