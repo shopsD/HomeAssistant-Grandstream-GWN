@@ -1,6 +1,5 @@
 app:
   publish_every_poll: False # default False. If set to True then MQTT will publish a message every time a GWN poll is performed. If set to False, then MQTT message are only published when data changes in GWN
-  discovery_manifest_path: "./path/to/manifest/file" # default None. This is the path to the file that records every topic ever published. This allows accurate cleanup and file update. If set to None, the file is not created nor used. Not recommended to keep this None.
 mqtt:
   port: 1883 # default 1883
   host: HOST_OR_IP # default 127.0.0.1
@@ -11,6 +10,7 @@ mqtt:
   # client_id: # default None
   # tls: False # default false
   # verify_tls: True # default true
+  discovery_manifest_path: "./path/to/manifest/file" # default None. This is the path to the file that records every topic ever published. This allows accurate cleanup and file update. If set to None, the file is not created nor used. Not recommended to keep this None.
   homeassistant: # controls support for home assistant auto discovery
     discovery_topic: "homeassistant" # default homeassistant. The topic to publish home assistant discoveries to
     # Regarding the 'always_publish_autodiscovery' If this is False, then autodiscovery is published only on application start. If set to True then every payload

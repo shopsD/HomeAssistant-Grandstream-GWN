@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 
 @dataclass(slots=True)
 class HomeAssistantConfig:
@@ -26,6 +27,7 @@ class MqttConfig:
     topic: str = "gwn"
     tls: bool = False
     verify_tls: bool = True
+    discovery_manifest_path: Path | None = None
     no_publish: bool = False
     homeassistant: HomeAssistantConfig = field(default_factory=HomeAssistantConfig)
 
