@@ -376,6 +376,8 @@ All command payloads must be valid JSON objects.
 
 The exact values come from GWN Manager and can vary by device model, firmware, API support, and whether username/password login is available.
 
+These examples below are the shape of what the application publishes over MQTT
+
 ### Application State
 
 ```json
@@ -435,12 +437,12 @@ The exact values come from GWN Manager and can vary by device model, firmware, A
   "ap_5g_channel": 36,
   "ap_6g_channel": 0,
   "channel_lists_2g4": {
-    "Use Radio Settings": 0,
-    "Ch1-2.412GHz": 1
+    "0": "Use Radio Settings",
+    "1": "Ch1-2.412GHz"
   },
   "channel_lists_5g": {
-    "Use Radio Settings": 0,
-    "Ch36-5.180GHz": 36
+    "0": "Use Radio Settings",
+    "36": "Ch36-5.180GHz"
   },
   "channel_lists_6g": {},
   "networkName": "Office",
@@ -490,7 +492,7 @@ The exact values come from GWN Manager and can vary by device model, firmware, A
 If `exclude_passphrase` includes the SSID ID, `ssidKey` is not published.
 
 ## MQTT Command Payloads
-
+Below are examples of what the commands from MQTT should look like
 ### Single-Action Command Format
 
 Application, network, and device topic commands use a single action object:
