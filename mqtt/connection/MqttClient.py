@@ -391,7 +391,9 @@ class MqttClient:
     async def unpublish_manifest(self) -> None:
         _LOGGER.info(f"Unpublishing {len(self._manifest.published_topics)} Topics from the Manifest")
         count = 0
-        for topic in self._manifest.published_topics:
+        # _do_publish will modify this list so take a copy of it to iterate through
+        topics = list(self._manifest.published_topics)
+        for topic in topics:
             try:
                 await self._do_publish(topic, None)
                 count = count + 1

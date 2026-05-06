@@ -31,7 +31,7 @@ class Manifest:
         if manifest_path.is_dir():
             manifest_path = manifest_path / "manifest.yml"
         if not manifest_path.exists():
-            Path.mkdir(manifest_path, parents=True)
+            Path.mkdir(manifest_path.parent, parents=True, exist_ok=True)
         _LOGGER.info(f"Manifest file set to {manifest_path}")
         return manifest_path
 
@@ -42,6 +42,8 @@ class Manifest:
     def read_manifest(self) -> None:
         self._published_topics = set()
         if self._manifest_path is not None:
+            if not self._manifest_path.exists():
+                return _LOGGER.info(f"No Manifest found at: {self._manifest_path}")
             _LOGGER.info(f"Reading Manifest from: {self._manifest_path}")
             with self._manifest_path.open("r", encoding="utf-8") as file_handle:
                 raw = yaml.safe_load(file_handle) or {}
@@ -53,7 +55,7 @@ class Manifest:
                     return _LOGGER.error(f"Each topic child must be a single value. Found: {topic}")
                 self._published_topics.add(topic)
         _LOGGER.info(f"Read {len(self.published_topics)} Topics from the Manifest")
-    
+
     def write_manifest(self) -> None:
         if self._manifest_path is not None and self._has_changes:
             _LOGGER.info(f"Writing {len(self.published_topics)} topics to the manifest")
