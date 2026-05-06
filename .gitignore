@@ -105,3 +105,6 @@ dmypy.json
 
 # any config or manifest files generated in the root
 /*.yml
+
+# ignore log files
+*.log

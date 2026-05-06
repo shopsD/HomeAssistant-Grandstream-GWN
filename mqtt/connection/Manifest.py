@@ -61,17 +61,20 @@ class Manifest:
 
     def write_manifest(self) -> None:
         if self._manifest_path is not None and self._has_changes:
-            if not self._manifest_path.exists():
-                _LOGGER.info(f"Creating manifest file at {self._manifest_path}")
-                Path.mkdir(self._manifest_path.parent, parents=True, exist_ok=True)
-            _LOGGER.info(f"Writing {len(self.published_topics)} topics to the manifest")
-            with self._manifest_path.open("w", encoding="utf-8") as file_handle:
+            try:
+                if not self._manifest_path.exists():
+                    _LOGGER.info(f"Creating manifest file at {self._manifest_path}")
+                    Path.mkdir(self._manifest_path.parent, parents=True, exist_ok=True)
+                _LOGGER.info(f"Writing {len(self.published_topics)} topics to the manifest")
                 manifest_data: dict[str, list[str] | str] = {}
                 manifest_data[ManifestConstants.VERSION] = Constants.APP_VERSION
                 manifest_data[ManifestConstants.TOPIC] = list(self.published_topics)
-                yaml.dump(manifest_data, file_handle, default_flow_style=False)
+                with self._manifest_path.open("w", encoding="utf-8") as file_handle:
+                    yaml.dump(manifest_data, file_handle, default_flow_style=False)
                 self._has_changes = False
-            _LOGGER.info(f"Wrote {len(self.published_topics)} topics to the manifest")
+                _LOGGER.info(f"Wrote {len(self.published_topics)} topics to the manifest")
+            except Exception as e:
+                _LOGGER.error(f"Failed to write {len(self.published_topics)} topics to the manifest: {e}")
 
     def add_topic(self, topic: str) -> None:
         if topic not in self.published_topics:
