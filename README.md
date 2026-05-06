@@ -779,6 +779,7 @@ If you want to run tools directly from the virtual environment:
 - MAC Addresses must either use `:` or `-` as separators. No separators are also supported. The application does attempt to normalise them, so the values are not case sensitive
 - Many GWN API Commands/Response parameters are not fully documented or officially supported. This is particularly true with 6GHz related parameters. While Grandstream customer support have provided additional confirmation of some variables and behaviours, some items use workarounds such as the "browser based calls" (calls that copy what the GWN Manager Web App does) using username/password have been implemented. However, since these are not part of the official API, they may be prone to breaking in future updates. This was tested against Version `1.1.35.10` of the official GWN Manager Application
 - Boolean values in the config must never be in quotes otherwise they can be incorrectly processed
+- GWN Cloud has not been tested with this application
 
 ## Roadmap Notes
 
