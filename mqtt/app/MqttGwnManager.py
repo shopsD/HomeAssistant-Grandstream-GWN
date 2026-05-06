@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any
 
 from gwn.api import GwnClient
-from gwn.constants import Constants
+from gwn.constants import BandwidthType, BooleanEnum, Constants, IsolationMode, MacFiltering, MultiCastToUnicast, RadioPower, SecurityMode, SSID_11W, SSID_BMS, SSIDSecurityType, WpaKeyMode, Width2G, Width5G, Width6G, WpaEncryption  
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 from mqtt.config import AppConfig
@@ -313,7 +313,7 @@ class MqttGwnManager:
     def _enum_value(self, value: Enum | None) -> str | None:
         if value is None:
             return None
-        return value.name
+        return value.value
 
     def _serialise_ssid(self, gwn_network: GwnNetwork, gwn_ssid: GwnSSID) -> dict[str, object]:
         return {
@@ -433,19 +433,19 @@ class MqttGwnManager:
         payload.ap_6g_channel = data.get(Constants.AP_6G_CHANNEL, None)
 
         # Non-Discovery Payload Data
-        payload.ap_2g4_power = data.get(Constants.AP_2G4_POWER, None)
-        payload.ap_2g4_ratelimit_enable = data.get(Constants.AP_2G4_RATELIMIT_ENABLE, None)
+        payload.ap_2g4_power = None if Constants.AP_2G4_POWER not in data else RadioPower(data.get(Constants.AP_2G4_POWER))
+        payload.ap_2g4_ratelimit_enable = None if Constants.AP_2G4_RATELIMIT_ENABLE not in data else BooleanEnum(data.get(Constants.AP_2G4_RATELIMIT_ENABLE))
         payload.ap_2g4_rssi = data.get(Constants.AP_2G4_RSSI, None)
-        payload.ap_2g4_rssi_enable = data.get(Constants.AP_2G4_RSSI_ENABLE, None)
+        payload.ap_2g4_rssi_enable = None if Constants.AP_2G4_RSSI_ENABLE not in data else BooleanEnum(data.get(Constants.AP_2G4_RSSI_ENABLE))
         payload.ap_2g4_tag = data.get(Constants.AP_2G4_TAG, None)
-        payload.ap_2g4_width = data.get(Constants.AP_2G4_WIDTH, None)
+        payload.ap_2g4_width = None if Constants.AP_2G4_WIDTH not in data else Width2G(data.get(Constants.AP_2G4_WIDTH))
 
-        payload.ap_5g_power = data.get(Constants.AP_5G_POWER, None)
-        payload.ap_5g_ratelimit_enable = data.get(Constants.AP_5G_RATELIMIT_ENABLE, None)
+        payload.ap_5g_power = None if Constants.AP_5G_POWER not in data else RadioPower(data.get(Constants.AP_5G_POWER))
+        payload.ap_5g_ratelimit_enable = None if Constants.AP_5G_RATELIMIT_ENABLE not in data else BooleanEnum(data.get(Constants.AP_5G_RATELIMIT_ENABLE))
         payload.ap_5g_rssi = data.get(Constants.AP_5G_RSSI, None)
-        payload.ap_5g_rssi_enable = data.get(Constants.AP_5G_RSSI_ENABLE, None)
+        payload.ap_5g_rssi_enable = None if Constants.AP_5G_RSSI_ENABLE not in data else BooleanEnum(data.get(Constants.AP_5G_RSSI_ENABLE))
         payload.ap_5g_tag = data.get(Constants.AP_5G_TAG, None)
-        payload.ap_5g_width = data.get(Constants.AP_5G_WIDTH, None)
+        payload.ap_5g_width = None if Constants.AP_5G_WIDTH not in data else Width5G(data.get(Constants.AP_5G_WIDTH))
 
         payload.ap_alternate_dns = data.get(Constants.AP_ALTERNATE_DNS, None)
         payload.ap_band_steering = data.get(Constants.AP_BAND_STEERING, None)
@@ -456,12 +456,12 @@ class MqttGwnManager:
         payload.ap_preferred_dns = data.get(Constants.AP_PREFERRED_DNS, None)
         payload.ap_static = data.get(Constants.AP_STATIC, None)
 
-        payload.ap_6g_power = data.get(Constants.AP_6G_POWER, None)
-        payload.ap_6g_ratelimit_enable = data.get(Constants.AP_6G_RATELIMIT_ENABLE, None)
+        payload.ap_6g_power = None if Constants.AP_6G_POWER not in data else RadioPower(data.get(Constants.AP_6G_POWER))
+        payload.ap_6g_ratelimit_enable = None if Constants.AP_6G_RATELIMIT_ENABLE not in data else BooleanEnum(data.get(Constants.AP_6G_RATELIMIT_ENABLE))
         payload.ap_6g_rssi = data.get(Constants.AP_6G_RSSI, None)
-        payload.ap_6g_rssi_enable = data.get(Constants.AP_6G_RSSI_ENABLE, None)
+        payload.ap_6g_rssi_enable = None if Constants.AP_6G_RSSI_ENABLE not in data else BooleanEnum(data.get(Constants.AP_6G_RSSI_ENABLE))
         payload.ap_6g_tag = data.get(Constants.AP_6G_TAG, None)
-        payload.ap_6g_width = data.get(Constants.AP_6G_WIDTH, None)
+        payload.ap_6g_width = None if Constants.AP_6G_WIDTH not in data else Width6G(data.get(Constants.AP_6G_WIDTH))
 
         if await self._gwn_client.set_device_data(payload) and not self._poll_trigger.is_set():
             # immediately refresh/update the data
@@ -483,42 +483,42 @@ class MqttGwnManager:
         payload.ssidSsid = data.get(Constants.SSID_NAME, None)
         payload.ssidIsolation = data.get(Constants.SSID_ISOLATION, data.get(Constants.CLIENT_ISOLATION_ENABLED, None))
         payload.toggled_macs = data.get(Constants.TOGGLE_DEVICE, None)
-
         # Non-Discovery Payload Data
         payload.ssidRemark = data.get(Constants.SSID_REMARK, None)
         payload.ssidRadiusDynamicVlan = data.get(Constants.SSID_RADIUS_DYNAMIC_VLAN, None)
         payload.ssidNewSsidBand = data.get(Constants.SSID_NEW_SSID_BAND, None)
         payload.ssidWifiClientLimit = data.get(Constants.SSID_WIFI_CLIENT_LIMIT, None)
-        payload.ssidEncryption = data.get(Constants.SSID_ENCRYPTION, None)
+        payload.ssidEncryption = None if Constants.SSID_ENCRYPTION not in data else SecurityMode(data.get(Constants.SSID_ENCRYPTION))
         payload.ssidWepKey = data.get(Constants.SSID_WEP_KEY, None)
-        payload.ssidWpaKeyMode = data.get(Constants.SSID_WPA_KEY_MODE, None)
-        payload.ssidWpaEncryption = data.get(Constants.SSID_WPA_ENCRYPTION, None)
+        payload.ssidWpaKeyMode = None if Constants.SSID_WPA_KEY_MODE not in data else WpaKeyMode(data.get(Constants.SSID_WPA_KEY_MODE))
+        payload.ssidWpaEncryption = None if Constants.SSID_WPA_ENCRYPTION not in data else WpaEncryption (data.get(Constants.SSID_WPA_ENCRYPTION))
         payload.ssidWpaKey = data.get(Constants.SSID_WPA_KEY, None)
         payload.ssidBridgeEnable = data.get(Constants.SSID_BRIDGE_ENABLE, None)
-        payload.ssidIsolationMode = data.get(Constants.SSID_ISOLATION_MODE, None)
+        payload.ssidIsolationMode = None if Constants.SSID_ISOLATION_MODE not in data else IsolationMode (data.get(Constants.SSID_ISOLATION_MODE))
         payload.ssidGatewayMac = data.get(Constants.SSID_GATEWAY_MAC, None)
         payload.ssidVoiceEnterprise = data.get(Constants.SSID_VOICE_ENTERPRISE, None)
         payload.ssid11V = data.get(Constants.SSID_11V, None)
         payload.ssid11R = data.get(Constants.SSID_11R, None)
         payload.ssid11K = data.get(Constants.SSID_11K, None)
         payload.ssidDtimPeriod = data.get(Constants.SSID_DTIM_PERIOD, None)
-        payload.ssidMcastToUcast = data.get(Constants.SSID_MCAST_TO_UCAST, None)
+        payload.ssidMcastToUcast = None if Constants.SSID_MCAST_TO_UCAST not in data else MultiCastToUnicast (data.get(Constants.SSID_MCAST_TO_UCAST))
         payload.ssidProxyarp = data.get(Constants.SSID_PROXYARP, None)
         payload.ssidStaIdleTimeout = data.get(Constants.SSID_STA_IDLE_TIMEOUT, None)
-        payload.ssid11W = data.get(Constants.SSID_11W, None)
-        payload.ssidBms = data.get(Constants.SSID_BMS, None)
+
+        payload.ssid11W = None if Constants.SSID_11W not in data else SSID_11W(data.get(Constants.SSID_11W))
+        payload.ssidBms = None if Constants.SSID_BMS not in data else SSID_BMS(data.get(Constants.SSID_BMS))
         payload.ssidClientIPAssignment = data.get(Constants.SSID_CLIENT_IP_ASSIGNMENT, None)
         payload.bindMacs = data.get(Constants.BIND_MACS, None)
         payload.removeMacs = data.get(Constants.REMOVE_MACS, None)
         payload.ssidPortalPolicy = data.get(Constants.SSID_PORTAL_POLICY, None)
         payload.ssidMaclistBlacks = data.get(Constants.SSID_MACLIST_BLACKS, None)
         payload.ssidMaclistWhites = data.get(Constants.SSID_MACLIST_WHITES, None)
-        payload.ssidMacFiltering = data.get(Constants.SSID_MAC_FILTERING, None)
+        payload.ssidMacFiltering = None if Constants.SSID_MAC_FILTERING not in data else MacFiltering(data.get(Constants.SSID_MAC_FILTERING))
         payload.scheduleId = data.get(Constants.SCHEDULE_ID, None)
         payload.ssidTimedClientPolicy = data.get(Constants.SSID_TIMED_CLIENT_POLICY, None)
-        payload.bandwidthType = data.get(Constants.BANDWIDTH_TYPE, None)
+        payload.bandwidthType = None if Constants.BANDWIDTH_TYPE not in data else BandwidthType (data.get(Constants.BANDWIDTH_TYPE))
         payload.bandwidthRules = data.get(Constants.BANDWIDTH_RULES, None)
-        payload.ssidSecurityType = data.get(Constants.SSID_SECURITY_TYPE, None)
+        payload.ssidSecurityType = None if Constants.SSID_SECURITY_TYPE not in data else SSIDSecurityType (data.get(Constants.SSID_SECURITY_TYPE))
         payload.ppskProfile = data.get(Constants.PPSK_PROFILE, None)
         payload.radiusProfile = data.get(Constants.RADIUS_PROFILE, None)
 
