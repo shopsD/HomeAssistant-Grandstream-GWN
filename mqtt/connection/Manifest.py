@@ -71,8 +71,11 @@ class Manifest:
                 manifest_data: dict[str, list[str] | str] = {}
                 manifest_data[ManifestConstants.VERSION] = Constants.APP_VERSION
                 manifest_data[ManifestConstants.TOPIC] = list(self.published_topics)
-                with self._manifest_path.open("w", encoding="utf-8") as file_handle:
+                # make the write action atomic to handle write failures such as power loss
+                tmp_path = self._manifest_path.with_suffix(f"{self._manifest_path.suffix}.tmp")
+                with tmp_path.open("w", encoding="utf-8") as file_handle:
                     yaml.dump(manifest_data, file_handle, default_flow_style=False)
+                tmp_path.replace(self._manifest_path)
                 self._has_changes = False
                 _LOGGER.info(f"Wrote {len(self.published_topics)} topics to the manifest")
             except Exception as e:
