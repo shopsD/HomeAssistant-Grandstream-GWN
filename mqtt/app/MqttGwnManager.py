@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any
 
 from gwn.api import GwnClient
-from gwn.constants import BandwidthType, BooleanEnum, Constants, IsolationMode, MacFiltering, MultiCastToUnicast, RadioPower, SecurityMode, SSID_11W, SSID_BMS, SSIDSecurityType, WpaKeyMode, Width2G, Width5G, Width6G, WpaEncryption  
+from gwn.constants import BandSteering, BandwidthType, BooleanEnum, Constants, IsolationMode, MacFiltering, MultiCastToUnicast, RadioPower, SecurityMode, SSID_11W, SSID_BMS, SSIDSecurityType, WpaKeyMode, Width2G, Width5G, Width6G, WpaEncryption
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 from mqtt.config import AppConfig
@@ -448,7 +448,7 @@ class MqttGwnManager:
         payload.ap_5g_width = None if Constants.AP_5G_WIDTH not in data else Width5G(data.get(Constants.AP_5G_WIDTH))
 
         payload.ap_alternate_dns = data.get(Constants.AP_ALTERNATE_DNS, None)
-        payload.ap_band_steering = data.get(Constants.AP_BAND_STEERING, None)
+        payload.ap_band_steering = None if Constants.AP_BAND_STEERING not in data else BandSteering(data.get(Constants.AP_BAND_STEERING))
         payload.ap_ipv4_route = data.get(Constants.AP_IPV4_ROUTE, None)
         payload.ap_ipv4_static = data.get(Constants.AP_IPV4_STATIC, None)
         payload.ap_ipv4_static_mask = data.get(Constants.AP_IPV4_STATIC_MASK, None)
