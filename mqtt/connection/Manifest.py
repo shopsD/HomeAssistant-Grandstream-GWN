@@ -28,7 +28,7 @@ class Manifest:
             _LOGGER.info("No Manifest Path Specified")
             return None
         manifest_path = Path(self._config.topic_manifest_path).resolve()
-        if manifest_path.is_dir():
+        if manifest_path.is_dir() or self._config.topic_manifest_path.endswith(("/", "\\")):
             manifest_path = manifest_path / "manifest.yml"
         _LOGGER.info(f"Manifest file set to {manifest_path}")
         return manifest_path
