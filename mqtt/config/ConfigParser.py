@@ -208,10 +208,10 @@ class ConfigParser:
             verify_tls = mqtt_section.get("verify_tls")
             if verify_tls is not None:
                 mqtt_config.verify_tls = bool(verify_tls)
-            # app verify publish every poll
-            discovery_manifest_path = mqtt_section.get("discovery_manifest_path")
-            if discovery_manifest_path is not None:
-                mqtt_config.discovery_manifest_path = Path(discovery_manifest_path)
+            # mqtt topic manifest path
+            topic_manifest_path = mqtt_section.get("topic_manifest_path")
+            if topic_manifest_path is not None:
+                mqtt_config.topic_manifest_path = Path(topic_manifest_path)
             # mqtt verify tls
             no_publish = mqtt_section.get("no_publish")
             if no_publish is not None:
@@ -271,7 +271,7 @@ class ConfigParser:
 
                 _LOGGER.debug(f"MQTT.HomeAssistant Config|Discovery Topic '{mqtt_config.homeassistant.discovery_topic}'|Always Publish Autodiscovery '{mqtt_config.homeassistant.always_publish_autodiscovery}'|Application Auto-discovery '{mqtt_config.homeassistant.application_autodiscovery}'|Default Network Auto-discovery: '{mqtt_config.homeassistant.default_network_autodiscovery}'|Default Device Auto-discovery: '{mqtt_config.homeassistant.default_device_autodiscovery}'|Default SSID Auto-discovery: '{mqtt_config.homeassistant.default_ssid_autodiscovery}'|No. of Custom Network Auto-discoveries: '{len(mqtt_config.homeassistant.network_autodiscovery)}'|No. of Custom Device Auto-discoveries: '{len(mqtt_config.homeassistant.device_autodiscovery)}'|No. of Custom SSID Auto-discoveries: '{len(mqtt_config.homeassistant.ssid_autodiscovery)}'|No. of Network Name Overrides: '{len(mqtt_config.homeassistant.network_name_override)}'|No. of Device Name Overrides: '{len(mqtt_config.homeassistant.device_name_override)}'|No. of SSID Name Overrides: '{len(mqtt_config.homeassistant.ssid_name_override)}'")
 
-        _LOGGER.debug(f"MQTT Config|No Publish: '{mqtt_config.no_publish}'|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'|Discovery Manifest Path: '{mqtt_config.discovery_manifest_path}'")
+        _LOGGER.debug(f"MQTT Config|No Publish: '{mqtt_config.no_publish}'|Host: '{mqtt_config.host}'|Port: '{mqtt_config.port}'|Keepalive: '{mqtt_config.keepalive}'|Topic: '{mqtt_config.topic}'|TLS: '{mqtt_config.tls}'|Verify TLS: '{mqtt_config.verify_tls}'|Discovery Manifest Path: '{mqtt_config.topic_manifest_path}'")
         return mqtt_config
 
     @staticmethod

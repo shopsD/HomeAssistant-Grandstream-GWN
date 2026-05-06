@@ -24,10 +24,10 @@ class Manifest:
 
     def _initialise_manifest_path(self) -> Path | None:
         manifest_path: Path | None = None
-        if self._config.discovery_manifest_path is None:
+        if self._config.topic_manifest_path is None:
             _LOGGER.info("No Manifest Path Specified")
             return None
-        manifest_path = Path(self._config.discovery_manifest_path).resolve()
+        manifest_path = Path(self._config.topic_manifest_path).resolve()
         if manifest_path.is_dir():
             manifest_path = manifest_path / "manifest.yml"
         _LOGGER.info(f"Manifest file set to {manifest_path}")

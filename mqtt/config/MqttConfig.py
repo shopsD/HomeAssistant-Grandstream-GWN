@@ -27,7 +27,7 @@ class MqttConfig:
     topic: str = "gwn"
     tls: bool = False
     verify_tls: bool = True
-    discovery_manifest_path: Path | None = None
+    topic_manifest_path: Path | None = None
     no_publish: bool = False
     homeassistant: HomeAssistantConfig = field(default_factory=HomeAssistantConfig)
 
