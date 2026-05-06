@@ -152,7 +152,7 @@ class ConfigParser:
         restricted_api = gwn_section.get("restricted_api")
         if restricted_api is not None:
             gwn_config.restricted_api = bool(restricted_api)
-            if gwn_config.username is None or gwn_config.password is None and gwn_config.restricted_api:
+            if (gwn_config.username is None or gwn_config.password is None) and gwn_config.restricted_api:
                 raise ConfigParserError("gwn.restricted_api is True but gwn.username and gwn.password/gwn.hashed_password are missing")
         # gwn ignore failed fetch before update
         ignore_failed_fetch_before_update = gwn_section.get("ignore_failed_fetch_before_update")

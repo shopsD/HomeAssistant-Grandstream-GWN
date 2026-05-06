@@ -100,7 +100,7 @@ This hash is fast and unsalted, so treat it as sensitive and do not expose it.
 
 ## Getting The API Key
 The application requires an API key and App ID from GWN Manager to work
-To get these details follow the steps below: 
+To get these details follow the steps below:
 1. Login to GWN Manager
 2. On the left navigation bar, click on `Organization` to expand it
 3. Click on `Global`
@@ -770,6 +770,7 @@ If you want to run tools directly from the virtual environment:
 - Excluding the SSID passphrase from MQTT state does not remove GWN Manager's requirement for a complete SSID edit payload. The application will attempt to acquire the SSID passphrase before making updates per the configuration settings.
 - MQTT command topics can change real GWN settings. Protect the broker accordingly. If in doubt, use `no_publish: True`  in the MQTT section of the config.
 - Using `no_publish: True` in the config will result in the full payload being written to the log if the log is set to `debug`. This is unencrypted and un-obscured, so SSID passwords will be made visible in this log regardless of if the SSID was excluded from passkey publishing. `GWN Manager` passwords (Plaintext or Hashed) are never written to the log
+- Receiving a malformed MQTT payload will display the entire payload in the log if the log is set to `debug`. This is unencrypted and un-obscured, so SSID passwords will be made visible in this log regardless of if the SSID was excluded from passkey publishing. `GWN Manager` passwords (Plaintext or Hashed) are never written to the log
 
 ## Additional Notes
 

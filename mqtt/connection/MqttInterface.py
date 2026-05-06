@@ -80,16 +80,17 @@ class MqttInterface:
             _LOGGER.info("Disconnected from MQTT broker")
 
     async def publish(self, topic: str, payload: str, retain: bool = False) -> None:
-        if not self._config.no_publish:
-            client = await self._authenticated_client()
-            try:
-                async with self._mqtt_lock:
-                    await client.publish(topic, payload, retain=retain)
-            except Exception as e:
-                _LOGGER.warn(f"MQTT Publish failed. Retrying publish: {e}")
-                await self.disconnect()
-                client = await self._authenticated_client()
+        if self._config.no_publish:
+            return _LOGGER.debug(f"Publish is disabled. Payload not Published. Topic {topic} - Payload {payload}")
+        client = await self._authenticated_client()
+        try:
+            async with self._mqtt_lock:
                 await client.publish(topic, payload, retain=retain)
+        except Exception as e:
+            _LOGGER.warn(f"MQTT Publish failed. Retrying publish: {e}")
+            await self.disconnect()
+            client = await self._authenticated_client()
+            await client.publish(topic, payload, retain=retain)
 
     async def subscribe(self, topic: str) -> None:
         client = await self._authenticated_client()
