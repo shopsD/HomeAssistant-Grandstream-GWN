@@ -469,14 +469,14 @@ class GwnClient:
             payload.bindMacs = list(set(original_bind_macs))
 
         if payload.toggled_macs is not None:
+            new_bind_macs: set[str] = set(payload.bindMacs)
             for payload_mac, add_mac in payload.toggled_macs.items():
-                new_bind_macs: set[str] = set(payload.bindMacs)
                 payload_mac = GwnConfig.normalise_mac(payload_mac)
                 if add_mac:
                     new_bind_macs.add(payload_mac)
                 else:
                     new_bind_macs.discard(payload_mac)
-            removed_macs = [mac for mac in new_bind_macs if mac not in original_bind_macs]
+            removed_macs = [mac for mac in original_bind_macs if mac not in new_bind_macs]
             payload.bindMacs = list(new_bind_macs)
             if len(removed_macs) > 0:
                 if payload.removeMacs is None:

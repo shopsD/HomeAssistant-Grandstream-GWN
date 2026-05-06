@@ -120,7 +120,7 @@ class MqttClient:
                     _LOGGER.info(f"SSID command for SSID {ssid_id} on Network with ID {network_id}")
                 else:
                     return _LOGGER.warning("Unhandled MQTT command topic: %s", topic)
-    
+
                 if not isinstance(data, dict):
                     _LOGGER.debug(f"Malformed {Constants.ACTION} entry. Received: {data}")
                     raise KeyError(f"{Constants.ACTION} must be an object")

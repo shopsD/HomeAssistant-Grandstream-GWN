@@ -134,7 +134,7 @@ class ConfigParser:
         gwn_username = gwn_section.get("username")
         if gwn_username:
             gwn_config.username = str(gwn_username)
-        # gwn password
+        # gwn password/hashed_password
         gwn_password = gwn_section.get("password")
         gwn_hashed_password = gwn_section.get("hashed_password")
         if gwn_password is not None and gwn_hashed_password is not None:
@@ -148,6 +148,12 @@ class ConfigParser:
         if gwn_config.password and not gwn_config.username:
             error_str: str = f"gwn.{"hashed_" if gwn_password is None else ""}password specified but gwn.username is missing"
             raise ConfigParserError(error_str)
+        # gwn restricted API
+        restricted_api = gwn_section.get("restricted_api")
+        if restricted_api is not None:
+            gwn_config.restricted_api = bool(restricted_api)
+            if gwn_config.username is None or gwn_config.password is None and gwn_config.restricted_api:
+                raise ConfigParserError("gwn.restricted_api is True but gwn.username and gwn.password/gwn.hashed_password are missing")
         # gwn ignore failed fetch before update
         ignore_failed_fetch_before_update = gwn_section.get("ignore_failed_fetch_before_update")
         if ignore_failed_fetch_before_update is not None:
@@ -160,7 +166,7 @@ class ConfigParser:
         no_publish = gwn_section.get("no_publish")
         if no_publish is not None:
             gwn_config.no_publish = bool(no_publish)
-        _LOGGER.debug(f"GWN Config|User/Password Provided: '{bool(gwn_config.username and gwn_config.password)}'|No Publish: '{gwn_config.no_publish}'|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
+        _LOGGER.debug(f"GWN Config|User/Password Provided: '{bool(gwn_config.username and gwn_config.password)}'|Using Restricted API: '{gwn_config.restricted_api}'|No Publish: '{gwn_config.no_publish}'|URL: '{gwn_config.base_url}'|Page Size: '{gwn_config.page_size}'|Max Pages: '{gwn_config.max_pages}'|Refresh Period: '{gwn_config.refresh_period_s}'|No. of Excluded Networks: '{len(gwn_config.exclude_network)}'|No. of Excluded Devices: '{len(gwn_config.exclude_device)}'|No. of excluded SSIDs: '{len(gwn_config.exclude_ssid)}'|No. of SSIDs with Excluded WEP/WPA Passphrase: '{len(gwn_config.exclude_passphrase)}'")
 
         return gwn_config
 
