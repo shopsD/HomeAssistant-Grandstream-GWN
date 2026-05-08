@@ -1,0 +1,14 @@
+services:
+  gwn-mqtt-bridge:
+    image: gwn-mqtt-bridge:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gwn-mqtt-bridge
+    restart: unless-stopped
+
+    volumes:
+      - ./config:/config
+
+    environment:
+      PYTHONUNBUFFERED: "1"
