@@ -12,7 +12,18 @@ The MQTT bridge is the primary working application in this repository. The nativ
 | `gwn/` | Core GWN Manager client, authentication, constants, response models, and request payload models. It also serves as a library/API for interacting with GWN Manager via its API|
 | `mqtt/` | Runnable GWN-to-MQTT bridge. It polls GWN Manager, publishes retained MQTT state, receives MQTT commands, and optionally publishes Home Assistant discovery payloads. |
 | `custom_components/grandstream_gwn/` | Native Home Assistant integration workspace. This is not the main working integration yet. |
-| `mqtt/data/config.yml` | Example MQTT bridge config. Do not store real secrets in this sample. |
+
+## License
+`SPDX-License-Identifier: BSD-3-Clause AND MPL-2.0`
+
+The different components have different licenses as shown below
+| Project | License |
+| --- | --- |
+| `gwn` | MPL-2.0 |
+| `mqtt` | BSD-3-Clause |
+| `custom_components/grandstream_gwn` | BSD-3-Clause |
+
+## GWN MQTT Bridge
 
 The MQTT bridge does five jobs:
 
@@ -61,10 +72,12 @@ uv build
 
 ## Run
 
+Edit the sample config found at `mqtt/data/config.yml` with your required details. Refer to [Configuration](#configuration) for more info
+
 Run with the packaged sample config:
 
 ```bash
-uv run gwn_mqtt --config_path mqtt/data/config.yml
+uv run gwn_mqtt --config_path path/to/your/config.yml
 ```
 
 If `--config_path` is omitted, the application uses the packaged default at `mqtt/data/config.yml`:
@@ -91,12 +104,40 @@ uv run gwn_mqtt --password
 This prompts for the password and then displays the output hashed password.
 
 ```bash
-uv run gwn_mqtt --password "plain-text-password"
+uv run gwn_mqtt --password <plain-text-password>
 ```
 
 This hashes the provided value directly. The output can be used as `gwn.hashed_password` of the config.
 
 This hash is fast and unsalted, so treat it as sensitive and do not expose it.
+
+### Docker
+
+To run the application with docker, either clone the repository using `git clone` or download the following files and folders
+- `Dockerfile`
+- `docker-compose.yml`
+- `.dockerignore`
+- `uv.lock`
+- `pyproject.toml`
+- `gwn/`
+- `mqtt/`
+
+Edit the `docker-compose.yml` file and create a `config.yml` file and put it in the root of the directory that you have mapped to the `config` folder in your `docker-compose.yml` file
+
+Run the command
+```bash
+docker compose up -d
+```
+
+Once it has finished building, if you want to generate a hashed password you can run the command
+```bash
+docker exec -it gwn-mqtt-bridge gwn_mqtt -p
+```
+to interactively generate the hashed password or 
+```bash
+docker exec -it gwn-mqtt-bridge gwn_mqtt -p <your_plaintext_password>
+```
+to non-interactively generate the hashed password
 
 ## Getting The API Key
 The application requires an API key and App ID from GWN Manager to work
