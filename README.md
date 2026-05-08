@@ -23,6 +23,8 @@ The different components have different licenses as shown below
 | `mqtt` | BSD-3-Clause |
 | `custom_components/grandstream_gwn` | BSD-3-Clause |
 
+## GWN MQTT Bridge
+
 The MQTT bridge does five jobs:
 
 1. Authenticates with GWN Manager using `app_id` and `secret_key`.
@@ -102,12 +104,40 @@ uv run gwn_mqtt --password
 This prompts for the password and then displays the output hashed password.
 
 ```bash
-uv run gwn_mqtt --password "plain-text-password"
+uv run gwn_mqtt --password <plain-text-password>
 ```
 
 This hashes the provided value directly. The output can be used as `gwn.hashed_password` of the config.
 
 This hash is fast and unsalted, so treat it as sensitive and do not expose it.
+
+### Docker
+
+To run the application with docker, either clone the repository using `git clone` or download the following files and folders
+- `Dockerfile`
+- `docker-compose.yml`
+- `.dockerignore`
+- `uv.lock`
+- `pyproject.toml`
+- `gwn/`
+- `mqtt/`
+
+Edit the `docker-compose.yml` file and create a `config.yml` file and put it in the root of the directory that you have mapped to the `config` folder in your `docker-compose.yml` file
+
+Run the command
+```bash
+docker compose up -d
+```
+
+Once it has finished building, if you want to generate a hashed password you can run the command
+```bash
+docker exec -it gwn-mqtt-bridge gwn_mqtt -p
+```
+to interactively generate the hashed password or 
+```bash
+docker exec -it gwn-mqtt-bridge gwn_mqtt -p <your_plaintext_password>
+```
+to non-interactively generate the hashed password
 
 ## Getting The API Key
 The application requires an API key and App ID from GWN Manager to work
