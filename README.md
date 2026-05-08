@@ -788,3 +788,11 @@ If you want to run tools directly from the virtual environment:
 | Native Home Assistant integration | Build a real config flow, coordinator, read-only entities, then write-capable entities. |
 | Tests | Add pytest coverage once the behaviour settles. |
 | Web UI | Possible stretch goal |
+
+## Licensing
+`SPDX-License-Identifier: BSD-3-Clause AND MPL-2.0`
+| Project | License |
+| --- | --- |
+| gwn | MPL-2.0 |
+| mqtt | BSD-3-Clause |
+| custom_components/grandstream_gwn | BSD-3-Clause |
