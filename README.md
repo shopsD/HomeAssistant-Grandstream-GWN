@@ -14,8 +14,9 @@ The MQTT bridge is the primary working application in this repository. The nativ
 | `custom_components/grandstream_gwn/` | Native Home Assistant integration workspace. This is not the main working integration yet. |
 
 ## License
-The different components have different licenses as shown below
 `SPDX-License-Identifier: BSD-3-Clause AND MPL-2.0`
+
+The different components have different licenses as shown below
 | Project | License |
 | --- | --- |
 | `gwn` | MPL-2.0 |
