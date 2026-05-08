@@ -4,9 +4,9 @@ from typing import Any
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 
+from .const import DOMAIN
 from gwn.authentication import GwnConfig
 
-DOMAIN = "grandstream_gwn"
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1

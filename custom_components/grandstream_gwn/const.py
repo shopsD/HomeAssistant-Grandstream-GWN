@@ -1,2 +1,2 @@
-DOMAIN = "grandstream_gwn"
+DOMAIN = "grandstream_gwn_ha"
 PLATFORMS = ["sensor", "button", "switch"]
