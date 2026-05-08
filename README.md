@@ -12,7 +12,15 @@ The MQTT bridge is the primary working application in this repository. The nativ
 | `gwn/` | Core GWN Manager client, authentication, constants, response models, and request payload models. It also serves as a library/API for interacting with GWN Manager via its API|
 | `mqtt/` | Runnable GWN-to-MQTT bridge. It polls GWN Manager, publishes retained MQTT state, receives MQTT commands, and optionally publishes Home Assistant discovery payloads. |
 | `custom_components/grandstream_gwn/` | Native Home Assistant integration workspace. This is not the main working integration yet. |
-| `mqtt/data/config.yml` | Example MQTT bridge config. Do not store real secrets in this sample. |
+
+## License
+The different components have different licenses as shown below
+`SPDX-License-Identifier: BSD-3-Clause AND MPL-2.0`
+| Project | License |
+| --- | --- |
+| `gwn` | MPL-2.0 |
+| `mqtt` | BSD-3-Clause |
+| `custom_components/grandstream_gwn` | BSD-3-Clause |
 
 The MQTT bridge does five jobs:
 
@@ -61,10 +69,12 @@ uv build
 
 ## Run
 
+Edit the sample config found at `mqtt/data/config.yml` with your required details. Refer to [Configuration](#configuration) for more info
+
 Run with the packaged sample config:
 
 ```bash
-uv run gwn_mqtt --config_path mqtt/data/config.yml
+uv run gwn_mqtt --config_path path/to/your/config.yml
 ```
 
 If `--config_path` is omitted, the application uses the packaged default at `mqtt/data/config.yml`:
@@ -788,11 +798,3 @@ If you want to run tools directly from the virtual environment:
 | Native Home Assistant integration | Build a real config flow, coordinator, read-only entities, then write-capable entities. |
 | Tests | Add pytest coverage once the behaviour settles. |
 | Web UI | Possible stretch goal |
-
-## Licensing
-`SPDX-License-Identifier: BSD-3-Clause AND MPL-2.0`
-| Project | License |
-| --- | --- |
-| gwn | MPL-2.0 |
-| mqtt | BSD-3-Clause |
-| custom_components/grandstream_gwn | BSD-3-Clause |
