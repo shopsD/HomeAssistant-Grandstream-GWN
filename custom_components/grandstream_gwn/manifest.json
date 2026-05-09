@@ -4,6 +4,9 @@
   "version": "0.0.1",
   "documentation": "https://github.com/shopsD/homeassistant-grandstream-gwn",
   "requirements": [],
+  "after_dependencies": [
+    "http"
+  ],
   "codeowners": ["@shopsD"],
   "iot_class": "cloud_polling",
   "config_flow": true

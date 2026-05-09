@@ -15,28 +15,38 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         defaults: GwnConfig = GwnConfig("dummy", "dummy") # dummy to initialise the defaults
         if user_input is not None:
-            return self.async_create_entry(
-                title=user_input["url"],
-                data={
-                    "app_id": user_input["app_id"],
-                    "secret_key": user_input["secret_key"],
-                    "restricted_api": user_input.get("restricted_api"),
-                    "username": user_input.get("username"),
-                    "password": user_input.get("password"),
-                    "hashed_password": user_input.get("hashed_password"),
-                    "url": user_input.get("url"),
-                    "page_size": user_input.get("page_size"),
-                    "max_pages": user_input.get("max_pages"),
-                    "refresh_period_s": user_input.get("refresh_period_s"),
-                    "exclude_passphrase": user_input.get("exclude_passphrase"),
-                    "exclude_ssid": user_input.get("exclude_ssid"),
-                    "exclude_device": user_input.get("exclude_device"),
-                    "exclude_network": user_input.get("exclude_network"),
-                    "ignore_failed_fetch_before_update": user_input.get("ignore_failed_fetch_before_update"),
-                    "ssid_name_to_device_binding": user_input.get("ssid_name_to_device_binding"),
-                    "no_publish": user_input.get("no_publish")
-                }
-            )
+            username = user_input.get("username")
+            password = user_input.get("password")
+
+            has_username = username not in (None, "")
+            has_password = password not in (None, "")
+            if has_username and not has_password:
+                errors["password"] = "required_with_username"
+            elif has_password and not has_username:
+                errors["username"] = "required_with_password"
+
+            if len(errors) == 0:
+                return self.async_create_entry(
+                    title=user_input["base_url"],
+                    data={
+                        "app_id": user_input["app_id"],
+                        "secret_key": user_input["secret_key"],
+                        "restricted_api": user_input.get("restricted_api"),
+                        "username": username,
+                        "password": password,
+                        "base_url": user_input.get("base_url"),
+                        "page_size": user_input.get("page_size"),
+                        "max_pages": user_input.get("max_pages"),
+                        "refresh_period_s": user_input.get("refresh_period_s"),
+                        "exclude_passphrase": user_input.get("exclude_passphrase"),
+                        "exclude_ssid": user_input.get("exclude_ssid"),
+                        "exclude_device": user_input.get("exclude_device"),
+                        "exclude_network": user_input.get("exclude_network"),
+                        "ignore_failed_fetch_before_update": user_input.get("ignore_failed_fetch_before_update"),
+                        "ssid_name_to_device_binding": user_input.get("ssid_name_to_device_binding"),
+                        "no_publish": user_input.get("no_publish")
+                    }
+                )
 
         schema = vol.Schema(
             {
@@ -45,8 +55,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional("restricted_api", default=defaults.restricted_api): bool,
                 vol.Optional("username", default=defaults.username): str,
                 vol.Optional("password", default=defaults.password): str,
-                vol.Optional("hashed_password"): str,
-                vol.Optional("url", default=defaults.base_url): str,
+                vol.Optional("base_url", default=defaults.base_url): str,
                 vol.Optional("page_size", default=defaults.page_size): int,
                 vol.Optional("max_pages", default=defaults.max_pages): int,
                 vol.Optional("refresh_period_s", default=defaults.refresh_period_s): int,
