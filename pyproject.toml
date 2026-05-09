@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.14.2"
 
 dependencies = [
-    "homeassistant>=2026.4.4",
     "aiomqtt>=2.5.1",
     "PyYAML",
 ]
@@ -20,6 +19,9 @@ dev = [
     "ruff>=0.15.10",
     "types-PyYAML",
 ]
+
+[project.optional-dependencies]
+ha = ["homeassistant>=2026.4.4"]
 
 [tool.uv]
 package = true

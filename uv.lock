@@ -914,8 +914,12 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiomqtt" },
-    { name = "homeassistant" },
     { name = "pyyaml" },
+]
+
+[package.optional-dependencies]
+ha = [
+    { name = "homeassistant" },
 ]
 
 [package.dev-dependencies]
@@ -928,9 +932,10 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiomqtt", specifier = ">=2.5.1" },
-    { name = "homeassistant", specifier = ">=2026.4.4" },
+    { name = "homeassistant", marker = "extra == 'ha'", specifier = ">=2026.4.4" },
     { name = "pyyaml" },
 ]
+provides-extras = ["ha"]
 
 [package.metadata.requires-dev]
 dev = [
