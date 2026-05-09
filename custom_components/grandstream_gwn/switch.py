@@ -12,13 +12,17 @@ from gwn.constants import Constants
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    networks: dict[str, dict[str, Any]] = _networks(coordinator)
+    networks: list[dict[str, Any]] = _networks(coordinator)
     entities: list[SwitchEntity] = []
-    for network in networks.values():
-        for ssid in network.get(Constants.SSIDS,{}).values():
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.REBOOT, "Reboot"))
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.RESET, "Reset"))
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.UPDATE_FIRMWARE, "Update Firmware"))
+    for network in networks:
+        for ssid in network.get(Constants.SSIDS,[]):
+            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_ENABLE, "Enabled"))
+            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.PORTAL_ENABLED, "Captive Portal"))
+            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_ISOLATION, "Client Isolation"))
+            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ2_4_ENABLED, "2.4GHz Station"))
+            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ5_ENABLED, "5GHz Station"))
+            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ6_ENABLED, "6GHz Station"))
+            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi"))
     async_add_entities(entities)
 
 class GwnSSIDSwitch(CoordinatorEntity, SwitchEntity):

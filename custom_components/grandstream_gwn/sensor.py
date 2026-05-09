@@ -9,23 +9,23 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from gwn.constants import Constants
 
-def _networks(coordinator) -> dict[str, dict[str, Any]]:
+def _networks(coordinator) -> list[dict[str, object]]:
     raw_data = coordinator.data if isinstance(coordinator.data, dict) else {}
-    raw_networks = raw_data.get("data", {}).get("networks", {})
-    return raw_networks if isinstance(raw_networks, dict) else {}
+    raw_networks = raw_data.get(Constants.GWN, {}).get(Constants.NETWORKS, [])
+    return raw_networks if isinstance(raw_networks, list) else []
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    networks: dict[str, dict[str, Any]] = _networks(coordinator)
+    networks: list[dict[str, Any]] = _networks(coordinator)
     entities: list[SensorEntity] = []
-    for network in networks.values():
+    for network in networks:
         entities.append(GwnNetworkSensor(coordinator, network, Constants.NETWORK_NAME, "Name"))
         entities.append(GwnNetworkSensor(coordinator, network, Constants.COUNTRY_DISPLAY, "Country"))
         entities.append(GwnNetworkSensor(coordinator, network, Constants.TIMEZONE, "Timezone"))
 
-        for device in network.get(Constants.DEVICES,{}).values():
+        for device in network.get(Constants.DEVICES,[]):
             entities.append(GwnDeviceSensor(coordinator, device, Constants.WIRELESS, "Wireless"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.NETWORK_NAME, "Network"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.STATUS, "Status"))
@@ -44,7 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_6G_CHANNEL, "6Ghz Channel"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.MAC, "MAC"))
 
-        for ssid in network.get(Constants.SSIDS,{}).values():
+        for ssid in network.get(Constants.SSIDS,[]):
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ENABLE, "Enabled"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.PORTAL_ENABLED, "Captive Portal"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.CLIENT_ISOLATION_ENABLED, "Client Isolation"))

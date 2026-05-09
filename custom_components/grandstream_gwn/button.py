@@ -12,10 +12,10 @@ from gwn.constants import Constants
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    networks: dict[str, dict[str, Any]] = _networks(coordinator)
+    networks: list[dict[str, Any]] = _networks(coordinator)
     entities: list[ButtonEntity] = []
-    for network in networks.values():
-        for device in network.get(Constants.DEVICES,{}).values():
+    for network in networks:
+        for device in network.get(Constants.DEVICES,[]):
             entities.append(GwnDeviceButton(coordinator, device, Constants.REBOOT, "Reboot"))
             entities.append(GwnDeviceButton(coordinator, device, Constants.RESET, "Reset"))
             entities.append(GwnDeviceButton(coordinator, device, Constants.UPDATE_FIRMWARE, "Update Firmware"))

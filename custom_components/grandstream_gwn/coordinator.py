@@ -106,33 +106,35 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             ]
         }
 
-    def _serialise_network(self, gwn_network: GwnNetwork) -> dict[str, object]:
+    def _serialise_network(self, gwn_network: GwnNetwork, ssids: list[dict[str, object]], devices: list[dict[str, object]]) -> dict[str, object]:
         return {
             Constants.NETWORK_ID: gwn_network.id,
             Constants.NETWORK_NAME: gwn_network.networkName,
             Constants.COUNTRY_DISPLAY: gwn_network.countryDisplay,
-            Constants.TIMEZONE: gwn_network.timezone
+            Constants.TIMEZONE: gwn_network.timezone,
+            Constants.SSIDS: ssids,
+            Constants.DEVICES: devices
         }
 
     async def _async_update_data(self) -> dict[Any, dict[str, Any]]:
         gwn_networks: list[GwnNetwork] = await self._gwn_client.get_gwn_data()
-        network_data: dict[str, Any] = {}
+        network_list: list[dict[str, object]] = []
         for gwn_network in gwn_networks:
-            network_data[gwn_network.id] = self._serialise_network(gwn_network)
-            network_data[gwn_network.id][Constants.DEVICES] = []
-            network_data[gwn_network.id][Constants.SSIDS] = []
+            ssid_list: list[dict[str, object]] = []
+            device_list: list[dict[str, object]] = []
+
             device_assignments: dict[str, list[GwnSSID]] = {}
             for gwn_ssid in gwn_network.ssids:
-                network_data[gwn_network.id][Constants.SSIDS].append(self._serialise_ssid(gwn_network, gwn_ssid))
+                ssid_list.append(self._serialise_ssid(gwn_network, gwn_ssid))
                 for gwn_device in gwn_ssid.devices:
                     if gwn_device.mac not in device_assignments:
                         device_assignments[gwn_device.mac] = []
                     device_assignments[gwn_device.mac].append(gwn_ssid)
-
             for gwn_device in gwn_network.devices:
-                network_data[gwn_network.id][Constants.DEVICES].append(self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, [])))
+                device_list.append(self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, [])))
+            network_list.append(self._serialise_network(gwn_network, ssid_list, device_list))
 
-        return {"data":{"networks": network_data}}
+        return {Constants.GWN:{Constants.NETWORKS: network_list}}
 
 def _parse_int_list(value: str | None) -> list[int]:
     if value is None or value.strip() == "":
