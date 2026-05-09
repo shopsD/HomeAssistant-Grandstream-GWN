@@ -7,29 +7,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-
 from gwn.constants import Constants
-
-def _devices(coordinator) -> list[tuple[str, dict[str, Any]]]:
-    devices: list[tuple[str, dict[str, Any]]] = []
-    for network_id, network in _networks(coordinator).items():
-        raw_devices = network.get(Constants.DEVICES, [])
-        if isinstance(raw_devices, list):
-            for device in raw_devices:
-                if isinstance(device, dict):
-                    devices.append((network_id, device))
-    return devices
-
-
-def _ssids(coordinator) -> list[tuple[str, dict[str, Any]]]:
-    ssids: list[tuple[str, dict[str, Any]]] = []
-    for network_id, network in _networks(coordinator).items():
-        raw_ssids = network.get(Constants.SSIDS, [])
-        if isinstance(raw_ssids, list):
-            for ssid in raw_ssids:
-                if isinstance(ssid, dict):
-                    ssids.append((network_id, ssid))
-    return ssids
 
 def _networks(coordinator) -> dict[str, dict[str, Any]]:
     raw_data = coordinator.data if isinstance(coordinator.data, dict) else {}
@@ -105,7 +83,6 @@ class GwnBaseNetworkSensor(CoordinatorEntity, SensorEntity):
             "model": "GWN Network",
             "sw_version": self._network.get(Constants.CURRENT_FIRMWARE),
         }
-
 
 class GwnNetworkSensor(GwnBaseNetworkSensor):
     pass
