@@ -106,8 +106,8 @@ class GwnSSIDText(CoordinatorEntity, TextEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
+            "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,
             "manufacturer": "Grandstream",
-            "model": self._device.get(Constants.AP_TYPE)
+            "model": self._ssid.get(Constants.NETWORK_NAME, "GWN SSID"),
         }
