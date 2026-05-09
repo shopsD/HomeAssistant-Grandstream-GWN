@@ -154,7 +154,9 @@ This hash is fast and unsalted, so treat it as sensitive and do not expose it.
 
 ### Docker
 
-To run the application with docker, either clone the repository using `git clone` or download the following files and folders
+You can either build the docker image manually or use docker compose to pull a pre-built image. To use a pre-built image, skip to [Running with Docker](#running-with-docker)
+
+To build manually, either clone the repository using `git clone` or download the following files and folders
 - `Dockerfile`
 - `docker-compose.yml`
 - `.dockerignore`
@@ -163,6 +165,19 @@ To run the application with docker, either clone the repository using `git clone
 - `gwn/`
 - `mqtt/`
 
+Edit the `docker-compose.yml` file and replace the following line
+```yaml
+  image: ghcr.io/shopsD/homeassistant-grandstream-gwn:latest
+```
+with
+```yaml
+  image: gwn-mqtt-bridge:latest
+  build:
+    context: .
+    dockerfile: Dockerfile
+```
+
+#### Running with Docker
 Edit the `docker-compose.yml` file and create a `config.yml` file and put it in the root of the directory that you have mapped to the `config` folder in your `docker-compose.yml` file
 
 Run the command
