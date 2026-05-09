@@ -22,7 +22,7 @@ jobs:
         pip install uv
     - name: Setup Environment
       run: |
-        uv sync
+        uv sync --extra ha --dev
     - name: Analysing the code with Ruff
       run: |
         uv run ruff check .

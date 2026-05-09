@@ -1,6 +1,6 @@
 name: release-build
 
-on: 
+on:
   workflow_dispatch:
     inputs:
       publish_release:
@@ -44,7 +44,7 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-  
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -63,7 +63,7 @@ jobs:
 
     - name: Prepare artifact directory
       run: mkdir -p release-assets
-  
+
     - name: Create default MQTT bridge archive
       run: |
         tar -czf "release-assets/mqtt-bridge-${{ inputs.version_tag }}.tar.gz" \
