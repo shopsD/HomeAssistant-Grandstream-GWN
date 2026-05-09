@@ -18,8 +18,8 @@ from gwn.constants import Constants
 
 def _networks(coordinator) -> dict[str, dict[str, Any]]:
     raw_data = coordinator.data if isinstance(coordinator.data, dict) else {}
-    raw_networks = raw_data.get("data", {}).get("networks", {})
-    return raw_networks if isinstance(raw_networks, dict) else {}
+    raw_networks = raw_data.get(Constants.GWN, {}).get(Constants.NETWORKS, [])
+    return raw_networks if isinstance(raw_networks, list) else []
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
