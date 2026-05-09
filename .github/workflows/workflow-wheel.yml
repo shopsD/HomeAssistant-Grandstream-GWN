@@ -72,7 +72,6 @@ jobs:
           README.md \
           pyproject.toml \
           uv.lock \
-          README.md \
           LICENSE-BSD3.md \
           LICENSE-MPL.md
 
