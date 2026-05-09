@@ -1,0 +1,117 @@
+name: release-build
+
+on: 
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publishes all generated artifacts to the Github release"
+        required: true
+        default: true
+        type: boolean
+      allow_overwrite:
+        description: "Allows a release to be overwritten if it already exists, if it exists and this is false then the workflow will fail"
+        required: false
+        default: false
+        type: boolean
+      create_wheel:
+        description: "Create a wheel for the MQTT Application"
+        required: true
+        default: true
+        type: boolean
+      version_tag:
+        description: "Version to tag this release"
+        required: true
+        type: string
+      release_info:
+        description: "Information on what the release contains"
+        required: true
+        type: string
+      zip_ha_integration:
+        description: "True to also create an Archive of the Home Assistant Integration"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14.2"]
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+  
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install uv
+
+    - name: Check GitHub CLI
+      run: |
+        if ! command -v gh >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y gh
+        fi
+
+    - name: Prepare artifact directory
+      run: mkdir -p release-assets
+  
+    - name: Create default MQTT bridge archive
+      run: |
+        tar -czf "release-assets/mqtt-bridge-${{ inputs.version_tag }}.tar.gz" \
+          gwn \
+          mqtt \
+          README.md \
+          pyproject.toml \
+          uv.lock \
+          README.md \
+          LICENSE-BSD3.md \
+          LICENSE-MPL.md
+
+    - name: Build wheel
+      if: ${{ inputs.create_wheel }}
+      run: |
+        uv build --wheel
+        cp dist/*.whl release-assets/
+
+    - name: Create Home Assistant integration archive
+      if: ${{ inputs.zip_ha_integration }}
+      run: |
+        tar -czf "release-assets/homeassistant-integration-${{ inputs.version_tag }}.tar.gz" \
+          gwn \
+          custom_components \
+          pyproject.toml \
+          uv.lock \
+          README.md \
+          LICENSE-BSD3.md \
+          LICENSE-MPL.md
+
+    - name: List generated artifacts
+      run: ls -lah release-assets
+
+    - name: Create GitHub release
+      if: ${{ inputs.publish_release }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if gh release view "${{ inputs.version_tag }}" >/dev/null 2>&1; then
+          if [ "${{ inputs.allow_overwrite }}" = "true" ]; then
+            gh release upload "${{ inputs.version_tag }}" release-assets/* --clobber
+          else
+            echo "Release ${{ inputs.version_tag }} already exists"
+            exit 1
+          fi
+        else
+          gh release create "${{ inputs.version_tag }}" \
+            --title "${{ inputs.version_tag }}" \
+            --notes "${{ inputs.release_info }}" \
+            release-assets/*
+        fi
