@@ -1,14 +1,10 @@
 services:
   gwn-mqtt-bridge:
-    image: ghcr.io/shopsD/homeassistant-grandstream-gwn:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/shopsd/homeassistant-grandstream-gwn:latest
+
     container_name: gwn-mqtt-bridge
     restart: unless-stopped
 
     volumes:
       - ./config:/config
 
-    environment:
-      PYTHONUNBUFFERED: "1"
