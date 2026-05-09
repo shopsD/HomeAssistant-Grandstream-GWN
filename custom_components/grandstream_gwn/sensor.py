@@ -16,27 +16,6 @@ def _networks(coordinator) -> list[dict[str, object]]:
 
 from gwn.constants import Constants
 
-def _devices(coordinator) -> list[tuple[str, dict[str, Any]]]:
-    devices: list[tuple[str, dict[str, Any]]] = []
-    for network_id, network in _networks(coordinator).items():
-        raw_devices = network.get(Constants.DEVICES, [])
-        if isinstance(raw_devices, list):
-            for device in raw_devices:
-                if isinstance(device, dict):
-                    devices.append((network_id, device))
-    return devices
-
-
-def _ssids(coordinator) -> list[tuple[str, dict[str, Any]]]:
-    ssids: list[tuple[str, dict[str, Any]]] = []
-    for network_id, network in _networks(coordinator).items():
-        raw_ssids = network.get(Constants.SSIDS, [])
-        if isinstance(raw_ssids, list):
-            for ssid in raw_ssids:
-                if isinstance(ssid, dict):
-                    ssids.append((network_id, ssid))
-    return ssids
-
 def _networks(coordinator) -> dict[str, dict[str, Any]]:
     raw_data = coordinator.data if isinstance(coordinator.data, dict) else {}
     raw_networks = raw_data.get("data", {}).get("networks", {})
