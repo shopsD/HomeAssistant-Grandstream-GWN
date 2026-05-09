@@ -47,7 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for ssid in network.get(Constants.SSIDS,[]):
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ENABLE, "Enabled"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.PORTAL_ENABLED, "Captive Portal"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.CLIENT_ISOLATION_ENABLED, "Client Isolation"))
+            entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ISOLATION, "Client Isolation"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ2_4_ENABLED, "2.4GHz Station"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ5_ENABLED, "5GHz Station"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ6_ENABLED, "6GHz Station"))

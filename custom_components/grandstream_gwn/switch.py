@@ -23,6 +23,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ5_ENABLED, "5GHz Station"))
             entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ6_ENABLED, "6GHz Station"))
             entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi"))
+            for device in network.get(Constants.DEVICES,[]):
+                device_mac: str = device.get(Constants.MAC)
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}"))
+                if device_mac in ssid.get(Constants.ASSIGNED_DEVICES):
+                    entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi")) # TODO change to actually enable the assignment
+
+
     async_add_entities(entities)
 
 class GwnSSIDSwitch(CoordinatorEntity, SwitchEntity):
