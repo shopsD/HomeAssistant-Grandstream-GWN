@@ -12,6 +12,11 @@ on:
         description: "Optional explicit image tag"
         required: false
         type: string
+      publish_latest:
+        description: "Publishes the image with a latest tag"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -21,10 +26,32 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Normalise image name
+        id: image
+        run: |
+          echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Set Tags
+        id: vars
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            BASE_TAG="${{ inputs.image_tag }}"
+          else
+            BASE_TAG="manual-${GITHUB_SHA::7}"
+          fi
+
+          TAGS="${{ steps.image.outputs.name }}:${BASE_TAG}"
+          if [ "${{ inputs.publish_latest }}" = "true" ]; then
+            TAGS="${TAGS},${{ steps.image.outputs.name }}:latest"
+          fi
+
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
 
       - name: Authenticate
         if: ${{ inputs.push_image }}
@@ -34,19 +61,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set Tags
-        id: vars
-        run: |
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=manual-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build and publish Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: ${{ inputs.push_image }}
-          tags: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.tag }}
+          tags: ${{ steps.vars.outputs.tags }}
