@@ -40,11 +40,18 @@ jobs:
       - name: Set Tags
         id: vars
         run: |
-          TAGS="${{ steps.image.outputs.name }}:${{ steps.vars.outputs.tag }}"
-          if [ "${{ inputs.publish_latest }}" = "true" ]; then
-            TAGS="$TAGS,${{ steps.image.outputs.name }}:latest"
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            BASE_TAG="${{ inputs.image_tag }}"
+          else
+            BASE_TAG="manual-${GITHUB_SHA::7}"
           fi
-          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+
+          TAGS="${{ steps.image.outputs.name }}:${BASE_TAG}"
+          if [ "${{ inputs.publish_latest }}" = "true" ]; then
+            TAGS="${TAGS},${{ steps.image.outputs.name }}:latest"
+          fi
+
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
 
       - name: Authenticate
         if: ${{ inputs.push_image }}
