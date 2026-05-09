@@ -26,7 +26,6 @@ def _parse_int_list(value: str | None) -> list[int]:
         return []
     return [int(item.strip()) for item in value.split(",") if item.strip()]
 
-
 def _parse_str_list(value: str | None) -> list[str]:
     if value is None or value.strip() == "":
         return []
