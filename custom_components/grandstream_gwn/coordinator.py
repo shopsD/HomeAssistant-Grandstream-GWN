@@ -123,7 +123,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             network_data[gwn_network.id][Constants.SSIDS] = []
             device_assignments: dict[str, list[GwnSSID]] = {}
             for gwn_ssid in gwn_network.ssids:
-                network_data[gwn_network.id][Constants.DEVICES].append(self._serialise_ssid(gwn_network, gwn_ssid))
+                network_data[gwn_network.id][Constants.SSIDS].append(self._serialise_ssid(gwn_network, gwn_ssid))
                 for gwn_device in gwn_ssid.devices:
                     if gwn_device.mac not in device_assignments:
                         device_assignments[gwn_device.mac] = []
