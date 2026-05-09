@@ -12,6 +12,11 @@ on:
         description: "Optional explicit image tag"
         required: false
         type: string
+      publish_latest:
+        description: "Publishes the image with a latest tag"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -35,11 +40,11 @@ jobs:
       - name: Set Tags
         id: vars
         run: |
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=manual-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          TAGS="${{ steps.image.outputs.name }}:${{ steps.vars.outputs.tag }}"
+          if [ "${{ inputs.publish_latest }}" = "true" ]; then
+            TAGS="$TAGS,${{ steps.image.outputs.name }}:latest"
           fi
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
       - name: Authenticate
         if: ${{ inputs.push_image }}
@@ -55,4 +60,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: ${{ inputs.push_image }}
-          tags: ${{ steps.image.outputs.name }}:${{ steps.vars.outputs.tag }}
+          tags: ${{ steps.tags.outputs.tags }}
