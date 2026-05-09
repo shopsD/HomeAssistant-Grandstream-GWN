@@ -15,7 +15,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _check_numeric_list(self, list_string: str | None) -> bool:
         return list_string is not None and (list_string == "" or list_string.replace(",","").isnumeric())
-    
+
     def _check_mac_list(self, list_string: str | None) -> bool:
         return list_string is not None and (list_string == "" or bool(MAC_MATCHER.match(list_string)))
 
@@ -71,40 +71,40 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data["exclude_passphrase"] = str(exclude_passphrase)
             else:
                 errors["exclude_passphrase"] = "not_list_of_ints"
-            
+
             exclude_ssid = user_input.get("exclude_ssid")
-            if not self._check_numeric_list(exclude_ssid):
+            if self._check_numeric_list(exclude_ssid):
                 data["exclude_ssid"] = str(exclude_ssid)
             else:
                 errors["exclude_ssid"] = "not_list_of_ints"
 
             exclude_device = user_input.get("exclude_device")
-            if not self._check_mac_list(exclude_device):
+            if self._check_mac_list(exclude_device):
                 data["exclude_device"] = str(exclude_device)
             else:
                 errors["exclude_device"] = "not_list_of_macs"
 
             exclude_network = user_input.get("exclude_network")
-            if not self._check_numeric_list(exclude_network):
+            if self._check_numeric_list(exclude_network):
                 data["exclude_network"] = str(exclude_network)
             else:
                 errors["exclude_network"] = "not_list_of_ints"
 
             base_url = user_input.get("base_url")
             if base_url is not None:
-                data[base_url] = str(base_url)
+                data["base_url"] = str(base_url)
 
             ignore_failed_fetch_before_update = user_input.get("ignore_failed_fetch_before_update")
             if ignore_failed_fetch_before_update is not None:
-                data[ignore_failed_fetch_before_update] = bool(ignore_failed_fetch_before_update)
+                data["ignore_failed_fetch_before_update"] = bool(ignore_failed_fetch_before_update)
 
             ssid_name_to_device_binding = user_input.get("ssid_name_to_device_binding")
             if ssid_name_to_device_binding is not None:
-                data[ssid_name_to_device_binding] = bool(ssid_name_to_device_binding)
+                data["ssid_name_to_device_binding"] = bool(ssid_name_to_device_binding)
 
             no_publish = user_input.get("no_publish")
             if no_publish is not None:
-                data[no_publish] = bool(no_publish)
+                data["no_publish"] = bool(no_publish)
 
 
             if len(errors) == 0:

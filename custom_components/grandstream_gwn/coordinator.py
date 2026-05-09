@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -24,6 +25,10 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
         self._gwn_config: GwnConfig = _build_gwn_config(self._entry)
         self._gwn_client: GwnClient = GwnClient(self._gwn_config)
 
+    async def _async_update_data(self) -> dict[Any, dict[str, Any]]:
+        gwn_networks: list[GwnNetwork] = await self._gwn_client.get_gwn_data()
+        return {"data":{"networks":gwn_networks[0].id}} # TODO correct this as it is a placeholder
+
 def _parse_int_list(value: str | None) -> list[int]:
     if value is None or value.strip() == "":
         return []
@@ -33,7 +38,6 @@ def _parse_str_list(value: str | None) -> list[str]:
     if value is None or value.strip() == "":
         return []
     return [item.strip() for item in value.split(",") if item.strip()]
-
 
 def _build_gwn_config(entry: ConfigEntry) -> GwnConfig:
     data = entry.data
@@ -82,8 +86,3 @@ def _build_gwn_config(entry: ConfigEntry) -> GwnConfig:
         gwn_config.no_publish = bool(no_publish)
     return gwn_config
 
-
-
-    async def _async_update_data(self) -> list[GwnNetwork]:
-        return self._gwn_client.get_gwn_data()
-        
