@@ -1,6 +1,6 @@
 services:
   gwn-mqtt-bridge:
-    image: gwn-mqtt-bridge:latest
+    image: ghcr.io/shopsD/homeassistant-grandstream-gwn:latest
     build:
       context: .
       dockerfile: Dockerfile
