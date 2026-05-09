@@ -67,4 +67,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: ${{ inputs.push_image }}
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.vars.outputs.tags }}
