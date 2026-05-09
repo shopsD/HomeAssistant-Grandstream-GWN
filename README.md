@@ -105,6 +105,12 @@ Install development dependencies:
 uv sync --group dev
 ```
 
+If you are working on the home assistant integration then run this command
+
+```bash
+uv sync --extra ha --dev
+```
+
 Build the Python package:
 
 ```bash
