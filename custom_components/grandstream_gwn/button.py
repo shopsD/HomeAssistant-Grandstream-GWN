@@ -27,7 +27,7 @@ class GwnDeviceButton(CoordinatorEntity, ButtonEntity):
         self._device: dict[str, Any] = device
         self._key: str = key
         self._device_mac: str = device[Constants.MAC]
-        self._name: str = device[Constants.NAME]
+        self._name: str = device[Constants.AP_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._device_mac}_{key}"
 

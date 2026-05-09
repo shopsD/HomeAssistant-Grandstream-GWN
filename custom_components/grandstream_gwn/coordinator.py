@@ -61,7 +61,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             Constants.STATUS: gwn_device.status,
             Constants.AP_TYPE: gwn_device.apType,
             Constants.MAC: gwn_device.mac,
-            Constants.NAME: gwn_device.name,
+            Constants.AP_NAME: gwn_device.name,
             Constants.IPV4: gwn_device.ip,
             Constants.UP_TIME: gwn_device.upTime,
             Constants.USAGE: gwn_device.usage,

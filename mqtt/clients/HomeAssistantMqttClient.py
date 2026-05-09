@@ -291,7 +291,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
         # override the names in Home Assistant. This will not change anything underlying, only what is displayed in home assistant
         normalised_name_override_macs = self._normalise_macs(self._config.device_name_override)
         device_model: str = device_mac
-        device_name: str = str(payload.get(Constants.NAME))
+        device_name: str = str(payload.get(Constants.AP_NAME))
         network_name: str = str(payload.get(Constants.NETWORK_NAME))
         # if no name is given, then use the AP type as a name otherwise, use the network name if there is one, otherwise, use 
         # 'GWN Device' as the name
@@ -350,6 +350,7 @@ class HomeAssistantMqttClient(MqttPublisherClient):
             self._create_button_payload(device, f"{device_payload_id}_reset", "Reset", command_topic, Constants.RESET, False, True),
             self._create_update_payload(device, f"{device_payload_id}_update_firmware","Update Firmware", state_topic, command_topic, "Firmware Update", Constants.UPDATE_FIRMWARE, Constants.CURRENT_FIRMWARE, Constants.NEW_FIRMWARE, False, True),
             (self._create_sensor_payload(device, f"{device_payload_id}_network_name", "Network", state_topic, Constants.NETWORK_NAME) if is_readonly else self._create_select_payload(device, f"{device_payload_id}_network_name", "Network", state_topic, command_topic, Constants.NETWORK_NAME, list(local_network_names.values()),{name: network_id for network_id, name in local_network_names.items()},"{{ %s[value_json.%s | string] }}" % (json.dumps({str(network_id): name for network_id, name in local_network_names.items()}), Constants.NETWORK_ID), True, True)),
+            (self._create_sensor_payload(device, f"{device_payload_id}_name", "Name", state_topic, Constants.AP_NAME) if is_readonly else self._create_text_payload(device, f"{device_payload_id}_name", "Name", state_topic, command_topic, Constants.AP_NAME)),
             self._create_binary_sensor_payload(device, f"{device_payload_id}_status", "Status", state_topic, Constants.STATUS),
             self._create_sensor_payload(device, f"{device_payload_id}_ipv4", "IPv4", state_topic, Constants.IPV4),
             self._create_sensor_payload(device, f"{device_payload_id}_ipv6", "IPv6", state_topic, Constants.IPV6),
