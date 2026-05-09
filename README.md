@@ -42,7 +42,48 @@ The MQTT bridge does five jobs:
 - GWN Manager `app_id` and `secret_key`.
 
 ### GWN Manager tested versions
+
 - 1.1.35.10
+
+### GWN Manager Accounts
+
+It is recommended you create a custom account and role with limited permissions.
+The subset tested permissions for the role are
+- Organization
+  - Overview
+    - Network Management
+  - Upgrade
+    - Upgrade Configuration
+- Network
+  - Devices
+    - More Buttons
+    - Remote Access
+    - Device Configuration
+    - Auto Configuration Delivery
+  - Clients
+    - Client Information (Read-only)
+  - Wi-Fi
+    - Configurate Wireless LAN
+    - Configure Global Radio Settings
+  - LAN
+    - Configure LAN
+    - Configure Global Switch Settings
+  - Internet
+    - Configure WAN
+    - Configure Internet Source
+  - Profiles
+    - Portal Policy (Read-only)
+    - Port Profile (read-only)
+    - MAC Group (Read-only)
+    - Bandwidth Rules (Read-only)
+    - Schedule (Read-only)
+    - RADIUS (Read-only)
+    - PPSK (Read-only)
+    - Client Time Policy (Read-only)
+    - Hotspot 2.0 (Read-only)
+  - System
+    - Configure System
+
 
 ## Install
 

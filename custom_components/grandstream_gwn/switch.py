@@ -11,7 +11,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([GwnEnabledSwitch(coordinator, device) for device in coordinator.data["devices"]])
 
-
 class GwnEnabledSwitch(CoordinatorEntity, SwitchEntity):
     def __init__(self, coordinator, device: dict) -> None:
         super().__init__(coordinator)

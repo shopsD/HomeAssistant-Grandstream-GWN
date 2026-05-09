@@ -1,9 +1,13 @@
 {
   "domain": "grandstream_gwn",
-  "name": "Grandstream GWN Manager",
+  "name": "Grandstream GWN Manager Bridge",
   "version": "0.0.1",
-  "documentation": "https://github.com/TODO/homeassistant-grandstream-gwn",
+  "documentation": "https://github.com/shopsD/homeassistant-grandstream-gwn",
   "requirements": [],
-  "codeowners": ["@TODO"],
-  "iot_class": "cloud_polling"
+  "after_dependencies": [
+    "http"
+  ],
+  "codeowners": ["@shopsD"],
+  "iot_class": "cloud_polling",
+  "config_flow": true
 }
