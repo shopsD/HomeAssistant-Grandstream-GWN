@@ -104,7 +104,16 @@ jobs:
       run: |
         if gh release view "${{ inputs.version_tag }}" >/dev/null 2>&1; then
           if [ "${{ inputs.allow_overwrite }}" = "true" ]; then
-            gh release upload "${{ inputs.version_tag }}" release-assets/* --clobber
+            gh release edit "${{ inputs.version_tag }}" \
+              --title "${{ inputs.version_tag }}" \
+              --notes "${{ inputs.release_info }}"
+
+            gh release view "${{ inputs.version_tag }}" --json assets --jq '.assets[].name' |
+            while read -r asset; do
+              gh release delete-asset "${{ inputs.version_tag }}" "$asset" --yes
+            done
+
+            gh release upload "${{ inputs.version_tag }}" release-assets/*
           else
             echo "Release ${{ inputs.version_tag }} already exists"
             exit 1
