@@ -237,7 +237,7 @@ class MqttGwnManager:
             new_ssids = self._cached_ssids.get(network_id, {})
             removed_ssid_ids = set(old_ssids) - set(new_ssids)
             old_devices = old_device_cache.get(network_id, {})
-            ssid_device_info: dict[str, str] = {device_mac: str(device_payload.get(Constants.NAME, "")) for device_mac, device_payload in old_devices.items()}
+            ssid_device_info: dict[str, str] = {device_mac: str(device_payload.get(Constants.AP_NAME, "")) for device_mac, device_payload in old_devices.items()}
             for ssid_id in removed_ssid_ids:
                 try:
                     _LOGGER.debug(f"Unpublishing SSID with ID {ssid_id} from MQTT")
@@ -279,7 +279,7 @@ class MqttGwnManager:
                 network_device_names[gwn_network.id][gwn_device.mac] = gwn_device.name
                 if (gwn_network.id not in cached_devices or
                     gwn_device.mac not in cached_devices[gwn_network.id] or
-                    cached_devices[gwn_network.id][gwn_device.mac][Constants.NAME] != gwn_device.name):
+                    cached_devices[gwn_network.id][gwn_device.mac][Constants.AP_NAME] != gwn_device.name):
                     force_republish_ssids = True
         # now handle networks or devices that may have moved or been removed
         for network_id, network_dict in cached_devices.items():
@@ -346,7 +346,7 @@ class MqttGwnManager:
             Constants.STATUS: gwn_device.status,
             Constants.AP_TYPE: gwn_device.apType,
             Constants.MAC: gwn_device.mac,
-            Constants.NAME: gwn_device.name,
+            Constants.AP_NAME: gwn_device.name,
             Constants.IPV4: gwn_device.ip,
             Constants.UP_TIME: gwn_device.upTime,
             Constants.USAGE: gwn_device.usage,
