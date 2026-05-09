@@ -85,4 +85,3 @@ def _build_gwn_config(entry: ConfigEntry) -> GwnConfig:
     if no_publish is not None:
         gwn_config.no_publish = bool(no_publish)
     return gwn_config
-
