@@ -1,6 +1,6 @@
 {
-  "domain": "grandstream_gwn_ha",
-  "name": "Grandstream GWN Manager Home Assistant Bridge",
+  "domain": "grandstream_gwn",
+  "name": "Grandstream GWN Manager Bridge",
   "version": "0.0.1",
   "documentation": "https://github.com/shopsD/homeassistant-grandstream-gwn",
   "requirements": [],
