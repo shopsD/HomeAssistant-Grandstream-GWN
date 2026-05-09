@@ -1,12 +1,14 @@
 import logging
-
 from datetime import timedelta
 
-from gwn.constants import Constants
-from gwn.authentication import GwnConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+
+from gwn.constants import Constants
+from gwn.api import GwnClient
+from gwn.authentication import GwnConfig
+from gwn.response_data import GwnNetwork
 
 _LOGGER = logging.getLogger(Constants.LOG)
 
@@ -19,7 +21,8 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=30),
         )
         self._entry = entry
-        self._gwn_config = _build_gwn_config(self._entry)
+        self._gwn_config: GwnConfig = _build_gwn_config(self._entry)
+        self._gwn_client: GwnClient = GwnClient(self._gwn_config)
 
 def _parse_int_list(value: str | None) -> list[int]:
     if value is None or value.strip() == "":
@@ -81,29 +84,6 @@ def _build_gwn_config(entry: ConfigEntry) -> GwnConfig:
 
 
 
-    async def _async_update_data(self):
-        return {
-            {
-                "data": {
-                    "result": [
-                        {
-                            "status": 1,
-                            "apType": "GWN7600",
-                            "mac": "00:0B:82:AA:AA:AA",
-                            "name": "",
-                            "ip": "192.168.126.146",
-                            "upTime": 1021744,
-                            "usage": 6695047434,
-                            "upload": 343241087,
-                            "download": 6351806347,
-                            "channel": 6,
-                            "channel5g": 48,
-                            "clients": 0,
-                            "lastFwVersion": "1.0.13.3",
-                            "versionFirmware": "1.0.13.3",
-                            "networkId": 9581
-                        }
-                    ]
-                }
-            }
-        }
+    async def _async_update_data(self) -> list[GwnNetwork]:
+        return self._gwn_client.get_gwn_data()
+        
