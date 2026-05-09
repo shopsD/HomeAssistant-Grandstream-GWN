@@ -9,13 +9,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from gwn.constants import Constants
 
-def _networks(coordinator) -> list[dict[str, object]]:
-    raw_data = coordinator.data if isinstance(coordinator.data, dict) else {}
-    raw_networks = raw_data.get(Constants.GWN, {}).get(Constants.NETWORKS, [])
-    return raw_networks if isinstance(raw_networks, list) else []
-
-from gwn.constants import Constants
-
 def _networks(coordinator) -> dict[str, dict[str, Any]]:
     raw_data = coordinator.data if isinstance(coordinator.data, dict) else {}
     raw_networks = raw_data.get(Constants.GWN, {}).get(Constants.NETWORKS, [])
