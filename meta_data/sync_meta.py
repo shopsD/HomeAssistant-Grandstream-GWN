@@ -50,34 +50,39 @@ def main() -> None:
     PYPROJECT = args.repo_root / "pyproject.toml"
     HACS = args.repo_root / "hacs.json"
     PYTHON_VERSION_FILE = args.repo_root / ".python-version"
-    print (f"Syncing files:\n\t{PYPROJECT}\n\t{HACS}\n\t{PYTHON_VERSION_FILE}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}")
+    README = args.repo_root / "README.md"
+    print (f"Syncing files:\n\t{PYPROJECT}\n\t{HACS}\n\t{PYTHON_VERSION_FILE}\n\t{README}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}")
 
     replace_or_fail(
         PYPROJECT,
         r'^version = "[^"]+"$',
-        f'version = "{APP_VERSION}"',
+        f'version = "{APP_VERSION}"'
     )
     replace_or_fail(
         PYPROJECT,
         r'^requires-python = "[^"]+"$',
-        f'requires-python = "{PYTHON_REQUIRES}"',
+        f'requires-python = "{PYTHON_REQUIRES}"'
     )
     replace_or_fail(
         PYPROJECT,
         r'^ha = \["homeassistant>=[^"]+"\]$',
-        f'ha = ["homeassistant>={HOMEASSISTANT_MIN_VERSION}"]',
+        f'ha = ["homeassistant>={HOMEASSISTANT_MIN_VERSION}"]'
     )
     replace_or_fail(
         HACS,
         r'^(\s*)"homeassistant": "[^"]+"(,?)$',
-        rf'\1"homeassistant": "{HOMEASSISTANT_MIN_VERSION}"\2',
+        rf'\1"homeassistant": "{HOMEASSISTANT_MIN_VERSION}"\2'
     )
     replace_or_fail(
         PYTHON_VERSION_FILE,
         r"^[^\n]+$",
-        PYTHON_VERSION,
+        PYTHON_VERSION
     )
-
+    replace_or_fail(
+        README,
+        r'^(\s*-\s+)Python `[^`]+`(.*)$',
+        rf'\1Python `{PYTHON_VERSION}`\2'
+    )
     print ("Sync Complete")
 
 if __name__ == "__main__":
