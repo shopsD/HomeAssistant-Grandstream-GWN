@@ -7,6 +7,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
@@ -26,7 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     async_add_entities(entities)
 
-class GwnNetworkText(CoordinatorEntity, TextEntity):
+class GwnNetworkText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
     def __init__(self, coordinator, network: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
         self._network: dict[str, Any] = network
@@ -41,10 +42,6 @@ class GwnNetworkText(CoordinatorEntity, TextEntity):
         value = self._network.get(self._key)
         return "" if value is None else str(value)
 
-    async def async_set_value(self, value: str) -> None:
-        self._network[self._key] = value
-        self.async_write_ha_state()
-
     @property
     def device_info(self):
         return {
@@ -55,7 +52,10 @@ class GwnNetworkText(CoordinatorEntity, TextEntity):
             "sw_version": self._network.get(Constants.CURRENT_FIRMWARE),
         }
 
-class GwnDeviceText(CoordinatorEntity, TextEntity):
+    async def async_set_value(self, value: str) -> None:
+        await self.coordinator.async_set_network_value(int(self._network_id), self._key, value)
+
+class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
     def __init__(self, coordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
         self._device: dict[str, Any] = device
@@ -70,10 +70,6 @@ class GwnDeviceText(CoordinatorEntity, TextEntity):
         value = self._device.get(self._key)
         return "" if value is None else str(value)
 
-    async def async_set_value(self, value: str) -> None:
-        self._device[self._key] = value
-        self.async_write_ha_state()
-
     @property
     def device_info(self):
         return {
@@ -84,7 +80,10 @@ class GwnDeviceText(CoordinatorEntity, TextEntity):
             "sw_version": self._device.get(Constants.CURRENT_FIRMWARE),
         }
 
-class GwnSSIDText(CoordinatorEntity, TextEntity):
+    async def async_set_value(self, value: str) -> None:
+        await self.coordinator.async_set_device_value(self._device_mac, int(self._device[Constants.NETWORK_ID]), self._key, value)
+
+class GwnSSIDText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
     def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
         self._ssid: dict[str, Any] = ssid
@@ -99,10 +98,6 @@ class GwnSSIDText(CoordinatorEntity, TextEntity):
         value = self._ssid.get(self._key)
         return "" if value is None else str(value)
 
-    async def async_set_value(self, value: str) -> None:
-        self._ssid[self._key] = value
-        self.async_write_ha_state()
-
     @property
     def device_info(self):
         return {
@@ -111,3 +106,6 @@ class GwnSSIDText(CoordinatorEntity, TextEntity):
             "manufacturer": "Grandstream",
             "model": self._ssid.get(Constants.NETWORK_NAME, "GWN SSID"),
         }
+
+    async def async_set_value(self, value: str) -> None:
+        await self.coordinator.async_set_ssid_value(int(self._ssid_id), int(self._ssid[Constants.NETWORK_ID]), self._key, value)

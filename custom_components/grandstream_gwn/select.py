@@ -7,6 +7,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
@@ -22,7 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     async_add_entities(entities)
 
-class GwnDeviceSelect(CoordinatorEntity, SelectEntity):
+class GwnDeviceSelect(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity):
     def __init__(self, coordinator, device: dict[str, Any], key: str, options_key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
         self._device: dict[str, Any] = device
@@ -50,13 +51,6 @@ class GwnDeviceSelect(CoordinatorEntity, SelectEntity):
             return None
         return self._option_map.get(int(current_value))
 
-    async def async_select_option(self, option: str) -> None:
-        for value, label in self._option_map.items():
-            if label == option:
-                self._device[self._key] = value
-                self.async_write_ha_state()
-                return
-
     @property
     def device_info(self):
         return {
@@ -66,3 +60,9 @@ class GwnDeviceSelect(CoordinatorEntity, SelectEntity):
             "model": self._device.get(Constants.AP_TYPE),
             "sw_version": self._device.get(Constants.CURRENT_FIRMWARE),
         }
+
+    async def async_select_option(self, option: str) -> None:
+        for value, label in self._option_map.items():
+            if label == option:
+                await self.coordinator.async_set_device_value(self._device_mac, int(self._device[Constants.NETWORK_ID]), self._key, value)
+                return

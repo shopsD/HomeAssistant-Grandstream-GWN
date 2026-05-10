@@ -7,6 +7,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
@@ -32,7 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     async_add_entities(entities)
 
-class GwnSSIDSwitch(CoordinatorEntity, SwitchEntity):
+class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
     def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
         self._ssid: dict[str, Any] = ssid
@@ -42,17 +43,12 @@ class GwnSSIDSwitch(CoordinatorEntity, SwitchEntity):
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._ssid_id}_{key}"
 
+    async def _toggle_value(self, value: bool) -> bool:
+        return await self.coordinator.async_set_ssid_value(int(self._ssid[Constants.SSID_ID]), int(self._ssid[Constants.NETWORK_ID]), self._key, value)
+
     @property
     def is_on(self) -> bool:
         return bool(self._ssid.get(self._key) == 1)
-
-    async def async_turn_on(self, **kwargs) -> None:
-        self._ssid[self._key] = 1
-        self.async_write_ha_state()
-
-    async def async_turn_off(self, **kwargs) -> None:
-        self._ssid[self._key] = 0
-        self.async_write_ha_state()
 
     @property
     def device_info(self):
@@ -62,3 +58,10 @@ class GwnSSIDSwitch(CoordinatorEntity, SwitchEntity):
             "manufacturer": "Grandstream",
             "model": self._ssid.get(Constants.NETWORK_NAME, "GWN SSID"),
         }
+
+    async def async_turn_on(self, **kwargs) -> None:
+        await self._toggle_value(True)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self._toggle_value(False)
+

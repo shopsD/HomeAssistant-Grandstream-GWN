@@ -7,6 +7,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
@@ -21,7 +22,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             entities.append(GwnDeviceButton(coordinator, device, Constants.UPDATE_FIRMWARE, "Update Firmware"))
     async_add_entities(entities)
 
-class GwnDeviceButton(CoordinatorEntity, ButtonEntity):
+class GwnDeviceButton(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity):
     def __init__(self, coordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
         self._device: dict[str, Any] = device
@@ -31,9 +32,6 @@ class GwnDeviceButton(CoordinatorEntity, ButtonEntity):
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._device_mac}_{key}"
 
-    async def async_press(self) -> None:
-        return
-
     @property
     def device_info(self):
         return {
@@ -42,3 +40,6 @@ class GwnDeviceButton(CoordinatorEntity, ButtonEntity):
             "manufacturer": "Grandstream",
             "model": self._device.get(Constants.AP_TYPE)
         }
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_press_device_action(self._device_mac, int(self._device[Constants.NETWORK_ID]), self._key)
