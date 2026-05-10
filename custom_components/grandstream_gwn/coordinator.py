@@ -107,7 +107,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             ]
         }
 
-    def _serialise_network(self, gwn_network: GwnNetwork, ssids: list[dict[str, object]], devices: list[dict[str, object]]) -> dict[str, object]:
+    def _serialise_network(self, gwn_network: GwnNetwork, ssids: dict[str,dict[str, object]], devices: dict[str,dict[str, object]]) -> dict[str, object]:
         return {
             Constants.NETWORK_ID: gwn_network.id,
             Constants.NETWORK_NAME: gwn_network.networkName,
@@ -119,26 +119,26 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> dict[Any, dict[str, Any]]:
         gwn_networks: list[GwnNetwork] = await self._gwn_client.get_gwn_data()
-        network_list: list[dict[str, object]] = []
+        network_list: dict[str, dict[str, object]] = {}
         for gwn_network in gwn_networks:
-            ssid_list: list[dict[str, object]] = []
-            device_list: list[dict[str, object]] = []
+            ssid_list: dict[str,dict[str, object]] = {}
+            device_list: dict[str,dict[str, object]] = {}
 
             device_assignments: dict[str, list[GwnSSID]] = {}
             for gwn_ssid in gwn_network.ssids:
-                ssid_list.append(self._serialise_ssid(gwn_network, gwn_ssid))
+                ssid_list[gwn_ssid.id] = self._serialise_ssid(gwn_network, gwn_ssid)
                 for gwn_device in gwn_ssid.devices:
                     if gwn_device.mac not in device_assignments:
                         device_assignments[gwn_device.mac] = []
                     device_assignments[gwn_device.mac].append(gwn_ssid)
             for gwn_device in gwn_network.devices:
-                device_list.append(self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, [])))
-            network_list.append(self._serialise_network(gwn_network, ssid_list, device_list))
+                device_list[gwn_device.mac] = self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, []))
+            network_list[gwn_network.id] = self._serialise_network(gwn_network, ssid_list, device_list)
 
         return {Constants.GWN:{Constants.NETWORKS: network_list}}
 
-    async def async_set_network_value(self, network_id: int, key: str, value: str) -> bool:
-        payload: GwnNetworkPayload = GwnNetworkPayload(id=network_id)
+    async def async_set_network_value(self, network_id: str, key: str, value: str) -> bool:
+        payload: GwnNetworkPayload = GwnNetworkPayload(id=int(network_id))
 
         if key == Constants.NETWORK_NAME:
             payload.networkName = None if value is None else str(value)
@@ -150,8 +150,8 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
         return result
 
-    async def async_set_device_value(self, device_mac: str, network_id: int, key: str, value: int | str) -> bool:
-        payload: GwnDevicePayload = GwnDevicePayload(ap_mac=device_mac, networkId=network_id)
+    async def async_set_device_value(self, device_mac: str, network_id: str, key: str, value: int | str) -> bool:
+        payload: GwnDevicePayload = GwnDevicePayload(ap_mac=device_mac, networkId=int(network_id))
 
         if key == Constants.AP_NAME:
             payload.ap_name = None if value is None else str(value)
@@ -169,8 +169,8 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
         return result
 
-    async def async_press_device_action(self, device_mac: str, network_id: int, action: str) -> bool:
-        payload = GwnDevicePayload(ap_mac=device_mac, networkId=network_id)
+    async def async_press_device_action(self, device_mac: str, network_id: str, action: str) -> bool:
+        payload = GwnDevicePayload(ap_mac=device_mac, networkId=int(network_id))
 
         if action == Constants.REBOOT:
             payload.reboot = True
@@ -186,8 +186,8 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
         return result
 
-    async def async_set_ssid_value(self, ssid_id: int, network_id: int, key: str, value: bool | int | str | dict[str, bool]) -> bool:
-        payload: GwnSSIDPayload = GwnSSIDPayload(id=ssid_id, networkId=network_id)
+    async def async_set_ssid_value(self, ssid_id: str, network_id: str, key: str, value: bool | int | str | dict[str, bool]) -> bool:
+        payload: GwnSSIDPayload = GwnSSIDPayload(id=int(ssid_id), networkId=int(network_id))
 
         if key == Constants.SSID_ENABLE:
             payload.ssidEnable = bool(value)

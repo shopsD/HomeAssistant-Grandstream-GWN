@@ -10,22 +10,22 @@ from .const import DOMAIN
 from .coordinator import GwnDataUpdateCoordinator
 from gwn.constants import Constants
 
-def _networks(coordinator: GwnDataUpdateCoordinator) -> list[dict[str, object]]:
+def _networks(coordinator: GwnDataUpdateCoordinator) -> dict[str, dict[str, Any]]:
     raw_data = coordinator.data if isinstance(coordinator.data, dict) else {}
-    raw_networks = raw_data.get(Constants.GWN, {}).get(Constants.NETWORKS, [])
-    return raw_networks if isinstance(raw_networks, list) else []
+    raw_networks = raw_data.get(Constants.GWN, {}).get(Constants.NETWORKS, {})
+    return raw_networks if isinstance(raw_networks, dict) else {}
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    networks: list[dict[str, Any]] = _networks(coordinator)
+    networks: dict[str, dict[str, Any]] = _networks(coordinator)
     entities: list[SensorEntity] = []
-    for network in networks:
+    for network in networks.values():
         entities.append(GwnNetworkSensor(coordinator, network, Constants.NETWORK_NAME, "Name"))
         entities.append(GwnNetworkSensor(coordinator, network, Constants.COUNTRY_DISPLAY, "Country"))
         entities.append(GwnNetworkSensor(coordinator, network, Constants.TIMEZONE, "Timezone"))
 
-        for device in network.get(Constants.DEVICES,[]):
+        for device in network.get(Constants.DEVICES,{}).values():
             entities.append(GwnDeviceSensor(coordinator, device, Constants.WIRELESS, "Wireless"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.NETWORK_NAME, "Network"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.STATUS, "Status"))
@@ -44,7 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_6G_CHANNEL, "6Ghz Channel"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.MAC, "MAC"))
 
-        for ssid in network.get(Constants.SSIDS,[]):
+        for ssid in network.get(Constants.SSIDS,{}).values():
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ENABLE, "Enabled"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.PORTAL_ENABLED, "Captive Portal"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ISOLATION, "Client Isolation"))
@@ -63,16 +63,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class GwnBaseNetworkSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, network: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
-        self._network: dict[str, Any] = network
         self._key: str = key
-        self._network_id: str = self._network[Constants.NETWORK_ID]
-        self._name: str = self._network[Constants.NETWORK_NAME]
+        self._network_id: str = network[Constants.NETWORK_ID]
+        self._name: str = network[Constants.NETWORK_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._network_id}_{key}"
 
     @property
     def native_value(self):
-        return self._network.get(self._key)
+        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        return None if network is None else network.get(self._key)
 
     @property
     def device_info(self):
@@ -90,16 +91,23 @@ class GwnNetworkSensor(GwnBaseNetworkSensor):
 class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
-        self._device: dict[str, Any] = device
         self._key: str = key
         self._device_mac: str = device[Constants.MAC]
         self._name: str = device[Constants.AP_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._device_mac}_{key}"
+        self._ap_type = device.get(Constants.AP_TYPE)
+        self._sw_version = device.get(Constants.CURRENT_FIRMWARE)
 
     @property
     def native_value(self):
-        return self._device.get(self._key)
+        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        if network is None:
+            return None
+        devices = network.get(Constants.DEVICES, {})
+        device = devices.get(self._device_mac)
+        return None if device is None else device.get(self._key)
 
     @property
     def device_info(self):
@@ -107,8 +115,8 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
             "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
             "name": self._name,
             "manufacturer": "Grandstream",
-            "model": self._device.get(Constants.AP_TYPE),
-            "sw_version": self._device.get(Constants.CURRENT_FIRMWARE),
+            "model": self._ap_type,
+            "sw_version": self._sw_version
         }
 
 class GwnDeviceSensor(GwnBaseDeviceSensor):
@@ -117,16 +125,22 @@ class GwnDeviceSensor(GwnBaseDeviceSensor):
 class GwnBaseSsidSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
-        self._ssid: dict[str, Any] = ssid
         self._key: str = key
-        self._ssid_id: str = self._ssid[Constants.SSID_ID]
-        self._name: str = self._ssid[Constants.SSID_NAME]
+        self._ssid_id: str = ssid[Constants.SSID_ID]
+        self._name: str = ssid[Constants.SSID_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._ssid_id}_{key}"
+        self._model: str = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
 
     @property
     def native_value(self):
-        return self._ssid.get(self._key)
+        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        if network is None:
+            return None
+        ssids = network.get(Constants.SSIDS, {})
+        ssid = ssids.get(self._ssid_id)
+        return None if ssid is None else ssid.get(self._key)
 
     @property
     def device_info(self):
@@ -134,7 +148,7 @@ class GwnBaseSsidSensor(CoordinatorEntity, SensorEntity):
             "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,
             "manufacturer": "Grandstream",
-            "model": self._ssid.get(Constants.NETWORK_NAME, "GWN SSID"),
+            "model": self._model
         }
 
 class GwnSsidSensor(GwnBaseSsidSensor):
