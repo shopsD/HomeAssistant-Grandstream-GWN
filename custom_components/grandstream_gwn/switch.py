@@ -28,18 +28,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 device_mac: str = device.get(Constants.MAC)
                 async def toggle_callback(self, value: bool) -> bool:
                     return await self.coordinator.async_set_ssid_value(int(self._ssid[Constants.SSID_ID]), int(self._ssid[Constants.NETWORK_ID]), self._key, {device_mac: value})
-                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}", toggle_callback))
-                if device_mac in ssid.get(Constants.ASSIGNED_DEVICES):
-                    entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi")) # TODO change to actually enable the assignment
-
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}", device_mac in ssid.get(Constants.ASSIGNED_DEVICES), toggle_callback))
 
     async_add_entities(entities)
 
 class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
-    def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str, toggle_callback: Callable[[Any, bool], Awaitable[bool]] | None = None) -> None:
+    def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str, default_state: bool | None = None, toggle_callback: Callable[[Any, bool], Awaitable[bool]] | None = None) -> None:
         super().__init__(coordinator)
         self._ssid: dict[str, Any] = ssid
         self._key: str = key
+        self._default_state: bool | None = None
         self._toggle_callback: Callable[[Any, bool], Awaitable[bool]] | None = toggle_callback
         self._ssid_id: str = self._ssid[Constants.SSID_ID]
         self._name: str = self._ssid[Constants.SSID_NAME]
@@ -54,7 +52,15 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        return bool(self._ssid.get(self._key) == 1)
+        if self._default_state is not None:
+            return self._default_state
+        else:
+            value = self._ssid.get(self._key)
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, int):
+                return value == 1
+            return False # this is an error
 
     @property
     def device_info(self):
