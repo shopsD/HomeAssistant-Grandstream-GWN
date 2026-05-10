@@ -31,8 +31,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
 class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
-    def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._key: str = key
         self._ssid_id: str = ssid[Constants.SSID_ID]
         self._name: str = ssid[Constants.SSID_NAME]
@@ -46,7 +47,7 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return False
@@ -63,7 +64,7 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
         return False # this is an error
 
     @property
-    def device_info(self):
+    def device_info(self) -> Any:
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,
@@ -79,8 +80,9 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
 
 
 class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
-    def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str, device_mac: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str, device_mac: str) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._ssid: dict[str, Any] = ssid
         self._key: str = key
         self._device_mac: str = device_mac
@@ -88,6 +90,7 @@ class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEnt
         self._name: str = self._ssid[Constants.SSID_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._ssid_id}_{key}_{self._device_mac}"
+        self._model: str = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
         self._network_id: str = ssid[Constants.NETWORK_ID]
 
     async def _toggle_value(self, value: bool) -> bool:
@@ -95,7 +98,7 @@ class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEnt
 
     @property
     def is_on(self) -> bool:
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return False
@@ -108,7 +111,7 @@ class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEnt
         return isinstance(assigned, dict) and self._device_mac in assigned
 
     @property
-    def device_info(self):
+    def device_info(self) -> Any:
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,

@@ -61,47 +61,49 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
 class GwnBaseNetworkSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, network: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
         self._key: str = key
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._network_id: str = network[Constants.NETWORK_ID]
         self._name: str = network[Constants.NETWORK_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._network_id}_{key}"
 
     @property
-    def native_value(self):
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+    def native_value(self) -> None | Any:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         return None if network is None else network.get(self._key)
 
     @property
-    def device_info(self):
+    def device_info(self) -> Any | None:
         return {
             "identifiers": {(DOMAIN, f"network_{self._network_id}")},
             "name": self._name,
             "manufacturer": "Grandstream",
-            "model": "GWN Network",
-            "sw_version": self._network.get(Constants.CURRENT_FIRMWARE),
+            "model": "GWN Network"
         }
 
 class GwnNetworkSensor(GwnBaseNetworkSensor):
     pass
 
 class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._key: str = key
         self._device_mac: str = device[Constants.MAC]
         self._name: str = device[Constants.AP_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._device_mac}_{key}"
-        self._ap_type = device.get(Constants.AP_TYPE)
-        self._sw_version = device.get(Constants.CURRENT_FIRMWARE)
+        self._ap_type: str = device[Constants.AP_TYPE]
+        self._sw_version: str = device[Constants.CURRENT_FIRMWARE]
+        self._network_id: str = device[Constants.NETWORK_ID]
 
     @property
-    def native_value(self):
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+    def native_value(self) -> Any:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return None
@@ -110,7 +112,7 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
         return None if device is None else device.get(self._key)
 
     @property
-    def device_info(self):
+    def device_info(self) -> Any:
         return {
             "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
             "name": self._name,
@@ -123,18 +125,20 @@ class GwnDeviceSensor(GwnBaseDeviceSensor):
     pass
 
 class GwnBaseSsidSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._key: str = key
         self._ssid_id: str = ssid[Constants.SSID_ID]
         self._name: str = ssid[Constants.SSID_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._ssid_id}_{key}"
         self._model: str = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
+        self._network_id: str = ssid[Constants.NETWORK_ID]
 
     @property
-    def native_value(self):
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+    def native_value(self) -> Any:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return None
@@ -143,7 +147,7 @@ class GwnBaseSsidSensor(CoordinatorEntity, SensorEntity):
         return None if ssid is None else ssid.get(self._key)
 
     @property
-    def device_info(self):
+    def device_info(self) -> Any:
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,

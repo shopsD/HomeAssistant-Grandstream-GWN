@@ -24,8 +24,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
 class GwnDeviceSelect(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity):
-    def __init__(self, coordinator, device: dict[str, Any], key: str, options_key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, options_key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._device: dict[str, Any] = device
         self._key: str = key
         self._options_key: str = options_key
@@ -39,7 +40,7 @@ class GwnDeviceSelect(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
 
     @property
     def _option_map(self) -> dict[int, str]:
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return {}
@@ -56,7 +57,7 @@ class GwnDeviceSelect(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
 
     @property
     def current_option(self) -> str | None:
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return None
@@ -69,7 +70,7 @@ class GwnDeviceSelect(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
         return None if current_value is None else self._option_map.get(int(current_value))
 
     @property
-    def device_info(self):
+    def device_info(self) -> Any:
         return {
             "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
             "name": self._name,

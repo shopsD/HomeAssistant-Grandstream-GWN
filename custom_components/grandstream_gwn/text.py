@@ -56,8 +56,9 @@ class GwnNetworkText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         await self.coordinator.async_set_network_value(self._network_id, self._key, value)
 
 class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
-    def __init__(self, coordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._device: dict[str, Any] = device
         self._key: str = key
         self._device_mac: str = device[Constants.MAC]
@@ -70,7 +71,7 @@ class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
 
     @property
     def native_value(self) -> str:
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return ""
@@ -92,8 +93,9 @@ class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         await self.coordinator.async_set_device_value(self._device_mac, self._network_id, self._key, value)
 
 class GwnSSIDText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
-    def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._key: str = key
         self._ssid_id: str = ssid[Constants.SSID_ID]
         self._name: str = ssid[Constants.SSID_NAME]
@@ -104,7 +106,7 @@ class GwnSSIDText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
 
     @property
     def native_value(self) -> str:
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return ""

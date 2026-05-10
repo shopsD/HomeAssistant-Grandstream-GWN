@@ -23,8 +23,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
 class GwnDeviceButton(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity):
-    def __init__(self, coordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._key: str = key
         self._device_mac: str = device[Constants.MAC]
         self._name: str = device[Constants.AP_NAME]
@@ -35,7 +36,7 @@ class GwnDeviceButton(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity)
         self._network_id: str = device[Constants.NETWORK_ID]
 
     @property
-    def device_info(self):
+    def device_info(self) -> Any:
         return {
             "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
             "name": self._name,
@@ -45,4 +46,4 @@ class GwnDeviceButton(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity)
         }
 
     async def async_press(self) -> None:
-        await self.coordinator.async_press_device_action(self._device_mac, self._network_id, self._key)
+        await self._coordinator.async_press_device_action(self._device_mac, self._network_id, self._key)
