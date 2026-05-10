@@ -38,6 +38,7 @@ permissions:
 jobs:
   build-release:
     runs-on: ubuntu-latest
+    name: release-build
 
     steps:
     - name: Checkout repository

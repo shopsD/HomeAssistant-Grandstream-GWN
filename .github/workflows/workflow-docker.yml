@@ -25,6 +25,7 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    name: docker-publish
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
