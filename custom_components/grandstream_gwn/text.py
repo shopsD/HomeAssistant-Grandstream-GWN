@@ -38,10 +38,13 @@ class GwnNetworkText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         self._attr_unique_id: str = f"{self._network_id}_{key}"
 
     @property
-    def native_value(self) -> str:
+    def native_value(self) -> str | None:
         networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
-        return "" if network is None else str(network.get(self._key))
+        if network is None:
+            return None
+        value = network.get(self._key)
+        return None if value is None else str(value)
 
     @property
     def device_info(self) -> DeviceInfo | None:
@@ -70,14 +73,17 @@ class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         self._network_id: str = device[Constants.NETWORK_ID]
 
     @property
-    def native_value(self) -> str:
+    def native_value(self) -> str | None:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
-            return ""
-        devices = network.get(Constants.DEVICES, {})
-        device = devices.get(self._device_mac)
-        return "" if device is None else str(device.get(self._key))
+            return None
+        devices: dict[str, Any] = network.get(Constants.DEVICES, {})
+        device: dict[str, Any] | None = devices.get(self._device_mac)
+        if device is None:
+            return None
+        value = device.get(self._key)
+        return None if value is None else str(value)
 
     @property
     def device_info(self) -> DeviceInfo | None:
@@ -105,14 +111,17 @@ class GwnSSIDText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         self._network_id: str = ssid[Constants.NETWORK_ID]
 
     @property
-    def native_value(self) -> str:
+    def native_value(self) -> str | None:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
-            return ""
-        ssids = network.get(Constants.SSIDS, {})
-        ssid = ssids.get(self._ssid_id)
-        return "" if ssid is None else str(ssid.get(self._key))
+            return None
+        ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
+        ssid: dict[str, Any] | None = ssids.get(self._ssid_id)
+        if ssid is None:
+            return None
+        value = ssid.get(self._key)
+        return None if value is None else str(value)
 
     @property
     def device_info(self) -> DeviceInfo | None:

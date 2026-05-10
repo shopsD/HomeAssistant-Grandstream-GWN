@@ -108,8 +108,8 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return None
-        devices = network.get(Constants.DEVICES, {})
-        device = devices.get(self._device_mac)
+        devices: dict[str, Any] = network.get(Constants.DEVICES, {})
+        device: dict[str, Any] | None = devices.get(self._device_mac)
         return None if device is None else device.get(self._key)
 
     @property
@@ -143,8 +143,8 @@ class GwnBaseSsidSensor(CoordinatorEntity, SensorEntity):
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return None
-        ssids = network.get(Constants.SSIDS, {})
-        ssid = ssids.get(self._ssid_id)
+        ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
+        ssid: dict[str, Any] | None = ssids.get(self._ssid_id)
         return None if ssid is None else ssid.get(self._key)
 
     @property

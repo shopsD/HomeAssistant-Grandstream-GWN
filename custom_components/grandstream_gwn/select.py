@@ -62,8 +62,8 @@ class GwnDeviceSelect(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return None
-        devices = network.get(Constants.DEVICES, {})
-        device = devices.get(self._device_mac)
+        devices: dict[str, Any] = network.get(Constants.DEVICES, {})
+        device: dict[str, Any] | None = devices.get(self._device_mac)
         if device is None:
             return None
 

@@ -52,8 +52,8 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return False
-        ssids = network.get(Constants.SSIDS, {})
-        ssid = ssids.get(self._ssid_id)
+        ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
+        ssid: dict[str, Any] | None = ssids.get(self._ssid_id)
         if ssid is None:
             return False
 
@@ -103,8 +103,8 @@ class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEnt
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return False
-        ssids = network.get(Constants.SSIDS, {})
-        ssid = ssids.get(self._ssid_id)
+        ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
+        ssid: dict[str, Any] | None = ssids.get(self._ssid_id)
         if ssid is None:
             return False
         assigned = ssid.get(Constants.ASSIGNED_DEVICES, {})
