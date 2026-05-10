@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -26,7 +26,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi"))
             for device in network.get(Constants.DEVICES,[]):
                 device_mac: str = device.get(Constants.MAC)
-                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}"))
+                async def toggle_callback(self, value: bool) -> bool:
+                    return await self.coordinator.async_set_ssid_value(int(self._ssid[Constants.SSID_ID]), int(self._ssid[Constants.NETWORK_ID]), self._key, {device_mac: value})
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}", toggle_callback))
                 if device_mac in ssid.get(Constants.ASSIGNED_DEVICES):
                     entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi")) # TODO change to actually enable the assignment
 
@@ -34,17 +36,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
 
 class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
-    def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator, ssid: dict[str, Any], key: str, name_suffix: str, toggle_callback: Callable[[Any, bool], Awaitable[bool]] | None = None) -> None:
         super().__init__(coordinator)
         self._ssid: dict[str, Any] = ssid
         self._key: str = key
+        self._toggle_callback: Callable[[Any, bool], Awaitable[bool]] | None = toggle_callback
         self._ssid_id: str = self._ssid[Constants.SSID_ID]
         self._name: str = self._ssid[Constants.SSID_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._ssid_id}_{key}"
 
     async def _toggle_value(self, value: bool) -> bool:
-        return await self.coordinator.async_set_ssid_value(int(self._ssid[Constants.SSID_ID]), int(self._ssid[Constants.NETWORK_ID]), self._key, value)
+        if self._toggle_callback is None:
+            return await self.coordinator.async_set_ssid_value(int(self._ssid[Constants.SSID_ID]), int(self._ssid[Constants.NETWORK_ID]), self._key, value)
+        else:
+            return await self._toggle_callback(self, value)
 
     @property
     def is_on(self) -> bool:
