@@ -111,7 +111,7 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
         return int(value.strip())
 
     @property
-    def native_value(self) -> None | str | int:
+    def native_value(self) -> None | str | int | bool:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
@@ -120,10 +120,10 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
         device: dict[str, Any] | None = devices.get(self._device_mac)
         if device is None:
             return None
-        value: int | str | None = device.get(self._key)
+        value: int | str | bool | None = device.get(self._key)
         if self._units is not None and isinstance(value, str):
             return self._int_value_normaliser(value)
-        else: 
+        else:
             return value
 
     @property
