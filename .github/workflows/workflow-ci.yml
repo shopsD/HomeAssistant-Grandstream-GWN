@@ -5,17 +5,22 @@ on: [pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.14.2"]
+    name: python-checker
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Load project metadata
+      id: meta
+      run: |
+        echo "python_version=$(python -c 'from meta_data.project_meta import PYTHON_VERSION; print(PYTHON_VERSION)')" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Python ${{ steps.meta.outputs.python_version }}
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ steps.meta.outputs.python_version }}
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -28,4 +33,4 @@ jobs:
         uv run ruff check .
     - name: Analysing the code with Mypy
       run: |
-        uv run mypy custom_components/grandstream_gwn/ gwn/ mqtt/
+        uv run mypy custom_components/grandstream_gwn/ gwn/ mqtt/ meta_data/
