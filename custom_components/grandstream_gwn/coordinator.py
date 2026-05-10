@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from gwn.constants import Constants
 from gwn.api import GwnClient
 from gwn.authentication import GwnConfig
+from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
 from gwn.response_data import GwnDevice, GwnNetwork, GwnSSID
 
 _LOGGER = logging.getLogger(Constants.LOG)
@@ -106,7 +107,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             ]
         }
 
-    def _serialise_network(self, gwn_network: GwnNetwork, ssids: list[dict[str, object]], devices: list[dict[str, object]]) -> dict[str, object]:
+    def _serialise_network(self, gwn_network: GwnNetwork, ssids: dict[str,dict[str, object]], devices: dict[str,dict[str, object]]) -> dict[str, object]:
         return {
             Constants.NETWORK_ID: gwn_network.id,
             Constants.NETWORK_NAME: gwn_network.networkName,
@@ -118,23 +119,106 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> dict[Any, dict[str, Any]]:
         gwn_networks: list[GwnNetwork] = await self._gwn_client.get_gwn_data()
-        network_list: list[dict[str, object]] = []
+        network_list: dict[str, dict[str, object]] = {}
         for gwn_network in gwn_networks:
-            ssid_list: list[dict[str, object]] = []
-            device_list: list[dict[str, object]] = []
+            ssid_list: dict[str,dict[str, object]] = {}
+            device_list: dict[str,dict[str, object]] = {}
 
             device_assignments: dict[str, list[GwnSSID]] = {}
             for gwn_ssid in gwn_network.ssids:
-                ssid_list.append(self._serialise_ssid(gwn_network, gwn_ssid))
+                ssid_list[gwn_ssid.id] = self._serialise_ssid(gwn_network, gwn_ssid)
                 for gwn_device in gwn_ssid.devices:
                     if gwn_device.mac not in device_assignments:
                         device_assignments[gwn_device.mac] = []
                     device_assignments[gwn_device.mac].append(gwn_ssid)
             for gwn_device in gwn_network.devices:
-                device_list.append(self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, [])))
-            network_list.append(self._serialise_network(gwn_network, ssid_list, device_list))
+                device_list[gwn_device.mac] = self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, []))
+            network_list[gwn_network.id] = self._serialise_network(gwn_network, ssid_list, device_list)
 
         return {Constants.GWN:{Constants.NETWORKS: network_list}}
+
+    async def async_set_network_value(self, network_id: str, key: str, value: str) -> bool:
+        payload: GwnNetworkPayload = GwnNetworkPayload(id=int(network_id))
+
+        if key == Constants.NETWORK_NAME:
+            payload.networkName = None if value is None else str(value)
+        else:
+            raise ValueError(f"Unsupported network key: {key}")
+
+        result = await self._gwn_client.set_network_data(payload)
+        if result:
+            await self.async_request_refresh()
+        return result
+
+    async def async_set_device_value(self, device_mac: str, network_id: str, key: str, value: int | str) -> bool:
+        payload: GwnDevicePayload = GwnDevicePayload(ap_mac=device_mac, networkId=int(network_id))
+
+        if key == Constants.AP_NAME:
+            payload.ap_name = None if value is None else str(value)
+        elif key == Constants.AP_2G4_CHANNEL:
+            payload.ap_2g4_channel = None if value is None else int(value)
+        elif key == Constants.AP_5G_CHANNEL:
+            payload.ap_5g_channel = None if value is None else int(value)
+        elif key == Constants.AP_6G_CHANNEL:
+            payload.ap_6g_channel = None if value is None else int(value)
+        else:
+            raise ValueError(f"Unsupported device key: {key}")
+
+        result = await self._gwn_client.set_device_data(payload)
+        if result:
+            await self.async_request_refresh()
+        return result
+
+    async def async_press_device_action(self, device_mac: str, network_id: str, action: str) -> bool:
+        payload = GwnDevicePayload(ap_mac=device_mac, networkId=int(network_id))
+
+        if action == Constants.REBOOT:
+            payload.reboot = True
+        elif action == Constants.RESET:
+            payload.reset = True
+        elif action == Constants.UPDATE_FIRMWARE:
+            payload.update = True
+        else:
+            raise ValueError(f"Unsupported device action: {action}")
+
+        result = await self._gwn_client.set_device_data(payload)
+        if result:
+            await self.async_request_refresh()
+        return result
+
+    async def async_set_ssid_value(self, ssid_id: str, network_id: str, key: str, value: bool | int | str | dict[str, bool]) -> bool:
+        payload: GwnSSIDPayload = GwnSSIDPayload(id=int(ssid_id), networkId=int(network_id))
+
+        if key == Constants.SSID_ENABLE:
+            payload.ssidEnable = bool(value)
+        elif key == Constants.PORTAL_ENABLED:
+            payload.ssidPortalEnable = bool(value)
+        elif key == Constants.SSID_ISOLATION:
+            payload.ssidIsolation = bool(value)
+        elif key == Constants.GHZ2_4_ENABLED:
+            payload.ghz2_4_enabled = bool(value)
+        elif key == Constants.GHZ5_ENABLED:
+            payload.ghz5_enabled = bool(value)
+        elif key == Constants.GHZ6_ENABLED:
+            payload.ghz6_enabled = bool(value)
+        elif key == Constants.SSID_HIDDEN:
+            payload.ssidSsidHidden = bool(value)
+        elif key == Constants.SSID_VLAN_ID:
+            payload.ssidVlanid = None if value is None else int(str(value))
+            payload.ssidVlan = None if value is None else int(str(value)) > 0
+        elif key == Constants.SSID_NAME:
+            payload.ssidSsid = None if value is None else str(value)
+        elif key == Constants.SSID_KEY:
+            payload.ssid_key = None if value is None else str(value)
+        elif key == Constants.TOGGLE_DEVICE:
+            payload.toggled_macs = None if value is None or not isinstance(value,dict) else value
+        else:
+            raise ValueError(f"Unsupported SSID key: {key}")
+
+        result = await self._gwn_client.set_ssid_data(payload)
+        if result:
+            await self.async_request_refresh()
+        return result
 
 def _parse_int_list(value: str | None) -> list[int]:
     if value is None or value.strip() == "":
