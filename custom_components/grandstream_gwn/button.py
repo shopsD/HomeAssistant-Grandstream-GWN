@@ -3,6 +3,7 @@ from typing import Any
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -36,7 +37,7 @@ class GwnDeviceButton(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity)
         self._network_id: str = device[Constants.NETWORK_ID]
 
     @property
-    def device_info(self) -> Any:
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
             "name": self._name,

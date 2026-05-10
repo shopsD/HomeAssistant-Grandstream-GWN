@@ -3,6 +3,7 @@ from typing import Any
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -70,7 +71,7 @@ class GwnDeviceSelect(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
         return None if current_value is None else self._option_map.get(int(current_value))
 
     @property
-    def device_info(self) -> Any:
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
             "name": self._name,

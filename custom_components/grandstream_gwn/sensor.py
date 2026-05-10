@@ -3,6 +3,7 @@ from typing import Any
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -77,7 +78,7 @@ class GwnBaseNetworkSensor(CoordinatorEntity, SensorEntity):
         return None if network is None else network.get(self._key)
 
     @property
-    def device_info(self) -> Any | None:
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"network_{self._network_id}")},
             "name": self._name,
@@ -112,7 +113,7 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
         return None if device is None else device.get(self._key)
 
     @property
-    def device_info(self) -> Any:
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
             "name": self._name,
@@ -147,7 +148,7 @@ class GwnBaseSsidSensor(CoordinatorEntity, SensorEntity):
         return None if ssid is None else ssid.get(self._key)
 
     @property
-    def device_info(self) -> Any:
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,

@@ -3,6 +3,7 @@ from typing import Any
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -43,13 +44,12 @@ class GwnNetworkText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         return "" if network is None else str(network.get(self._key))
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"network_{self._network_id}")},
             "name": self._name,
             "manufacturer": "Grandstream",
-            "model": "GWN Network",
-            "sw_version": self._network.get(Constants.CURRENT_FIRMWARE),
+            "model": "GWN Network"
         }
 
     async def async_set_value(self, value: str) -> None:
@@ -80,7 +80,7 @@ class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         return "" if device is None else str(device.get(self._key))
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
             "name": self._name,
@@ -115,7 +115,7 @@ class GwnSSIDText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         return "" if ssid is None else str(ssid.get(self._key))
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,

@@ -3,6 +3,7 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -64,7 +65,7 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
         return False # this is an error
 
     @property
-    def device_info(self) -> Any:
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,
@@ -103,7 +104,7 @@ class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEnt
         if network is None:
             return False
         ssids = network.get(Constants.SSIDS, {})
-        ssid = ssids.get(self._device_mac)
+        ssid = ssids.get(self._ssid_id)
         if ssid is None:
             return False
         assigned = ssid.get(Constants.ASSIGNED_DEVICES, {})
@@ -111,7 +112,7 @@ class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEnt
         return isinstance(assigned, dict) and self._device_mac in assigned
 
     @property
-    def device_info(self) -> Any:
+    def device_info(self) -> DeviceInfo | None:
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
             "name": self._name,
