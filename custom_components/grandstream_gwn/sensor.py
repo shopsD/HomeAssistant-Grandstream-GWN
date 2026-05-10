@@ -72,7 +72,7 @@ class GwnBaseNetworkSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id: str = f"{self._network_id}_{key}"
 
     @property
-    def native_value(self) -> None | Any:
+    def native_value(self) -> None | str:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         return None if network is None else network.get(self._key)
@@ -103,7 +103,7 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
         self._network_id: str = device[Constants.NETWORK_ID]
 
     @property
-    def native_value(self) -> Any:
+    def native_value(self) -> None | str | int:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
@@ -138,7 +138,7 @@ class GwnBaseSsidSensor(CoordinatorEntity, SensorEntity):
         self._network_id: str = ssid[Constants.NETWORK_ID]
 
     @property
-    def native_value(self) -> Any:
+    def native_value(self) -> None | str | int | bool:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
