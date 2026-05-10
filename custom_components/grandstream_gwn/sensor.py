@@ -34,9 +34,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             entities.append(GwnDeviceSensor(coordinator, device, Constants.IPV6, "IPv6"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.CURRENT_FIRMWARE, "Current Firmware"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.NEW_FIRMWARE, "Available Firmware"))
-            entities.append(GwnDeviceSensor(coordinator, device, Constants.CPU_USAGE, "CPU Usage"))
-            entities.append(GwnDeviceSensor(coordinator, device, Constants.TEMPERATURE, "Temperature"))
-            entities.append(GwnDeviceSensor(coordinator, device, Constants.UP_TIME, "Up Time"))
+            entities.append(GwnDeviceSensor(coordinator, device, Constants.CPU_USAGE, "CPU Usage", ["%"]))
+            entities.append(GwnDeviceSensor(coordinator, device, Constants.TEMPERATURE, "Temperature", ["℃", "°C"]))
+            entities.append(GwnDeviceSensor(coordinator, device, Constants.UP_TIME, "Up Time", ["s"]))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.CHANNEL_2_4, "Current 2.4GHz Channel"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.CHANNEL_5, "Current 5GHz Channel"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.CHANNEL_6, "Current 6GHz Channel"))
@@ -90,10 +90,11 @@ class GwnNetworkSensor(GwnBaseNetworkSensor):
     pass
 
 class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str, units: list[str] | None = None) -> None:
         super().__init__(coordinator)
         self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._key: str = key
+        self._units: list[str] | None = units
         self._device_mac: str = device[Constants.MAC]
         self._name: str = device[Constants.AP_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
@@ -101,6 +102,13 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
         self._ap_type: str = device[Constants.AP_TYPE]
         self._sw_version: str = device[Constants.CURRENT_FIRMWARE]
         self._network_id: str = device[Constants.NETWORK_ID]
+
+    def _int_value_normaliser(self, value: str) -> int | None:
+        if value is None or self._units is None:
+            return None
+        for unit in self._units:
+            value = value.replace(unit, "")
+        return int(value.strip())
 
     @property
     def native_value(self) -> None | str | int:
@@ -110,7 +118,13 @@ class GwnBaseDeviceSensor(CoordinatorEntity, SensorEntity):
             return None
         devices: dict[str, Any] = network.get(Constants.DEVICES, {})
         device: dict[str, Any] | None = devices.get(self._device_mac)
-        return None if device is None else device.get(self._key)
+        if device is None:
+            return None
+        value: int | str | None = device.get(self._key)
+        if self._units is not None and isinstance(value, str):
+            return self._int_value_normaliser(value)
+        else: 
+            return value
 
     @property
     def device_info(self) -> DeviceInfo | None:
