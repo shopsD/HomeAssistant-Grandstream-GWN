@@ -64,9 +64,9 @@ class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         self._name: str = device[Constants.AP_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._device_mac}_{key}"
-        self._ap_type: str = device.get(Constants.AP_TYPE)
-        self._sw_version: str = device.get(Constants.CURRENT_FIRMWARE)
-        self._network_id: str = device.get(Constants.NETWORK_ID)
+        self._ap_type: str = device[Constants.AP_TYPE]
+        self._sw_version: str = device[Constants.CURRENT_FIRMWARE]
+        self._network_id: str = device[Constants.NETWORK_ID]
 
     @property
     def native_value(self) -> str:
@@ -100,7 +100,7 @@ class GwnSSIDText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._ssid_id}_{key}"
         self._model: str = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
-        self._network_id: str = ssid.get(Constants.NETWORK_ID)
+        self._network_id: str = ssid[Constants.NETWORK_ID]
 
     @property
     def native_value(self) -> str:

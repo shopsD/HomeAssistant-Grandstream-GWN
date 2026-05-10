@@ -39,7 +39,7 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._ssid_id}_{key}"
         self._model: str = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
-        self._network_id: str = ssid.get(Constants.NETWORK_ID)
+        self._network_id: str = ssid[Constants.NETWORK_ID]
 
     async def _toggle_value(self, value: bool) -> bool:
         return await self.coordinator.async_set_ssid_value(self._ssid_id, self._network_id, self._key, value)
@@ -88,7 +88,7 @@ class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEnt
         self._name: str = self._ssid[Constants.SSID_NAME]
         self._attr_name: str = f"{self._name} {name_suffix}"
         self._attr_unique_id: str = f"{self._ssid_id}_{key}_{self._device_mac}"
-        self._network_id: str = ssid.get(Constants.NETWORK_ID)
+        self._network_id: str = ssid[Constants.NETWORK_ID]
 
     async def _toggle_value(self, value: bool) -> bool:
         return await self.coordinator.async_set_ssid_value(self._ssid_id, self._network_id, self._key, {self._device_mac: value})
@@ -96,7 +96,7 @@ class GwnSSIDDeviceSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEnt
     @property
     def is_on(self) -> bool:
         networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
-        network: dict[str, Any] = networks.get(self._network_id)
+        network: dict[str, Any] | None = networks.get(self._network_id)
         if network is None:
             return False
         ssids = network.get(Constants.SSIDS, {})
