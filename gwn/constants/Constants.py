@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
+import meta_data.project_meta
+
 @dataclass(slots=True)
 class Constants:
     LOG:ClassVar[str] = "gwn_mqtt"
-    APP_VERSION:ClassVar[str] = "0.0.1"
+    APP_VERSION:ClassVar[str] = meta_data.project_meta.APP_VERSION
 
     # mqtt keys
     # ssid

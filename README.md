@@ -201,7 +201,12 @@ docker exec -it gwn-mqtt-bridge gwn_mqtt -p <your_plaintext_password>
 ```
 to non-interactively generate the hashed password
 
+## Definitions
+
+- `Application` refers to the GWN MQTT Bridge Application and does not refer to GWN Manager
+
 ## Getting The API Key
+
 The application requires an API key and App ID from GWN Manager to work
 To get these details follow the steps below:
 1. Login to GWN Manager

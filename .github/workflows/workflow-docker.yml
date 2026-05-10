@@ -29,6 +29,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Load project metadata
+        id: meta
+        run: |
+          APP_VERSION="$(python -c 'from meta_data.project_meta import APP_VERSION; print(APP_VERSION)')"
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            VERSION_TAG="${{ inputs.image_tag }}"
+          else
+            VERSION_TAG="${APP_VERSION}"
+          fi
+          echo "version_tag=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -40,13 +51,8 @@ jobs:
       - name: Set Tags
         id: vars
         run: |
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            BASE_TAG="${{ inputs.image_tag }}"
-          else
-            BASE_TAG="manual-${GITHUB_SHA::7}"
-          fi
 
-          TAGS="${{ steps.image.outputs.name }}:${BASE_TAG}"
+          TAGS="${{ steps.image.outputs.name }}:${steps.meta.outputs.version_tag}"
           if [ "${{ inputs.publish_latest }}" = "true" ]; then
             TAGS="${TAGS},${{ steps.image.outputs.name }}:latest"
           fi
