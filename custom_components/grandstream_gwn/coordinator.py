@@ -186,7 +186,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             await self.async_request_refresh()
         return result
 
-    async def async_set_ssid_value(self, ssid_id: int, network_id: int, key: str, value: bool | int | str) -> bool:
+    async def async_set_ssid_value(self, ssid_id: int, network_id: int, key: str, value: bool | int | str | dict[str, bool]) -> bool:
         payload: GwnSSIDPayload = GwnSSIDPayload(id=ssid_id, networkId=network_id)
 
         if key == Constants.SSID_ENABLE:
@@ -204,12 +204,14 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
         elif key == Constants.SSID_HIDDEN:
             payload.ssidSsidHidden = bool(value)
         elif key == Constants.SSID_VLAN_ID:
-            payload.ssidVlanid = None if value is None else int(value)
-            payload.ssidVlan = None if value is None else int(value) > 0
+            payload.ssidVlanid = None if value is None else int(str(value))
+            payload.ssidVlan = None if value is None else int(str(value)) > 0
         elif key == Constants.SSID_NAME:
             payload.ssidSsid = None if value is None else str(value)
         elif key == Constants.SSID_KEY:
             payload.ssid_key = None if value is None else str(value)
+        elif key == Constants.TOGGLE_DEVICE:
+            payload.toggled_macs = None if value is None or not isinstance(value,dict) else value
         else:
             raise ValueError(f"Unsupported SSID key: {key}")
 

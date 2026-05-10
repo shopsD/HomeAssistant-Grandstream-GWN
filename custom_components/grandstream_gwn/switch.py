@@ -11,6 +11,11 @@ from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
+def _build_toggle_callback(device_mac: str):
+    async def toggle_callback(ssid_switch_entity: "GwnSSIDSwitch", value: bool) -> bool:
+        return await ssid_switch_entity.coordinator.async_set_ssid_value(int(ssid_switch_entity._ssid[Constants.SSID_ID]), int(ssid_switch_entity._ssid[Constants.NETWORK_ID]), ssid_switch_entity._key, {device_mac: value})
+    return toggle_callback
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     networks: list[dict[str, Any]] = _networks(coordinator)
@@ -28,7 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 device_mac: str = device.get(Constants.MAC)
                 async def toggle_callback(self, value: bool) -> bool:
                     return await self.coordinator.async_set_ssid_value(int(self._ssid[Constants.SSID_ID]), int(self._ssid[Constants.NETWORK_ID]), self._key, {device_mac: value})
-                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}", device_mac in ssid.get(Constants.ASSIGNED_DEVICES), toggle_callback))
+                entities.append(GwnSSIDSwitch(coordinator, ssid, f"{Constants.TOGGLE_DEVICE}_{device_mac}", f"Assign: {device_mac}", device_mac in ssid.get(Constants.ASSIGNED_DEVICES), _build_toggle_callback(device_mac)))
 
     async_add_entities(entities)
 
@@ -37,7 +42,7 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
         super().__init__(coordinator)
         self._ssid: dict[str, Any] = ssid
         self._key: str = key
-        self._default_state: bool | None = None
+        self._default_state: bool | None = default_state
         self._toggle_callback: Callable[[Any, bool], Awaitable[bool]] | None = toggle_callback
         self._ssid_id: str = self._ssid[Constants.SSID_ID]
         self._name: str = self._ssid[Constants.SSID_NAME]
@@ -76,4 +81,3 @@ class GwnSSIDSwitch(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
 
     async def async_turn_off(self, **kwargs) -> None:
         await self._toggle_value(False)
-
