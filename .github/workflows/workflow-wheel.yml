@@ -27,7 +27,7 @@ on:
         required: true
         type: string
       zip_ha_integration:
-        description: "True to also create an Archive of the Home Assistant Integration"
+        description: "Create an archive of the Home Assistant Integration"
         required: false
         default: false
         type: boolean
