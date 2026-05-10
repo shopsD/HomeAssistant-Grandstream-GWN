@@ -12,7 +12,7 @@ from .sensor import _networks
 from gwn.constants import Constants
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     networks: list[dict[str, Any]] = _networks(coordinator)
     entities: list[ButtonEntity] = []
     for network in networks:
