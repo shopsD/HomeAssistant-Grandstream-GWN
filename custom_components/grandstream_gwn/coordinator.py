@@ -169,7 +169,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             payload.ap_5g_channel = None if value is None else int(value)
         elif key == Constants.AP_6G_CHANNEL:
             payload.ap_6g_channel = None if value is None else int(value)
-        elif key == Constants.NETWORKS:
+        elif key == Constants.NETWORK_ID:
             payload.networkId = None if value is None else int(value)
         else:
             raise ValueError(f"Unsupported device key: {key}")
