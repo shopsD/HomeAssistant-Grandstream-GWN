@@ -17,15 +17,15 @@ _LOGGER = logging.getLogger(Constants.LOG)
 
 class GwnDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self._entry = entry
+        self._gwn_config: GwnConfig = _build_gwn_config(self._entry)
+        self._gwn_client: GwnClient = GwnClient(self._gwn_config)
         super().__init__(
             hass,
             logger=_LOGGER,
             name="Grandstream GWN",
-            update_interval=timedelta(seconds=30),
+            update_interval=timedelta(seconds=self._gwn_config.refresh_period_s)
         )
-        self._entry = entry
-        self._gwn_config: GwnConfig = _build_gwn_config(self._entry)
-        self._gwn_client: GwnClient = GwnClient(self._gwn_config)
 
     def _enum_value(self, value: Enum | None) -> str | None:
         if value is None:

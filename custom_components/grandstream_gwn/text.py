@@ -15,10 +15,34 @@ from gwn.constants import Constants
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     networks: dict[str, dict[str, Any]] = _networks(coordinator)
+    entity_registry: EntityRegistry = er.async_get(hass)
+    cached_network_ids: set[str] = set()
+    @callback
+    def _sync_entities() -> None:
+        nonlocal cached_network_ids
+        current_network_ids: set[str] = set()
+        new_entities: list[TextEntity] = []
+        if not coordinator.is_readonly(): 
+            for network in _networks(coordinator).values():
+                network_id: str = network[Constants.NETWORK_ID]
+                current_network_ids.add(network.id)
+                if network_id not in cached_network_ids:
+                    new_entities.append(GwnNetworkText(coordinator, network, Constants.NETWORK_NAME, "Name"))
+        removed_network_ids = cached_network_ids - current_network_ids
+        for network_id in removed_network_ids:
+            network_entity_id: str = entity_registry.async_get_entity_id("text", DOMAIN, network_id)
+            if network_entity_id is not None:
+                entity_registry.async_remove(network_entity_id)
+        if len(new_entities) > 0:
+            async_add_entities(entities)
+        cached_network_ids = current_network_ids
+    _sync_entities()
+    entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
+
     entities: list[TextEntity] = []
     if not coordinator.is_readonly():
         for network in networks.values():
-            entities.append(GwnNetworkText(coordinator, network, Constants.NETWORK_NAME, "Name"))
+            #entities.append(GwnNetworkText(coordinator, network, Constants.NETWORK_NAME, "Name"))
 
             for ssid in network.get(Constants.SSIDS, {}).values():
                 entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_VLAN_ID, "VLAN ID"))
