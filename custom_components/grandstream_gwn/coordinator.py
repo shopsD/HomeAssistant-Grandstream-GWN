@@ -57,7 +57,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             Constants.ASSIGNED_DEVICES: { device.mac: device.name for device in sorted(gwn_ssid.devices, key=lambda device: device.mac) }
         }
 
-    def _serialise_device(self, gwn_network: GwnNetwork, gwn_device: GwnDevice, ssids: list[GwnSSID]) -> dict[str, object]:
+    def _serialise_device(self, gwn_network: GwnNetwork, gwn_device: GwnDevice, ssids: list[GwnSSID], networks: dict[int, str]) -> dict[str, object]:
         return {
             Constants.STATUS: gwn_device.status,
             Constants.AP_TYPE: gwn_device.apType,
@@ -98,10 +98,11 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             Constants.CHANNEL_LISTS_6G: gwn_device.channel_lists_6g,
             Constants.NETWORK_NAME: gwn_network.networkName,
             Constants.NETWORK_ID: gwn_network.id,
+            Constants.NETWORKS: networks,
             Constants.SSIDS: [
                 {
                     Constants.SSID_ID: ssid.id,
-                    Constants.SSID_NAME: ssid.ssidName,
+                    Constants.SSID_NAME: ssid.ssidName
                 }
                 for ssid in sorted(ssids, key=lambda ssid: int(ssid.id))
             ]
@@ -119,6 +120,10 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> dict[Any, dict[str, Any]]:
         gwn_networks: list[GwnNetwork] = await self._gwn_client.get_gwn_data()
+        full_network_dict: dict[int, str] = {
+            int(network.id): network.networkName
+            for network in sorted(gwn_networks, key=lambda network: int(network.id))
+        }
         network_list: dict[str, dict[str, object]] = {}
         for gwn_network in gwn_networks:
             ssid_list: dict[str,dict[str, object]] = {}
@@ -132,7 +137,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
                         device_assignments[gwn_device.mac] = []
                     device_assignments[gwn_device.mac].append(gwn_ssid)
             for gwn_device in gwn_network.devices:
-                device_list[gwn_device.mac] = self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, []))
+                device_list[gwn_device.mac] = self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, []), full_network_dict)
             network_list[gwn_network.id] = self._serialise_network(gwn_network, ssid_list, device_list)
 
         return {Constants.GWN:{Constants.NETWORKS: network_list}}
@@ -164,6 +169,8 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             payload.ap_5g_channel = None if value is None else int(value)
         elif key == Constants.AP_6G_CHANNEL:
             payload.ap_6g_channel = None if value is None else int(value)
+        elif key == Constants.NETWORKS:
+            payload.networkId = None if value is None else int(value)
         else:
             raise ValueError(f"Unsupported device key: {key}")
 

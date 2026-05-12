@@ -21,6 +21,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             entities.append(GwnNetworkText(coordinator, network, Constants.NETWORK_NAME, "Name"))
 
             for ssid in network.get(Constants.SSIDS, {}).values():
+                entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_VLAN_ID, "VLAN ID"))
                 entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_NAME, "SSID"))
                 entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase"))
 
