@@ -19,7 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     if not coordinator.is_readonly():
         for network in networks.values():
             for device in network.get(Constants.DEVICES, {}).values():
-                entities.append(GwnDeviceSelect(coordinator, device, Constants.NETWORK_NAME, Constants.NETWORKS, "Network"))
+                entities.append(GwnDeviceSelect(coordinator, device, Constants.NETWORK_ID, Constants.NETWORKS, "Network"))
                 entities.append(GwnDeviceSelect(coordinator, device, Constants.AP_2G4_CHANNEL, Constants.CHANNEL_LISTS_2G4, "2.4Ghz Channel"))
                 entities.append(GwnDeviceSelect(coordinator, device, Constants.AP_5G_CHANNEL, Constants.CHANNEL_LISTS_5G, "5Ghz Channel"))
                 entities.append(GwnDeviceSelect(coordinator, device, Constants.AP_6G_CHANNEL, Constants.CHANNEL_LISTS_6G, "6Ghz Channel"))
