@@ -16,15 +16,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     networks: dict[str, dict[str, Any]] = _networks(coordinator)
     entities: list[TextEntity] = []
-    for network in networks.values():
-        entities.append(GwnNetworkText(coordinator, network, Constants.NETWORK_NAME, "Name"))
+    if not coordinator.is_readonly():
+        for network in networks.values():
+            entities.append(GwnNetworkText(coordinator, network, Constants.NETWORK_NAME, "Name"))
 
-        for ssid in network.get(Constants.SSIDS, {}).values():
-            entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_NAME, "SSID"))
-            entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase"))
+            for ssid in network.get(Constants.SSIDS, {}).values():
+                entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_NAME, "SSID"))
+                entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase"))
 
-        for device in network.get(Constants.DEVICES, {}).values():
-            entities.append(GwnDeviceText(coordinator, device, Constants.AP_NAME, "Name"))
+            for device in network.get(Constants.DEVICES, {}).values():
+                entities.append(GwnDeviceText(coordinator, device, Constants.AP_NAME, "Name"))
 
     async_add_entities(entities)
 

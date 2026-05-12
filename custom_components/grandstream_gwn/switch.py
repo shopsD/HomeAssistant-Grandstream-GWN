@@ -16,18 +16,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     networks: dict[str, dict[str, Any]] = _networks(coordinator)
     entities: list[SwitchEntity] = []
-    for network in networks.values():
-        for ssid in network.get(Constants.SSIDS,{}).values():
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_ENABLE, "Enabled"))
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.PORTAL_ENABLED, "Captive Portal"))
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_ISOLATION, "Client Isolation"))
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ2_4_ENABLED, "2.4GHz Station"))
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ5_ENABLED, "5GHz Station"))
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ6_ENABLED, "6GHz Station"))
-            entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi"))
-            for device in network.get(Constants.DEVICES,{}).values():
-                device_mac: str = device.get(Constants.MAC)
-                entities.append(GwnSSIDDeviceSwitch(coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}", device_mac))
+    if not coordinator.is_readonly():
+        for network in networks.values():
+            for ssid in network.get(Constants.SSIDS,{}).values():
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_ENABLE, "Enabled"))
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.PORTAL_ENABLED, "Captive Portal"))
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_ISOLATION, "Client Isolation"))
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ2_4_ENABLED, "2.4GHz Station"))
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ5_ENABLED, "5GHz Station"))
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.GHZ6_ENABLED, "6GHz Station"))
+                entities.append(GwnSSIDSwitch(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi"))
+                for device in network.get(Constants.DEVICES,{}).values():
+                    device_mac: str = device.get(Constants.MAC)
+                    entities.append(GwnSSIDDeviceSwitch(coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}", device_mac))
 
     async_add_entities(entities)
 

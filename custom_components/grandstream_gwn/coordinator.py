@@ -137,6 +137,9 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
 
         return {Constants.GWN:{Constants.NETWORKS: network_list}}
 
+    def is_readonly(self) -> bool:
+        return self._gwn_client.is_readonly
+
     async def async_set_network_value(self, network_id: str, key: str, value: str) -> bool:
         payload: GwnNetworkPayload = GwnNetworkPayload(id=int(network_id))
 

@@ -22,13 +22,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     networks: dict[str, dict[str, Any]] = _networks(coordinator)
     entities: list[SensorEntity] = []
     for network in networks.values():
-        entities.append(GwnNetworkSensor(coordinator, network, Constants.NETWORK_NAME, "Name"))
+        if coordinator.is_readonly():
+            entities.append(GwnNetworkSensor(coordinator, network, Constants.NETWORK_NAME, "Name"))
         entities.append(GwnNetworkSensor(coordinator, network, Constants.COUNTRY_DISPLAY, "Country"))
         entities.append(GwnNetworkSensor(coordinator, network, Constants.TIMEZONE, "Timezone"))
 
         for device in network.get(Constants.DEVICES,{}).values():
+            if coordinator.is_readonly():
+                entities.append(GwnDeviceSensor(coordinator, device, Constants.NETWORK_NAME, "Network"))
+                entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_NAME, "Name"))
+                entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_2G4_CHANNEL, "2.4Ghz Channel"))
+                entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_5G_CHANNEL, "5Ghz Channel"))
+                entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_6G_CHANNEL, "6Ghz Channel"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.WIRELESS, "Wireless"))
-            entities.append(GwnDeviceSensor(coordinator, device, Constants.NETWORK_NAME, "Network"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.STATUS, "Status"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.IPV4, "IPv4"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.IPV6, "IPv6"))
@@ -40,22 +46,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             entities.append(GwnDeviceSensor(coordinator, device, Constants.CHANNEL_2_4, "Current 2.4GHz Channel"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.CHANNEL_5, "Current 5GHz Channel"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.CHANNEL_6, "Current 6GHz Channel"))
-            entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_2G4_CHANNEL, "2.4Ghz Channel"))
-            entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_5G_CHANNEL, "5Ghz Channel"))
-            entities.append(GwnDeviceSensor(coordinator, device, Constants.AP_6G_CHANNEL, "6Ghz Channel"))
             entities.append(GwnDeviceSensor(coordinator, device, Constants.MAC, "MAC"))
 
         for ssid in network.get(Constants.SSIDS,{}).values():
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ENABLE, "Enabled"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.PORTAL_ENABLED, "Captive Portal"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ISOLATION, "Client Isolation"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ2_4_ENABLED, "2.4GHz Station"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ5_ENABLED, "5GHz Station"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ6_ENABLED, "6GHz Station"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_VLAN_ID, "VLAN ID"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase"))
-            entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_NAME, "SSID"))
+            if coordinator.is_readonly():
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ENABLE, "Enabled"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.PORTAL_ENABLED, "Captive Portal"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_ISOLATION, "Client Isolation"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ2_4_ENABLED, "2.4GHz Station"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ5_ENABLED, "5GHz Station"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.GHZ6_ENABLED, "6GHz Station"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_HIDDEN, "Hide WiFi"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_VLAN_ID, "VLAN ID"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase"))
+                entities.append(GwnSsidSensor(coordinator, ssid, Constants.SSID_NAME, "SSID"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.CLIENT_COUNT, "Clients Online"))
             entities.append(GwnSsidSensor(coordinator, ssid, Constants.NETWORK_NAME, "Network"))
 
