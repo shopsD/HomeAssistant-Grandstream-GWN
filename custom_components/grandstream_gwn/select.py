@@ -122,13 +122,16 @@ class GwnDeviceSelect(GwnSelectEntity):
     def _current_device(self) -> dict[str, Any] | None:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
-        if network is None:
-            return None
-        devices: dict[str, Any] = network.get(Constants.DEVICES, {})
-        device: dict[str, Any] | None = devices.get(self._root_id)
-        if device is None:
+        device: dict[str, Any] | None = None
+        devices: dict[str, Any] = {}
+        if network is not None:
+            devices = network.get(Constants.DEVICES, {})
+            device = devices.get(self._root_id)
+        if device is not None:
+            return device
+        else:
             # device may have moved network so now check every other network for it
-            for network in network.values():
+            for network in networks.values():
                 devices = network.get(Constants.DEVICES, {})
                 if isinstance(devices, dict):
                     device = devices.get(self._root_id)
