@@ -87,7 +87,30 @@ class GwnDeviceButton(GwnButtonEntity):
             "sw_version": self._sw_version
         }
 
+    def _current_device(self) -> dict[str, Any] | None:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        if network is None:
+            return None
+        devices: dict[str, Any] = network.get(Constants.DEVICES, {})
+        device: dict[str, Any] | None = devices.get(self._root_id)
+        if device is None:
+            # device may have moved network so now check every other network for it
+            for network in network.values():
+                devices = network.get(Constants.DEVICES, {})
+                if isinstance(devices, dict):
+                    device = devices.get(self._root_id)
+                if device is not None:
+                    # update the stored network ID to the newer one
+                    self._network_id = device[Constants.NETWORK_ID]
+                    return device
+        return None
+
     async def async_press(self) -> None:
+        # This will update the stored network ID
+        device: dict[str, Any] | None = self._current_device()
+        if device is None:
+            return None
         await self._coordinator.async_press_device_action(self._root_id, self._network_id, self._key)
 
     def gwn_unique_id(self) -> str:

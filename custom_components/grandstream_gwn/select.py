@@ -102,12 +102,7 @@ class GwnDeviceSelect(GwnSelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
-        network: dict[str, Any] | None = networks.get(self._network_id)
-        if network is None:
-            return None
-        devices: dict[str, Any] = network.get(Constants.DEVICES, {})
-        device: dict[str, Any] | None = devices.get(self._root_id)
+        device: dict[str, Any] | None = self._current_device()
         if device is None:
             return None
 
@@ -123,6 +118,25 @@ class GwnDeviceSelect(GwnSelectEntity):
             "model": self._ap_type,
             "sw_version": self._sw_version
         }
+
+    def _current_device(self) -> dict[str, Any] | None:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        if network is None:
+            return None
+        devices: dict[str, Any] = network.get(Constants.DEVICES, {})
+        device: dict[str, Any] | None = devices.get(self._root_id)
+        if device is None:
+            # device may have moved network so now check every other network for it
+            for network in network.values():
+                devices = network.get(Constants.DEVICES, {})
+                if isinstance(devices, dict):
+                    device = devices.get(self._root_id)
+                if device is not None:
+                    # update the stored network ID to the newer one
+                    self._network_id = device[Constants.NETWORK_ID]
+                    return device
+        return None
 
     async def async_select_option(self, option: str) -> None:
         for value, label in self._option_map.items():
