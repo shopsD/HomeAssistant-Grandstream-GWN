@@ -56,7 +56,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
 
 class GwnTextEntity(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
-    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str, base: str) -> None:
         super().__init__(coordinator)
         self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._network_id: str = network_id
@@ -65,7 +65,7 @@ class GwnTextEntity(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         self._name: str = name
 
         self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._root_id}_{key}"
+        self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
 
     def gwn_unique_id(self) -> str:
         return self._attr_unique_id
@@ -74,7 +74,7 @@ class GwnNetworkText(GwnTextEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, network: dict[str, Any], key: str, name_suffix: str) -> None:
         network_id: str = network[Constants.NETWORK_ID]
         name: str = network[Constants.NETWORK_NAME]
-        super().__init__(coordinator, network_id, network_id, key, name, name_suffix)
+        super().__init__(coordinator, network_id, network_id, key, name, name_suffix, "network")
 
     @property
     def native_value(self) -> str | None:
@@ -106,7 +106,7 @@ class GwnDeviceText(GwnTextEntity):
         network_id: str = device[Constants.NETWORK_ID]
         device_mac: str = device[Constants.MAC]
         name: str = device[Constants.AP_NAME]
-        super().__init__(coordinator, network_id, device_mac, key, name, name_suffix)
+        super().__init__(coordinator, network_id, device_mac, key, name, name_suffix, "device")
 
     @property
     def native_value(self) -> str | None:
@@ -149,11 +149,11 @@ class GwnDeviceText(GwnTextEntity):
             
         return None
 
-    def gwn_unique_id(self) -> str:
-        # add network ID so that the cache can detect a change of network if the network has moved
-        return f"{GwnTextEntity.gwn_unique_id(self)}_{self._network_id}"
-
     async def async_set_value(self, value: str) -> None:
+        # This will update the stored network ID
+        device: dict[str, Any] | None = self._current_device()
+        if device is None:
+            return None
         await self._coordinator.async_set_device_value(self._root_id, self._network_id, self._key, value)
 
 class GwnSSIDText(GwnTextEntity):
@@ -164,7 +164,7 @@ class GwnSSIDText(GwnTextEntity):
         network_id: str = ssid[Constants.NETWORK_ID]
         ssid_id: str = ssid[Constants.SSID_ID]
         name: str = ssid[Constants.SSID_NAME]
-        super().__init__(coordinator, network_id, ssid_id, key, name, name_suffix)
+        super().__init__(coordinator, network_id, ssid_id, key, name, name_suffix, "ssid")
 
     @property
     def native_value(self) -> str | None:

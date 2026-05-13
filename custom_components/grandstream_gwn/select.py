@@ -54,7 +54,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
 
 class GwnSelectEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity):
-    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, options_key: str, name: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, options_key: str, name: str, name_suffix: str, base: str) -> None:
 
         super().__init__(coordinator)
         self._coordinator: GwnDataUpdateCoordinator = coordinator
@@ -65,7 +65,7 @@ class GwnSelectEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
         self._options_key: str = options_key
 
         self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._root_id}_{key}"
+        self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
 
     @property
     def _option_map(self) -> dict[int, str]:
@@ -85,16 +85,11 @@ class GwnDeviceSelect(GwnSelectEntity):
         network_id: str = device[Constants.NETWORK_ID]
         device_mac: str = device[Constants.MAC]
         name: str = device[Constants.AP_NAME]
-        super().__init__(coordinator, network_id, device_mac, key, options_key, name, name_suffix)
+        super().__init__(coordinator, network_id, device_mac, key, options_key, name, name_suffix, "device")
 
     @property
     def _option_map(self) -> dict[int, str]:
-        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
-        network: dict[str, Any] | None = networks.get(self._network_id)
-        if network is None:
-            return {}
-        devices = network.get(Constants.DEVICES, {})
-        device = devices.get(self._root_id)
+        device: dict[str, Any] | None = self._current_device()
         if device is None:
             return {}
         raw_options = device.get(self._options_key, {})
@@ -146,7 +141,3 @@ class GwnDeviceSelect(GwnSelectEntity):
             if label == option:
                 await self.coordinator.async_set_device_value(self._root_id, self._network_id, self._key, value)
                 return
-
-    def gwn_unique_id(self) -> str:
-        # add network ID so that the cache can detect a change of network if the network has moved
-        return f"{GwnSelectEntity.gwn_unique_id(self)}_{self._network_id}"

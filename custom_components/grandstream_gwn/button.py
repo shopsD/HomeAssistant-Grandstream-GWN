@@ -53,7 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
 
 class GwnButtonEntity(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity):
-    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str, base: str) -> None:
         super().__init__(coordinator)
         self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._network_id: str = network_id
@@ -62,7 +62,7 @@ class GwnButtonEntity(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity)
         self._name: str = name
 
         self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._root_id}_{key}"
+        self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
 
     def gwn_unique_id(self) -> str:
         return self._attr_unique_id
@@ -75,7 +75,7 @@ class GwnDeviceButton(GwnButtonEntity):
         network_id: str = device[Constants.NETWORK_ID]
         device_mac: str = device[Constants.MAC]
         name: str = device[Constants.AP_NAME]
-        super().__init__(coordinator, network_id, device_mac, key, name, name_suffix)
+        super().__init__(coordinator, network_id, device_mac, key, name, name_suffix, "device")
 
     @property
     def device_info(self) -> DeviceInfo | None:
@@ -115,7 +115,3 @@ class GwnDeviceButton(GwnButtonEntity):
         if device is None:
             return None
         await self._coordinator.async_press_device_action(self._root_id, self._network_id, self._key)
-
-    def gwn_unique_id(self) -> str:
-        # add network ID so that the cache can detect a change of network if the network has moved
-        return f"{GwnButtonEntity.gwn_unique_id(self)}_{self._network_id}"

@@ -68,7 +68,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
 
 class GwnSwitchEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity):
-    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str, base: str) -> None:
         super().__init__(coordinator)
         self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._network_id: str = network_id
@@ -77,7 +77,7 @@ class GwnSwitchEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SwitchEntity)
         self._name: str = name
 
         self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._root_id}_{key}"
+        self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
 
     async def _toggle_value(self, value: bool) -> bool:
         return False
@@ -98,7 +98,7 @@ class GwnSSIDSwitch(GwnSwitchEntity):
         network_id: str = ssid[Constants.NETWORK_ID]
         ssid_id: str = ssid[Constants.SSID_ID]
         name: str = ssid[Constants.SSID_NAME]
-        super().__init__(coordinator, network_id, ssid_id, key, name, name_suffix)
+        super().__init__(coordinator, network_id, ssid_id, key, name, name_suffix, "ssid")
 
     async def _toggle_value(self, value: bool) -> bool:
         return await self.coordinator.async_set_ssid_value(self._root_id, self._network_id, self._key, value)

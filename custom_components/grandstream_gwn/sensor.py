@@ -101,7 +101,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
 
 class GwnSensorEntity(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str) -> None:
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str, base: str) -> None:
         super().__init__(coordinator)
         self._coordinator: GwnDataUpdateCoordinator = coordinator
         self._network_id: str = network_id
@@ -110,7 +110,7 @@ class GwnSensorEntity(CoordinatorEntity, SensorEntity):
         self._name: str = name
 
         self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._root_id}_{key}"
+        self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
 
     def gwn_unique_id(self) -> str:
         return self._attr_unique_id
@@ -119,7 +119,7 @@ class GwnNetworkSensor(GwnSensorEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, network: dict[str, Any], key: str, name_suffix: str) -> None:
         network_id: str = network[Constants.NETWORK_ID]
         name: str = network[Constants.NETWORK_NAME]
-        super().__init__(coordinator, network_id, network_id, key, name, name_suffix)
+        super().__init__(coordinator, network_id, network_id, key, name, name_suffix, "network")
 
     @property
     def native_value(self) -> None | str:
@@ -145,7 +145,7 @@ class GwnDeviceSensor(GwnSensorEntity):
         network_id: str = device[Constants.NETWORK_ID]
         device_mac: str = device[Constants.MAC]
         name: str = device[Constants.AP_NAME]
-        super().__init__(coordinator, network_id, device_mac, key, name, name_suffix)
+        super().__init__(coordinator, network_id, device_mac, key, name, name_suffix, "device")
 
     def _int_value_normaliser(self, value: str) -> int | None:
         if value is None or self._units is None:
@@ -197,9 +197,6 @@ class GwnDeviceSensor(GwnSensorEntity):
                     return device
         return None
 
-    def gwn_unique_id(self) -> str:
-        # add network ID so that the cache can detect a change of network if the network has moved
-        return f"{GwnSensorEntity.gwn_unique_id(self)}_{self._network_id}"
 
 class GwnSSIDSensor(GwnSensorEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
@@ -209,7 +206,7 @@ class GwnSSIDSensor(GwnSensorEntity):
         network_id: str = ssid[Constants.NETWORK_ID]
         ssid_id: str = ssid[Constants.SSID_ID]
         name: str = ssid[Constants.SSID_NAME]
-        super().__init__(coordinator, network_id, ssid_id, key, name, name_suffix)
+        super().__init__(coordinator, network_id, ssid_id, key, name, name_suffix, "ssid")
 
     @property
     def native_value(self) -> None | str | int | bool:
