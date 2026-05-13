@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.components.text import TextEntity
@@ -14,12 +15,11 @@ from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
-def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new_entities: list[GwnTextEntity], entity_type: type[Any], coordinator: GwnDataUpdateCoordinator, data: dict[str, Any], key: str, name_suffix: str):
+def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new_entities: list[GwnTextEntity], entity_type: Callable[[GwnDataUpdateCoordinator, dict[str, Any], str, str], GwnTextEntity], coordinator: GwnDataUpdateCoordinator, data: dict[str, Any], key: str, name_suffix: str):
     entity: GwnTextEntity = entity_type(coordinator, data, key, name_suffix)
     current_unique_ids.add(entity.gwn_unique_id())
-    if entity.gwn_unique_id not in cached_unique_ids:
+    if entity.gwn_unique_id() not in cached_unique_ids:
         new_entities.append(entity)
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
