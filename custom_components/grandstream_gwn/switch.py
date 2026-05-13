@@ -151,4 +151,3 @@ class GwnSSIDDeviceSwitch(GwnSSIDSwitch):
         assigned = ssid.get(Constants.ASSIGNED_DEVICES, {})
 
         return isinstance(assigned, dict) and self._device_mac in assigned
-

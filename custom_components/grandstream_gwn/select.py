@@ -23,7 +23,7 @@ def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    
+
     entity_registry: EntityRegistry = er.async_get(hass)
     cached_unique_ids: set[str] = set()
     @callback
@@ -42,7 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
         removed_unique_ids = cached_unique_ids - current_unique_ids
         for unique_id in removed_unique_ids:
-            network_entity_id: str | None = entity_registry.async_get_entity_id("text", DOMAIN, unique_id)
+            network_entity_id: str | None = entity_registry.async_get_entity_id("select", DOMAIN, unique_id)
             if network_entity_id is not None:
                 entity_registry.async_remove(network_entity_id)
         if len(new_entities) > 0:

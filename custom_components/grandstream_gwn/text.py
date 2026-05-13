@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         nonlocal cached_unique_ids
         current_unique_ids: set[str] = set()
         new_entities: list[GwnTextEntity] = []
-        if not coordinator.is_readonly(): 
+        if not coordinator.is_readonly():
             networks: dict[str, dict[str, Any]] = _networks(coordinator)
             for network in networks.values():
                 create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnNetworkText, coordinator, network, Constants.NETWORK_NAME, "Name")
