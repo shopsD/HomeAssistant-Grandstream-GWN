@@ -2,8 +2,10 @@ from typing import Any
 
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -12,56 +14,77 @@ from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
+def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new_entities: list[GwnTextEntity], entity_type: type[Any], coordinator: GwnDataUpdateCoordinator, data: dict[str, Any], key: str, name_suffix: str):
+    entity: GwnTextEntity = entity_type(coordinator, data, key, name_suffix)
+    current_unique_ids.add(entity.gwn_unique_id())
+    if entity.gwn_unique_id not in cached_unique_ids:
+        new_entities.append(entity)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    networks: dict[str, dict[str, Any]] = _networks(coordinator)
+    
     entity_registry: EntityRegistry = er.async_get(hass)
-    cached_network_ids: set[str] = set()
+    cached_unique_ids: set[str] = set()
     @callback
     def _sync_entities() -> None:
-        nonlocal cached_network_ids
-        current_network_ids: set[str] = set()
-        new_entities: list[TextEntity] = []
+        nonlocal cached_unique_ids
+        current_unique_ids: set[str] = set()
+        new_entities: list[GwnTextEntity] = []
         if not coordinator.is_readonly(): 
-            for network in _networks(coordinator).values():
-                network_id: str = network[Constants.NETWORK_ID]
-                current_network_ids.add(network.id)
-                if network_id not in cached_network_ids:
-                    new_entities.append(GwnNetworkText(coordinator, network, Constants.NETWORK_NAME, "Name"))
-        removed_network_ids = cached_network_ids - current_network_ids
-        for network_id in removed_network_ids:
-            network_entity_id: str = entity_registry.async_get_entity_id("text", DOMAIN, network_id)
+            networks: dict[str, dict[str, Any]] = _networks(coordinator)
+            for network in networks.values():
+                create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnNetworkText, coordinator, network, Constants.NETWORK_NAME, "Name")
+                for device in network.get(Constants.DEVICES, {}).values():
+                    create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceText, coordinator, device, Constants.AP_NAME, "Name")
+                for ssid in network.get(Constants.SSIDS, {}).values():
+                    create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnSSIDText, coordinator, ssid, Constants.SSID_VLAN_ID, "VLAN ID")
+                    create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnSSIDText, coordinator, ssid, Constants.SSID_NAME, "SSID")
+                    create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnSSIDText, coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase")
+
+                
+        removed_unique_ids = cached_unique_ids - current_unique_ids
+        for unique_id in removed_unique_ids:
+            network_entity_id: str | None = entity_registry.async_get_entity_id("text", DOMAIN, unique_id)
             if network_entity_id is not None:
                 entity_registry.async_remove(network_entity_id)
         if len(new_entities) > 0:
-            async_add_entities(entities)
-        cached_network_ids = current_network_ids
+            async_add_entities(new_entities)
+        cached_unique_ids = current_unique_ids
+
     _sync_entities()
     entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
 
-    entities: list[TextEntity] = []
-    if not coordinator.is_readonly():
-        for network in networks.values():
-            #entities.append(GwnNetworkText(coordinator, network, Constants.NETWORK_NAME, "Name"))
-
-            for ssid in network.get(Constants.SSIDS, {}).values():
-                entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_VLAN_ID, "VLAN ID"))
-                entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_NAME, "SSID"))
-                entities.append(GwnSSIDText(coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase"))
-
-            for device in network.get(Constants.DEVICES, {}).values():
-                entities.append(GwnDeviceText(coordinator, device, Constants.AP_NAME, "Name"))
-
-    async_add_entities(entities)
-
-class GwnNetworkText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
-    def __init__(self, coordinator, network: dict[str, Any], key: str, name_suffix: str) -> None:
+class GwnTextEntity(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str, device_info: DeviceInfo) -> None:
         super().__init__(coordinator)
+        self._coordinator: GwnDataUpdateCoordinator = coordinator
+        self._network_id: str = network_id
+        self._root_id = root_id
         self._key: str = key
-        self._network_id: str = network[Constants.NETWORK_ID]
-        self._name: str = network[Constants.NETWORK_NAME]
+        self._name: str = name
+        self._device_info: DeviceInfo = device_info
+
         self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._network_id}_{key}"
+        self._attr_unique_id: str = f"{self._root_id}_{key}"
+    
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        return self._device_info
+
+    def gwn_unique_id(self) -> str:
+        return self._attr_unique_id
+
+class GwnNetworkText(GwnTextEntity):
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network: dict[str, Any], key: str, name_suffix: str) -> None:
+        network_id: str = network[Constants.NETWORK_ID]
+        name: str = network[Constants.NETWORK_NAME]
+        super().__init__(coordinator, network_id, network_id, key, name, name_suffix, {
+            "identifiers": {(DOMAIN, f"network_{network_id}")},
+            "name": name,
+            "manufacturer": "Grandstream",
+            "model": "GWN Network"
+        })
 
     @property
     def native_value(self) -> str | None:
@@ -72,31 +95,25 @@ class GwnNetworkText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         value = network.get(self._key)
         return None if value is None else str(value)
 
-    @property
-    def device_info(self) -> DeviceInfo | None:
-        return {
-            "identifiers": {(DOMAIN, f"network_{self._network_id}")},
-            "name": self._name,
-            "manufacturer": "Grandstream",
-            "model": "GWN Network"
-        }
-
     async def async_set_value(self, value: str) -> None:
-        await self.coordinator.async_set_network_value(self._network_id, self._key, value)
+        await self._coordinator.async_set_network_value(self._network_id, self._key, value)
 
-class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
+class GwnDeviceText(GwnTextEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
-        super().__init__(coordinator)
-        self._coordinator: GwnDataUpdateCoordinator = coordinator
-        self._device: dict[str, Any] = device
-        self._key: str = key
-        self._device_mac: str = device[Constants.MAC]
-        self._name: str = device[Constants.AP_NAME]
-        self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._device_mac}_{key}"
+        
         self._ap_type: str = device[Constants.AP_TYPE]
         self._sw_version: str = device[Constants.CURRENT_FIRMWARE]
-        self._network_id: str = device[Constants.NETWORK_ID]
+
+        network_id: str = device[Constants.NETWORK_ID]
+        device_mac: str = device[Constants.MAC]
+        name: str = device[Constants.AP_NAME]
+        super().__init__(coordinator, network_id, device_mac, key, name, name_suffix, {
+            "identifiers": {(DOMAIN, f"device_{device_mac}")},
+            "name": name,
+            "manufacturer": "Grandstream",
+            "model": self._ap_type,
+            "sw_version": self._sw_version
+        })
 
     @property
     def native_value(self) -> str | None:
@@ -105,36 +122,29 @@ class GwnDeviceText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         if network is None:
             return None
         devices: dict[str, Any] = network.get(Constants.DEVICES, {})
-        device: dict[str, Any] | None = devices.get(self._device_mac)
+        device: dict[str, Any] | None = devices.get(self._root_id)
         if device is None:
             return None
         value = device.get(self._key)
         return None if value is None else str(value)
 
-    @property
-    def device_info(self) -> DeviceInfo | None:
-        return {
-            "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
-            "name": self._name,
-            "manufacturer": "Grandstream",
-            "model": self._ap_type,
-            "sw_version": self._sw_version
-        }
-
     async def async_set_value(self, value: str) -> None:
-        await self.coordinator.async_set_device_value(self._device_mac, self._network_id, self._key, value)
+        await self._coordinator.async_set_device_value(self._root_id, self._network_id, self._key, value)
 
-class GwnSSIDText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
+class GwnSSIDText(GwnTextEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
-        super().__init__(coordinator)
-        self._coordinator: GwnDataUpdateCoordinator = coordinator
-        self._key: str = key
-        self._ssid_id: str = ssid[Constants.SSID_ID]
-        self._name: str = ssid[Constants.SSID_NAME]
-        self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._ssid_id}_{key}"
+        
         self._model: str = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
-        self._network_id: str = ssid[Constants.NETWORK_ID]
+
+        network_id: str = ssid[Constants.NETWORK_ID]
+        ssid_id: str = ssid[Constants.SSID_ID]
+        name: str = ssid[Constants.SSID_NAME]
+        super().__init__(coordinator, network_id, ssid_id, key, name, name_suffix, {
+            "identifiers": {(DOMAIN, f"ssid_{ssid_id}")},
+            "name": name,
+            "manufacturer": "Grandstream",
+            "model": self._model
+        })
 
     @property
     def native_value(self) -> str | None:
@@ -143,20 +153,11 @@ class GwnSSIDText(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         if network is None:
             return None
         ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
-        ssid: dict[str, Any] | None = ssids.get(self._ssid_id)
+        ssid: dict[str, Any] | None = ssids.get(self._root_id)
         if ssid is None:
             return None
         value = ssid.get(self._key)
         return None if value is None else str(value)
 
-    @property
-    def device_info(self) -> DeviceInfo | None:
-        return {
-            "identifiers": {(DOMAIN, f"ssid_{self._ssid_id}")},
-            "name": self._name,
-            "manufacturer": "Grandstream",
-            "model": self._model
-        }
-
     async def async_set_value(self, value: str) -> None:
-        await self.coordinator.async_set_ssid_value(self._ssid_id, self._network_id, self._key, value)
+        await self._coordinator.async_set_ssid_value(self._root_id, self._network_id, self._key, value)
