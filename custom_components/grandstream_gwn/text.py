@@ -3,7 +3,7 @@ from typing import Any
 
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_registry import EntityRegistry
@@ -42,7 +42,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnSSIDText, coordinator, ssid, Constants.SSID_NAME, "SSID")
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnSSIDText, coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase")
 
-                
         removed_unique_ids = cached_unique_ids - current_unique_ids
         for unique_id in removed_unique_ids:
             network_entity_id: str | None = entity_registry.async_get_entity_id("text", DOMAIN, unique_id)
