@@ -23,7 +23,7 @@ def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    
+
     entity_registry: EntityRegistry = er.async_get(hass)
     cached_unique_ids: set[str] = set()
     @callback
@@ -98,7 +98,7 @@ class GwnNetworkText(GwnTextEntity):
 
 class GwnDeviceText(GwnTextEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
-        
+
         self._ap_type: str = device[Constants.AP_TYPE]
         self._sw_version: str = device[Constants.CURRENT_FIRMWARE]
 
@@ -135,7 +135,7 @@ class GwnDeviceText(GwnTextEntity):
 
 class GwnSSIDText(GwnTextEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
-        
+
         self._model: str = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
 
         network_id: str = ssid[Constants.NETWORK_ID]

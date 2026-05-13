@@ -52,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
             for device in network.get(Constants.DEVICES,{}).values():
                 if coordinator.is_readonly():
-                    
+
                     create_device_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceSensor, coordinator, device, Constants.NETWORK_NAME, "Network")
                     create_device_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceSensor, coordinator, device, Constants.AP_NAME, "Name")
                     create_device_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceSensor, coordinator, device, Constants.AP_2G4_CHANNEL, "2.4Ghz Channel")
@@ -182,7 +182,7 @@ class GwnDeviceSensor(GwnSensorEntity):
 
 class GwnSSIDSensor(GwnSensorEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
-        
+
         self._model: str = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
 
         network_id: str = ssid[Constants.NETWORK_ID]
