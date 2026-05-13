@@ -15,7 +15,7 @@ from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
-def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new_entities: list[GwnSelectEntity], entity_type: Callable[[GwnDataUpdateCoordinator, dict[str, Any], str, str, str], GwnSelectEntity], coordinator: GwnDataUpdateCoordinator, data: dict[str, Any], key: str, options_key: str, name_suffix: str):
+def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new_entities: list[GwnSelectEntity], entity_type: Callable[[GwnDataUpdateCoordinator, dict[str, Any], str, str, str], GwnSelectEntity], coordinator: GwnDataUpdateCoordinator, data: dict[str, Any], key: str, options_key: str, name_suffix: str) -> None:
     entity: GwnSelectEntity = entity_type(coordinator, data, key, options_key, name_suffix)
     current_unique_ids.add(entity.gwn_unique_id())
     if entity.gwn_unique_id() not in cached_unique_ids:
@@ -35,7 +35,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             networks: dict[str, dict[str, Any]] = _networks(coordinator)
             for network in networks.values():
                 for device in network.get(Constants.DEVICES, {}).values():
-                    # TODO These all need to be made actually dynamic if the underlying data has changed
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceSelect, coordinator, device, Constants.NETWORK_ID, Constants.NETWORKS, "Network")
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceSelect, coordinator, device, Constants.AP_2G4_CHANNEL, Constants.CHANNEL_LISTS_2G4, "2.4Ghz Channel")
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceSelect, coordinator, device, Constants.AP_5G_CHANNEL, Constants.CHANNEL_LISTS_5G, "5Ghz Channel")
