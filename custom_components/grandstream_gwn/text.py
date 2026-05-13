@@ -19,7 +19,7 @@ def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new
     entity: GwnTextEntity = entity_type(coordinator, data, key, name_suffix)
     current_unique_ids.add(entity.gwn_unique_id())
     if entity.gwn_unique_id() not in cached_unique_ids:
-        new_entities.append(entity)
+        new_entities.append(entity) # cache entities to detect later removal
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
@@ -42,6 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnSSIDText, coordinator, ssid, Constants.SSID_NAME, "SSID")
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnSSIDText, coordinator, ssid, Constants.SSID_KEY, "WiFi Passphrase")
 
+        # Remove any device that is not in the cache since it likely means they are have been removed from gwn manager (removed network, device or ssid)
         removed_unique_ids = cached_unique_ids - current_unique_ids
         for unique_id in removed_unique_ids:
             network_entity_id: str | None = entity_registry.async_get_entity_id("text", DOMAIN, unique_id)
@@ -129,6 +130,10 @@ class GwnDeviceText(GwnTextEntity):
             "model": self._ap_type,
             "sw_version": self._sw_version
         }
+
+    def gwn_unique_id(self) -> str:
+        # add network ID so that the cache can detect a change of network if the network has moved
+        return f"{GwnTextEntity.gwn_unique_id(self)}_{self._network_id}"
 
     async def async_set_value(self, value: str) -> None:
         await self._coordinator.async_set_device_value(self._root_id, self._network_id, self._key, value)

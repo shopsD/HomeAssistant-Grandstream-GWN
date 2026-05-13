@@ -18,7 +18,7 @@ from gwn.constants import Constants
 def _create_switch_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new_entities: list[GwnSwitchEntity], entity: GwnSwitchEntity) -> None:
     current_unique_ids.add(entity.gwn_unique_id())
     if entity.gwn_unique_id() not in cached_unique_ids:
-        new_entities.append(entity)
+        new_entities.append(entity) # cache entities to detect later removal
 
 def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new_entities: list[GwnSwitchEntity], entity_type: Callable[[GwnDataUpdateCoordinator, dict[str, Any], str, str], GwnSwitchEntity], coordinator: GwnDataUpdateCoordinator, data: dict[str, Any], key: str, name_suffix: str) -> None:
     entity: GwnSwitchEntity = entity_type(coordinator, data, key, name_suffix)
@@ -54,6 +54,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                         device_mac: str = device.get(Constants.MAC)
                         create_ssid_device_entity(current_unique_ids, cached_unique_ids, new_entities, GwnSSIDDeviceSwitch, coordinator, ssid, Constants.TOGGLE_DEVICE, f"Assign: {device_mac}", device_mac)
 
+        # Remove any device that is not in the cache since it likely means they are have been removed from gwn manager (removed network, device or ssid)
         removed_unique_ids = cached_unique_ids - current_unique_ids
         for unique_id in removed_unique_ids:
             network_entity_id: str | None = entity_registry.async_get_entity_id("switch", DOMAIN, unique_id)
@@ -118,7 +119,7 @@ class GwnSSIDSwitch(GwnSwitchEntity):
             return value
         if isinstance(value, int):
             return value == 1
-        return False # this is an error
+        return False # this is an error as it should never ever hit this line
 
     @property
     def device_info(self) -> DeviceInfo | None:

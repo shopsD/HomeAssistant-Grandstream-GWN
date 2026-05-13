@@ -19,7 +19,7 @@ def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new
     entity: GwnButtonEntity = entity_type(coordinator, data, key, name_suffix)
     current_unique_ids.add(entity.gwn_unique_id())
     if entity.gwn_unique_id() not in cached_unique_ids:
-        new_entities.append(entity)
+        new_entities.append(entity) # cache entities to detect later removal
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
@@ -39,6 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceButton, coordinator, device, Constants.RESET, "Reset")
                     create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceButton, coordinator, device, Constants.UPDATE_FIRMWARE, "Update Firmware")
 
+        # Remove any device that is not in the cache since it likely means they are have been removed from gwn manager (removed network, device or ssid)
         removed_unique_ids = cached_unique_ids - current_unique_ids
         for unique_id in removed_unique_ids:
             network_entity_id: str | None = entity_registry.async_get_entity_id("button", DOMAIN, unique_id)
@@ -88,3 +89,7 @@ class GwnDeviceButton(GwnButtonEntity):
 
     async def async_press(self) -> None:
         await self._coordinator.async_press_device_action(self._root_id, self._network_id, self._key)
+
+    def gwn_unique_id(self) -> str:
+        # add network ID so that the cache can detect a change of network if the network has moved
+        return f"{GwnButtonEntity.gwn_unique_id(self)}_{self._network_id}"
