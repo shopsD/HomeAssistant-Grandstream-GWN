@@ -1,9 +1,12 @@
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import callback, HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -12,34 +15,68 @@ from .coordinator import GwnDataUpdateCoordinator
 from .sensor import _networks
 from gwn.constants import Constants
 
+def create_entity(current_unique_ids: set[str], cached_unique_ids: set[str], new_entities: list[GwnButtonEntity], entity_type: Callable[[GwnDataUpdateCoordinator, dict[str, Any], str, str], GwnButtonEntity], coordinator: GwnDataUpdateCoordinator, data: dict[str, Any], key: str, name_suffix: str):
+    entity: GwnButtonEntity = entity_type(coordinator, data, key, name_suffix)
+    current_unique_ids.add(entity.gwn_unique_id())
+    if entity.gwn_unique_id() not in cached_unique_ids:
+        new_entities.append(entity)
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator: GwnDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    networks: dict[str, dict[str, Any]] = _networks(coordinator)
-    entities: list[ButtonEntity] = []
-    for network in networks.values():
-        for device in network.get(Constants.DEVICES,{}).values():
-            entities.append(GwnDeviceButton(coordinator, device, Constants.REBOOT, "Reboot"))
-            entities.append(GwnDeviceButton(coordinator, device, Constants.RESET, "Reset"))
-            entities.append(GwnDeviceButton(coordinator, device, Constants.UPDATE_FIRMWARE, "Update Firmware"))
-    async_add_entities(entities)
+    
+    entity_registry: EntityRegistry = er.async_get(hass)
+    cached_unique_ids: set[str] = set()
+    @callback
+    def _sync_entities() -> None:
+        nonlocal cached_unique_ids
+        current_unique_ids: set[str] = set()
+        new_entities: list[GwnButtonEntity] = []
+        if not coordinator.is_readonly():
+            networks: dict[str, dict[str, Any]] = _networks(coordinator)
+            for network in networks.values():
+                for device in network.get(Constants.DEVICES,{}).values():
+                    create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceButton, coordinator, device, Constants.REBOOT, "Reboot")
+                    create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceButton, coordinator, device, Constants.RESET, "Reset")
+                    create_entity(current_unique_ids, cached_unique_ids, new_entities, GwnDeviceButton, coordinator, device, Constants.UPDATE_FIRMWARE, "Update Firmware")
 
-class GwnDeviceButton(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity):
-    def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
+        removed_unique_ids = cached_unique_ids - current_unique_ids
+        for unique_id in removed_unique_ids:
+            network_entity_id: str | None = entity_registry.async_get_entity_id("text", DOMAIN, unique_id)
+            if network_entity_id is not None:
+                entity_registry.async_remove(network_entity_id)
+        if len(new_entities) > 0:
+            async_add_entities(new_entities)
+        cached_unique_ids = current_unique_ids
+
+class GwnButtonEntity(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity):
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, network_id: str, root_id: str, key: str, name: str, name_suffix: str) -> None:
         super().__init__(coordinator)
         self._coordinator: GwnDataUpdateCoordinator = coordinator
+        self._network_id: str = network_id
+        self._root_id = root_id
         self._key: str = key
-        self._device_mac: str = device[Constants.MAC]
-        self._name: str = device[Constants.AP_NAME]
+        self._name: str = name
+
         self._attr_name: str = f"{self._name} {name_suffix}"
-        self._attr_unique_id: str = f"{self._device_mac}_{key}"
+        self._attr_unique_id: str = f"{self._root_id}_{key}"
+
+    def gwn_unique_id(self) -> str:
+        return self._attr_unique_id
+
+class GwnDeviceButton(GwnButtonEntity):
+    def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str) -> None:
         self._ap_type: str = device[Constants.AP_TYPE]
         self._sw_version: str = device[Constants.CURRENT_FIRMWARE]
-        self._network_id: str = device[Constants.NETWORK_ID]
+
+        network_id: str = device[Constants.NETWORK_ID]
+        device_mac: str = device[Constants.MAC]
+        name: str = device[Constants.AP_NAME]
+        super().__init__(coordinator, network_id, device_mac, key, name, name_suffix)
 
     @property
     def device_info(self) -> DeviceInfo | None:
         return {
-            "identifiers": {(DOMAIN, f"device_{self._device_mac}")},
+            "identifiers": {(DOMAIN, f"device_{self._root_id}")},
             "name": self._name,
             "manufacturer": "Grandstream",
             "model": self._ap_type,
@@ -47,4 +84,4 @@ class GwnDeviceButton(CoordinatorEntity[GwnDataUpdateCoordinator], ButtonEntity)
         }
 
     async def async_press(self) -> None:
-        await self._coordinator.async_press_device_action(self._device_mac, self._network_id, self._key)
+        await self._coordinator.async_press_device_action(self._root_id, self._network_id, self._key)
