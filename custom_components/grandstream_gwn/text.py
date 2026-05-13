@@ -146,7 +146,7 @@ class GwnDeviceText(GwnTextEntity):
                     # update the stored network ID to the newer one
                     self._network_id = device[Constants.NETWORK_ID]
                     return device
-            
+
         return None
 
     async def async_set_value(self, value: str) -> None:
