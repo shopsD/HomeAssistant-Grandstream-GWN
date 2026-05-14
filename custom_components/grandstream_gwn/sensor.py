@@ -123,18 +123,27 @@ class GwnNetworkSensor(GwnSensorEntity):
 
     @property
     def native_value(self) -> None | str:
-        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
-        network: dict[str, Any] | None = networks.get(self._network_id)
+        network: dict[str, Any] | None = self._current_data()
         return None if network is None else network.get(self._key)
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return {
             "identifiers": {(DOMAIN, f"network_{self._root_id}")},
             "name": self._name,
             "manufacturer": "Grandstream",
             "model": "GWN Network"
         }
+
+    def _current_data(self) -> dict[str, Any] | None:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        if network is not None:
+            # update the stored data to the newer one
+            self._name: str = network[Constants.NETWORK_NAME]
+        return network
 
 class GwnDeviceSensor(GwnSensorEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, device: dict[str, Any], key: str, name_suffix: str, units: list[str] | None) -> None:
@@ -147,16 +156,9 @@ class GwnDeviceSensor(GwnSensorEntity):
         name: str = device[Constants.AP_NAME]
         super().__init__(coordinator, network_id, device_mac, key, name, name_suffix, "device")
 
-    def _int_value_normaliser(self, value: str) -> int | None:
-        if value is None or self._units is None:
-            return None
-        for unit in self._units:
-            value = value.replace(unit, "")
-        return int(value.strip())
-
     @property
     def native_value(self) -> None | str | int | bool:
-        device: dict[str, Any] | None = self._current_device()
+        device: dict[str, Any] | None = self._current_data()
         if device is None:
             return None
         value: int | str | bool | None = device.get(self._key)
@@ -167,6 +169,8 @@ class GwnDeviceSensor(GwnSensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return {
             "identifiers": {(DOMAIN, f"device_{self._root_id}")},
             "name": self._name,
@@ -175,7 +179,14 @@ class GwnDeviceSensor(GwnSensorEntity):
             "sw_version": self._sw_version
         }
 
-    def _current_device(self) -> dict[str, Any] | None:
+    def _int_value_normaliser(self, value: str) -> int | None:
+        if value is None or self._units is None:
+            return None
+        for unit in self._units:
+            value = value.replace(unit, "")
+        return int(value.strip())
+
+    def _current_data(self) -> dict[str, Any] | None:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         device: dict[str, Any] | None = None
@@ -183,20 +194,21 @@ class GwnDeviceSensor(GwnSensorEntity):
         if network is not None:
             devices = network.get(Constants.DEVICES, {})
             device = devices.get(self._root_id)
-        if device is not None:
-            return device
-        else:
+        if device is None:
             # device may have moved network so now check every other network for it
             for network in networks.values():
                 devices = network.get(Constants.DEVICES, {})
                 if isinstance(devices, dict):
                     device = devices.get(self._root_id)
-                if device is not None:
-                    # update the stored network ID to the newer one
-                    self._network_id = device[Constants.NETWORK_ID]
-                    return device
-        return None
-
+                    if device is not None:
+                        break
+        if device is not None:
+            # update the stored data to the newer one
+            self._ap_type = device[Constants.AP_TYPE]
+            self._sw_version = device[Constants.CURRENT_FIRMWARE]
+            self._name = device[Constants.AP_NAME]
+            self._network_id = device[Constants.NETWORK_ID]
+        return device
 
 class GwnSSIDSensor(GwnSensorEntity):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str) -> None:
@@ -210,19 +222,38 @@ class GwnSSIDSensor(GwnSensorEntity):
 
     @property
     def native_value(self) -> None | str | int | bool:
-        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
-        network: dict[str, Any] | None = networks.get(self._network_id)
-        if network is None:
-            return None
-        ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
-        ssid: dict[str, Any] | None = ssids.get(self._root_id)
+        ssid: dict[str, Any] | None = self._current_data()
         return None if ssid is None else ssid.get(self._key)
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._root_id}")},
             "name": self._name,
             "manufacturer": "Grandstream",
             "model": self._model
         }
+
+    def _current_data(self) -> dict[str, Any] | None:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        ssid: dict[str, Any] | None = None
+        ssids: dict[str, Any] = {}
+        if network is not None:
+            ssids = network.get(Constants.SSIDS, {})
+            ssid = ssids.get(self._root_id)
+        if ssid is None:
+            # ssid may have moved network if a new instance of gwn manager was created which reset the ssid ids
+            for network in networks.values():
+                ssids = network.get(Constants.SSIDS, {})
+                if isinstance(ssids, dict):
+                    ssid = ssids.get(self._root_id)
+                    if ssid is not None:
+                        break
+        if ssid is not None:
+            self._name: str = ssid[Constants.SSID_NAME]
+            self._network_id = ssid[Constants.NETWORK_ID]
+            return ssid
+        return None

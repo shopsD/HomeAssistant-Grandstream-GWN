@@ -78,8 +78,7 @@ class GwnNetworkText(GwnTextEntity):
 
     @property
     def native_value(self) -> str | None:
-        networks: dict[str, dict[str, Any]] = _networks(self.coordinator)
-        network: dict[str, Any] | None = networks.get(self._network_id)
+        network: dict[str, Any] | None = self._current_data()
         if network is None:
             return None
         value = network.get(self._key)
@@ -87,6 +86,8 @@ class GwnNetworkText(GwnTextEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return {
             "identifiers": {(DOMAIN, f"network_{self._root_id}")},
             "name": self._name,
@@ -94,7 +95,18 @@ class GwnNetworkText(GwnTextEntity):
             "model": "GWN Network"
         }
 
+    def _current_data(self) -> dict[str, Any] | None:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        if network is not None:
+            # update the stored data to the newer one
+            self._name: str = network[Constants.NETWORK_NAME]
+        return network
+
     async def async_set_value(self, value: str) -> None:
+         # This will update the stored network ID
+        if self._current_data() is None:
+            return None
         await self._coordinator.async_set_network_value(self._network_id, self._key, value)
 
 class GwnDeviceText(GwnTextEntity):
@@ -110,7 +122,7 @@ class GwnDeviceText(GwnTextEntity):
 
     @property
     def native_value(self) -> str | None:
-        device: dict[str, Any] | None = self._current_device()
+        device: dict[str, Any] | None = self._current_data()
         if device is None:
             return None
         value = device.get(self._key)
@@ -118,6 +130,8 @@ class GwnDeviceText(GwnTextEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return  {
             "identifiers": {(DOMAIN, f"device_{self._root_id}")},
             "name": self._name,
@@ -126,7 +140,7 @@ class GwnDeviceText(GwnTextEntity):
             "sw_version": self._sw_version
         }
 
-    def _current_device(self) -> dict[str, Any] | None:
+    def _current_data(self) -> dict[str, Any] | None:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         device: dict[str, Any] | None = None
@@ -134,25 +148,25 @@ class GwnDeviceText(GwnTextEntity):
         if network is not None:
             devices = network.get(Constants.DEVICES, {})
             device = devices.get(self._root_id)
-        if device is not None:
-            return device
-        else:
+        if device is None:
             # device may have moved network so now check every other network for it
             for network in networks.values():
                 devices = network.get(Constants.DEVICES, {})
                 if isinstance(devices, dict):
                     device = devices.get(self._root_id)
-                if device is not None:
-                    # update the stored network ID to the newer one
-                    self._network_id = device[Constants.NETWORK_ID]
-                    return device
-
-        return None
+                    if device is not None:
+                        break
+        if device is not None:
+            # update the stored data to the newer one
+            self._ap_type = device[Constants.AP_TYPE]
+            self._sw_version = device[Constants.CURRENT_FIRMWARE]
+            self._name = device[Constants.AP_NAME]
+            self._network_id = device[Constants.NETWORK_ID]
+        return device
 
     async def async_set_value(self, value: str) -> None:
         # This will update the stored network ID
-        device: dict[str, Any] | None = self._current_device()
-        if device is None:
+        if self._current_data() is None:
             return None
         await self._coordinator.async_set_device_value(self._root_id, self._network_id, self._key, value)
 
@@ -168,12 +182,7 @@ class GwnSSIDText(GwnTextEntity):
 
     @property
     def native_value(self) -> str | None:
-        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
-        network: dict[str, Any] | None = networks.get(self._network_id)
-        if network is None:
-            return None
-        ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
-        ssid: dict[str, Any] | None = ssids.get(self._root_id)
+        ssid: dict[str, Any] | None = self._current_data()
         if ssid is None:
             return None
         value = ssid.get(self._key)
@@ -181,6 +190,8 @@ class GwnSSIDText(GwnTextEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._root_id}")},
             "name": self._name,
@@ -188,5 +199,31 @@ class GwnSSIDText(GwnTextEntity):
             "model": self._model
         }
 
+    def _current_data(self) -> dict[str, Any] | None:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        ssid: dict[str, Any] | None = None
+        ssids: dict[str, Any] = {}
+        if network is not None:
+            ssids = network.get(Constants.SSIDS, {})
+            ssid = ssids.get(self._root_id)
+        if ssid is None:
+            # ssid may have moved network if a new instance of gwn manager was created which reset the ssid ids
+            for network in networks.values():
+                ssids = network.get(Constants.SSIDS, {})
+                if isinstance(ssids, dict):
+                    ssid = ssids.get(self._root_id)
+                    if ssid is not None:
+                        break
+        if ssid is not None:
+            self._name: str = ssid[Constants.SSID_NAME]
+            self._network_id = ssid[Constants.NETWORK_ID]
+            return ssid
+        return None
+
     async def async_set_value(self, value: str) -> None:
+        # This will update the stored network ID
+        if self._current_data() is None:
+            return None
         await self._coordinator.async_set_ssid_value(self._root_id, self._network_id, self._key, value)
+

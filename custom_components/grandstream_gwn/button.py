@@ -79,6 +79,8 @@ class GwnDeviceButton(GwnButtonEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return {
             "identifiers": {(DOMAIN, f"device_{self._root_id}")},
             "name": self._name,
@@ -87,7 +89,7 @@ class GwnDeviceButton(GwnButtonEntity):
             "sw_version": self._sw_version
         }
 
-    def _current_device(self) -> dict[str, Any] | None:
+    def _current_data(self) -> dict[str, Any] | None:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         device: dict[str, Any] | None = None
@@ -95,23 +97,24 @@ class GwnDeviceButton(GwnButtonEntity):
         if network is not None:
             devices = network.get(Constants.DEVICES, {})
             device = devices.get(self._root_id)
-        if device is not None:
-            return device
-        else:
+        if device is None:
             # device may have moved network so now check every other network for it
             for network in networks.values():
                 devices = network.get(Constants.DEVICES, {})
                 if isinstance(devices, dict):
                     device = devices.get(self._root_id)
-                if device is not None:
-                    # update the stored network ID to the newer one
-                    self._network_id = device[Constants.NETWORK_ID]
-                    return device
-        return None
+                    if device is not None:
+                        break
+        if device is not None:
+            # update the stored data to the newer one
+            self._ap_type = device[Constants.AP_TYPE]
+            self._sw_version = device[Constants.CURRENT_FIRMWARE]
+            self._name = device[Constants.AP_NAME]
+            self._network_id = device[Constants.NETWORK_ID]
+        return device
 
     async def async_press(self) -> None:
         # This will update the stored network ID
-        device: dict[str, Any] | None = self._current_device()
-        if device is None:
+        if self._current_data() is None:
             return None
         await self._coordinator.async_press_device_action(self._root_id, self._network_id, self._key)

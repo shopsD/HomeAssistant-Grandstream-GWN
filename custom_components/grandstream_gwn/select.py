@@ -72,8 +72,19 @@ class GwnSelectEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
         return {}
 
     @property
+    def _unique_option_map(self) -> dict[int, str]:
+        raw_options: dict[int, str] = self._option_map
+        found_options: set[str] = set()
+        for option_key, option_name in raw_options.items():
+            if option_name in found_options:
+                raw_options[option_key] = f"{option_name} - ({self._root_id})"
+            else:
+                found_options.add(option_name)
+        return raw_options
+
+    @property
     def options(self) -> list[str]:
-        return list(self._option_map.values())
+        return list(self._unique_option_map.values())
 
     def gwn_unique_id(self) -> str:
         return self._attr_unique_id
@@ -89,7 +100,7 @@ class GwnDeviceSelect(GwnSelectEntity):
 
     @property
     def _option_map(self) -> dict[int, str]:
-        device: dict[str, Any] | None = self._current_device()
+        device: dict[str, Any] | None = self._current_data()
         if device is None:
             return {}
         raw_options = device.get(self._options_key, {})
@@ -97,15 +108,17 @@ class GwnDeviceSelect(GwnSelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        device: dict[str, Any] | None = self._current_device()
+        device: dict[str, Any] | None = self._current_data()
         if device is None:
             return None
 
         current_value = device.get(self._key)
-        return None if current_value is None else self._option_map.get(int(current_value))
+        return None if current_value is None else self._unique_option_map.get(int(current_value))
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return {
             "identifiers": {(DOMAIN, f"device_{self._root_id}")},
             "name": self._name,
@@ -114,7 +127,7 @@ class GwnDeviceSelect(GwnSelectEntity):
             "sw_version": self._sw_version
         }
 
-    def _current_device(self) -> dict[str, Any] | None:
+    def _current_data(self) -> dict[str, Any] | None:
         networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
         network: dict[str, Any] | None = networks.get(self._network_id)
         device: dict[str, Any] | None = None
@@ -122,22 +135,24 @@ class GwnDeviceSelect(GwnSelectEntity):
         if network is not None:
             devices = network.get(Constants.DEVICES, {})
             device = devices.get(self._root_id)
-        if device is not None:
-            return device
-        else:
+        if device is None:
             # device may have moved network so now check every other network for it
             for network in networks.values():
                 devices = network.get(Constants.DEVICES, {})
                 if isinstance(devices, dict):
                     device = devices.get(self._root_id)
-                if device is not None:
-                    # update the stored network ID to the newer one
-                    self._network_id = device[Constants.NETWORK_ID]
-                    return device
-        return None
+                    if device is not None:
+                        break
+        if device is not None:
+            # update the stored data to the newer one
+            self._ap_type = device[Constants.AP_TYPE]
+            self._sw_version = device[Constants.CURRENT_FIRMWARE]
+            self._name = device[Constants.AP_NAME]
+            self._network_id = device[Constants.NETWORK_ID]
+        return device
 
     async def async_select_option(self, option: str) -> None:
-        for value, label in self._option_map.items():
+        for value, label in self._unique_option_map.items():
             if label == option:
                 await self.coordinator.async_set_device_value(self._root_id, self._network_id, self._key, value)
                 return

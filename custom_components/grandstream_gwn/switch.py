@@ -100,17 +100,9 @@ class GwnSSIDSwitch(GwnSwitchEntity):
         name: str = ssid[Constants.SSID_NAME]
         super().__init__(coordinator, network_id, ssid_id, key, name, name_suffix, "ssid")
 
-    async def _toggle_value(self, value: bool) -> bool:
-        return await self.coordinator.async_set_ssid_value(self._root_id, self._network_id, self._key, value)
-
     @property
     def is_on(self) -> bool:
-        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
-        network: dict[str, Any] | None = networks.get(self._network_id)
-        if network is None:
-            return False
-        ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
-        ssid: dict[str, Any] | None = ssids.get(self._root_id)
+        ssid: dict[str, Any] | None = self._current_data()
         if ssid is None:
             return False
 
@@ -123,12 +115,42 @@ class GwnSSIDSwitch(GwnSwitchEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
+        if self._current_data() is None:
+            return None
         return {
             "identifiers": {(DOMAIN, f"ssid_{self._root_id}")},
             "name": self._name,
             "manufacturer": "Grandstream",
             "model": self._model
         }
+
+    async def _toggle_value(self, value: bool) -> bool:
+        # This will update the stored network ID
+        if self._current_data() is None:
+            return False
+        return await self.coordinator.async_set_ssid_value(self._root_id, self._network_id, self._key, value)
+
+    def _current_data(self) -> dict[str, Any] | None:
+        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
+        network: dict[str, Any] | None = networks.get(self._network_id)
+        ssid: dict[str, Any] | None = None
+        ssids: dict[str, Any] = {}
+        if network is not None:
+            ssids = network.get(Constants.SSIDS, {})
+            ssid = ssids.get(self._root_id)
+        if ssid is None:
+            # ssid may have moved network if a new instance of gwn manager was created which reset the ssid ids
+            for network in networks.values():
+                ssids = network.get(Constants.SSIDS, {})
+                if isinstance(ssids, dict):
+                    ssid = ssids.get(self._root_id)
+                    if ssid is not None:
+                        break
+        if ssid is not None:
+            self._name: str = ssid[Constants.SSID_NAME]
+            self._network_id = ssid[Constants.NETWORK_ID]
+            return ssid
+        return None
 
 class GwnSSIDDeviceSwitch(GwnSSIDSwitch):
     def __init__(self, coordinator: GwnDataUpdateCoordinator, ssid: dict[str, Any], key: str, name_suffix: str, device_mac: str) -> None:
@@ -141,12 +163,7 @@ class GwnSSIDDeviceSwitch(GwnSSIDSwitch):
 
     @property
     def is_on(self) -> bool:
-        networks: dict[str, dict[str, Any]] = _networks(self._coordinator)
-        network: dict[str, Any] | None = networks.get(self._network_id)
-        if network is None:
-            return False
-        ssids: dict[str, Any] = network.get(Constants.SSIDS, {})
-        ssid: dict[str, Any] | None = ssids.get(self._root_id)
+        ssid: dict[str, Any] | None = self._current_data()
         if ssid is None:
             return False
         assigned = ssid.get(Constants.ASSIGNED_DEVICES, {})
