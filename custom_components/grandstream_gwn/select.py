@@ -64,12 +64,8 @@ class GwnSelectEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
         self._name: str = name
         self._options_key: str = options_key
 
-        self._attr_name: str = f"{self._gwn_name} {name_suffix}"
+        self._attr_name: str = name_suffix
         self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
-
-    @property
-    def _gwn_name(self) -> str:
-        return self._name
 
     @property
     def _option_map(self) -> dict[int, str]:
