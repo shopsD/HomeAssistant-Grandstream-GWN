@@ -1,17 +1,21 @@
 name: docker-publish
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
+      tag:
+        description: "Release tag to associate with this build"
+        required: true
+        type: string
+      version:
+        description: "Application version to write into workspace metadata before building"
+        required: true
+        type: string
       push_image:
         description: "Push image to GHCR"
         required: true
         default: true
         type: boolean
-      image_tag:
-        description: "Optional explicit image tag"
-        required: false
-        type: string
       publish_latest:
         description: "Publishes the image with a latest tag"
         required: false
@@ -30,15 +34,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Apply version override to workspace metadata
+        env:
+          APP_VERSION_OVERRIDE: ${{ inputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("meta_data/project_meta.py")
+          text = path.read_text(encoding="utf-8")
+          new_text, count = re.subn(
+              r'^APP_VERSION = "[^"]+"$',
+              f'APP_VERSION = "{os.environ["APP_VERSION_OVERRIDE"]}"',
+              text,
+              flags=re.MULTILINE,
+          )
+          if count != 1:
+              raise RuntimeError("Failed to update APP_VERSION in meta_data/project_meta.py")
+          path.write_text(new_text, encoding="utf-8")
+          PY
+          python meta_data/sync_meta.py
+
       - name: Load project metadata
         id: meta
         run: |
           APP_VERSION="$(python -c 'from meta_data.project_meta import APP_VERSION; print(APP_VERSION)')"
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            VERSION_TAG="${{ inputs.image_tag }}"
-          else
-            VERSION_TAG="${APP_VERSION}"
-          fi
+          VERSION_TAG="${{ inputs.tag }}"
           echo "version_tag=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx

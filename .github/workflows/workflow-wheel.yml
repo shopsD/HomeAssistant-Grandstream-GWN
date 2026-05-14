@@ -1,31 +1,21 @@
 name: release-build
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      publish_release:
-        description: "Publishes all generated artifacts to the Github release"
+      tag:
+        description: "Release tag to upload artifacts to"
         required: true
-        default: true
-        type: boolean
-      allow_overwrite:
-        description: "Allows a release to be overwritten if it already exists, if it exists and this is false then the workflow will fail"
-        required: false
-        default: false
-        type: boolean
+        type: string
+      version:
+        description: "Application version to write into workspace metadata before building"
+        required: true
+        type: string
       create_wheel:
         description: "Create a wheel for the MQTT Application"
         required: true
         default: true
         type: boolean
-      version_tag:
-        description: "Version to tag this release and override the default version"
-        required: false
-        type: string
-      release_info:
-        description: "Information on what the release contains"
-        required: true
-        type: string
       zip_ha_integration:
         description: "Create an archive of the Home Assistant Integration"
         required: false
@@ -44,6 +34,29 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Apply version override to workspace metadata
+      env:
+        APP_VERSION_OVERRIDE: ${{ inputs.version }}
+      run: |
+        python - <<'PY'
+        import os
+        import re
+        from pathlib import Path
+
+        path = Path("meta_data/project_meta.py")
+        text = path.read_text(encoding="utf-8")
+        new_text, count = re.subn(
+            r'^APP_VERSION = "[^"]+"$',
+            f'APP_VERSION = "{os.environ["APP_VERSION_OVERRIDE"]}"',
+            text,
+            flags=re.MULTILINE,
+        )
+        if count != 1:
+            raise RuntimeError("Failed to update APP_VERSION in meta_data/project_meta.py")
+        path.write_text(new_text, encoding="utf-8")
+        PY
+        python meta_data/sync_meta.py
+
     - name: Load project metadata
       id: meta
       run: |
@@ -51,13 +64,6 @@ jobs:
         PYTHON_VERSION="$(python -c 'from meta_data.project_meta import PYTHON_VERSION; print(PYTHON_VERSION)')"
         echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
         echo "python_version=${PYTHON_VERSION}" >> "$GITHUB_OUTPUT"
-
-        if [ -n "${{ inputs.version_tag }}" ]; then
-          VERSION_TAG="${{ inputs.version_tag }}"
-        else
-          VERSION_TAG="${APP_VERSION}"
-        fi
-        echo "version_tag=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
 
     - name: Set up Python ${{ steps.meta.outputs.python_version }}
       uses: actions/setup-python@v5
@@ -80,7 +86,7 @@ jobs:
 
     - name: Create default MQTT bridge archive
       run: |
-        tar -czf "release-assets/mqtt-bridge-${{ steps.meta.outputs.version_tag }}.tar.gz" \
+        tar -czf "release-assets/mqtt-bridge-${{ inputs.tag }}.tar.gz" \
           gwn \
           mqtt \
           README.md \
@@ -98,7 +104,7 @@ jobs:
     - name: Create Home Assistant integration archive
       if: ${{ inputs.zip_ha_integration }}
       run: |
-        tar -czf "release-assets/homeassistant-integration-${{ steps.meta.outputs.version_tag }}.tar.gz" \
+        tar -czf "release-assets/homeassistant-integration-${{ inputs.tag }}.tar.gz" \
           gwn \
           custom_components \
           pyproject.toml \
@@ -110,30 +116,8 @@ jobs:
     - name: List generated artifacts
       run: ls -lah release-assets
 
-    - name: Create GitHub release
-      if: ${{ inputs.publish_release }}
+    - name: Upload artifacts to GitHub release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        if gh release view "${{ steps.meta.outputs.version_tag }}" >/dev/null 2>&1; then
-          if [ "${{ inputs.allow_overwrite }}" = "true" ]; then
-            gh release edit "${{ steps.meta.outputs.version_tag }}" \
-              --title "${{ steps.meta.outputs.version_tag }}" \
-              --notes "${{ inputs.release_info }}"
-
-            gh release view "${{ steps.meta.outputs.version_tag }}" --json assets --jq '.assets[].name' |
-            while read -r asset; do
-              gh release delete-asset "${{ steps.meta.outputs.version_tag }}" "$asset" --yes
-            done
-
-            gh release upload "${{ steps.meta.outputs.version_tag }}" release-assets/*
-          else
-            echo "Release ${{ steps.meta.outputs.version_tag }} already exists"
-            exit 1
-          fi
-        else
-          gh release create "${{ steps.meta.outputs.version_tag }}" \
-            --title "${{ steps.meta.outputs.version_tag }}" \
-            --notes "${{ inputs.release_info }}" \
-            release-assets/*
-        fi
+        gh release upload "${{ inputs.tag }}" release-assets/* --clobber
