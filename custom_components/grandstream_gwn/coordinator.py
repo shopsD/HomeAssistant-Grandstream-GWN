@@ -17,15 +17,15 @@ _LOGGER = logging.getLogger(Constants.LOG)
 
 class GwnDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self._entry = entry
+        self._gwn_config: GwnConfig = _build_gwn_config(self._entry)
+        self._gwn_client: GwnClient = GwnClient(self._gwn_config)
         super().__init__(
             hass,
             logger=_LOGGER,
             name="Grandstream GWN",
-            update_interval=timedelta(seconds=30),
+            update_interval=timedelta(seconds=self._gwn_config.refresh_period_s)
         )
-        self._entry = entry
-        self._gwn_config: GwnConfig = _build_gwn_config(self._entry)
-        self._gwn_client: GwnClient = GwnClient(self._gwn_config)
 
     def _enum_value(self, value: Enum | None) -> str | None:
         if value is None:
@@ -57,7 +57,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             Constants.ASSIGNED_DEVICES: { device.mac: device.name for device in sorted(gwn_ssid.devices, key=lambda device: device.mac) }
         }
 
-    def _serialise_device(self, gwn_network: GwnNetwork, gwn_device: GwnDevice, ssids: list[GwnSSID]) -> dict[str, object]:
+    def _serialise_device(self, gwn_network: GwnNetwork, gwn_device: GwnDevice, ssids: list[GwnSSID], networks: dict[int, str]) -> dict[str, object]:
         return {
             Constants.STATUS: gwn_device.status,
             Constants.AP_TYPE: gwn_device.apType,
@@ -98,10 +98,11 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             Constants.CHANNEL_LISTS_6G: gwn_device.channel_lists_6g,
             Constants.NETWORK_NAME: gwn_network.networkName,
             Constants.NETWORK_ID: gwn_network.id,
+            Constants.NETWORKS: networks,
             Constants.SSIDS: [
                 {
                     Constants.SSID_ID: ssid.id,
-                    Constants.SSID_NAME: ssid.ssidName,
+                    Constants.SSID_NAME: ssid.ssidName
                 }
                 for ssid in sorted(ssids, key=lambda ssid: int(ssid.id))
             ]
@@ -119,6 +120,10 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> dict[Any, dict[str, Any]]:
         gwn_networks: list[GwnNetwork] = await self._gwn_client.get_gwn_data()
+        full_network_dict: dict[int, str] = {
+            int(network.id): network.networkName
+            for network in sorted(gwn_networks, key=lambda network: int(network.id))
+        }
         network_list: dict[str, dict[str, object]] = {}
         for gwn_network in gwn_networks:
             ssid_list: dict[str,dict[str, object]] = {}
@@ -132,10 +137,13 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
                         device_assignments[gwn_device.mac] = []
                     device_assignments[gwn_device.mac].append(gwn_ssid)
             for gwn_device in gwn_network.devices:
-                device_list[gwn_device.mac] = self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, []))
+                device_list[gwn_device.mac] = self._serialise_device(gwn_network, gwn_device, device_assignments.get(gwn_device.mac, []), full_network_dict)
             network_list[gwn_network.id] = self._serialise_network(gwn_network, ssid_list, device_list)
 
         return {Constants.GWN:{Constants.NETWORKS: network_list}}
+
+    def is_readonly(self) -> bool:
+        return self._gwn_client.is_readonly
 
     async def async_set_network_value(self, network_id: str, key: str, value: str) -> bool:
         payload: GwnNetworkPayload = GwnNetworkPayload(id=int(network_id))
@@ -161,6 +169,8 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             payload.ap_5g_channel = None if value is None else int(value)
         elif key == Constants.AP_6G_CHANNEL:
             payload.ap_6g_channel = None if value is None else int(value)
+        elif key == Constants.NETWORK_ID:
+            payload.networkId = None if value is None else int(value)
         else:
             raise ValueError(f"Unsupported device key: {key}")
 
@@ -204,8 +214,8 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
         elif key == Constants.SSID_HIDDEN:
             payload.ssidSsidHidden = bool(value)
         elif key == Constants.SSID_VLAN_ID:
-            payload.ssidVlanid = None if value is None else int(str(value))
-            payload.ssidVlan = None if value is None else int(str(value)) > 0
+            payload.ssidVlanid = None if value is None or len(str(value)) == 0 else int(str(value))
+            payload.ssidVlan = None if payload.ssidVlanid is None else int(str(value)) > 0
         elif key == Constants.SSID_NAME:
             payload.ssidSsid = None if value is None else str(value)
         elif key == Constants.SSID_KEY:
@@ -241,7 +251,7 @@ def _build_gwn_config(entry: ConfigEntry) -> GwnConfig:
         gwn_config.username = str(username)
     password = data.get("password")
     if password not in (None, ""):
-        gwn_config.password = str(password)
+        gwn_config.password = GwnConfig.hash_password(str(password))
     base_url = data.get("base_url")
     if base_url is not None:
         gwn_config.base_url = str(base_url)

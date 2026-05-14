@@ -62,7 +62,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             restricted_api = user_input.get("restricted_api")
             if restricted_api is not None and bool(restricted_api):
                 if not has_username or not has_password:
-                    errors["restricted_api"] = "requires_passord_username"
+                    errors["restricted_api"] = "requires_password_username"
                 else:
                     data["restricted_api"] = bool(restricted_api)
 

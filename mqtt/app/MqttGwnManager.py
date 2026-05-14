@@ -385,7 +385,7 @@ class MqttGwnManager:
             Constants.SSIDS: [
                 {
                     Constants.SSID_ID: ssid.id,
-                    Constants.SSID_NAME: ssid.ssidName,
+                    Constants.SSID_NAME: ssid.ssidName
                 }
                 for ssid in sorted(ssids, key=lambda ssid: int(ssid.id))
             ]
