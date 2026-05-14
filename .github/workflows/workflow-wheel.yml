@@ -16,11 +16,6 @@ on:
         required: true
         default: true
         type: boolean
-      zip_ha_integration:
-        description: "Create an archive of the Home Assistant Integration"
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -35,27 +30,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Apply version override to workspace metadata
-      env:
-        APP_VERSION_OVERRIDE: ${{ inputs.version }}
-      run: |
-        python - <<'PY'
-        import os
-        import re
-        from pathlib import Path
-
-        path = Path("meta_data/project_meta.py")
-        text = path.read_text(encoding="utf-8")
-        new_text, count = re.subn(
-            r'^APP_VERSION = "[^"]+"$',
-            f'APP_VERSION = "{os.environ["APP_VERSION_OVERRIDE"]}"',
-            text,
-            flags=re.MULTILINE,
-        )
-        if count != 1:
-            raise RuntimeError("Failed to update APP_VERSION in meta_data/project_meta.py")
-        path.write_text(new_text, encoding="utf-8")
-        PY
-        python meta_data/sync_meta.py
+      uses: ./.github/actions/apply-version
+      with:
+        version: ${{ inputs.version }}
 
     - name: Load project metadata
       id: meta
@@ -100,18 +77,6 @@ jobs:
       run: |
         uv build --wheel
         cp dist/*.whl release-assets/
-
-    - name: Create Home Assistant integration archive
-      if: ${{ inputs.zip_ha_integration }}
-      run: |
-        tar -czf "release-assets/homeassistant-integration-${{ inputs.tag }}.tar.gz" \
-          gwn \
-          custom_components \
-          pyproject.toml \
-          uv.lock \
-          README.md \
-          LICENSE-BSD3.md \
-          LICENSE-MPL.md
 
     - name: List generated artifacts
       run: ls -lah release-assets
