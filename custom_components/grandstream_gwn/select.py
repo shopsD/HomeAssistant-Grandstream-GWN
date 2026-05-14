@@ -64,8 +64,12 @@ class GwnSelectEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
         self._name: str = name
         self._options_key: str = options_key
 
-        self._attr_name: str = f"{self._name} {name_suffix}"
+        self._attr_name: str = f"{self._gwn_name} {name_suffix}"
         self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
+
+    @property
+    def _gwn_name(self) -> str:
+        return self._name
 
     @property
     def _option_map(self) -> dict[int, str]:
@@ -77,7 +81,7 @@ class GwnSelectEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
         found_options: set[str] = set()
         for option_key, option_name in raw_options.items():
             if option_name in found_options:
-                raw_options[option_key] = f"{option_name} - ({self._root_id})"
+                raw_options[option_key] = f"{option_name} - ({option_key})"
             else:
                 found_options.add(option_name)
         return raw_options

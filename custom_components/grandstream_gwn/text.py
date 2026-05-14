@@ -64,8 +64,12 @@ class GwnTextEntity(CoordinatorEntity[GwnDataUpdateCoordinator], TextEntity):
         self._key: str = key
         self._name: str = name
 
-        self._attr_name: str = f"{self._name} {name_suffix}"
+        self._attr_name: str = f"{self._gwn_name} {name_suffix}"
         self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
+
+    @property
+    def _gwn_name(self) -> str:
+        return self._name
 
     def gwn_unique_id(self) -> str:
         return self._attr_unique_id
@@ -226,4 +230,3 @@ class GwnSSIDText(GwnTextEntity):
         if self._current_data() is None:
             return None
         await self._coordinator.async_set_ssid_value(self._root_id, self._network_id, self._key, value)
-

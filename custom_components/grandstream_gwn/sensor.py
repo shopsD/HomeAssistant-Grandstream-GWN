@@ -109,8 +109,12 @@ class GwnSensorEntity(CoordinatorEntity, SensorEntity):
         self._key: str = key
         self._name: str = name
 
-        self._attr_name: str = f"{self._name} {name_suffix}"
+        self._attr_name: str = f"{self._gwn_name} {name_suffix}"
         self._attr_unique_id: str = f"{base}_{self._root_id}_{key}"
+
+    @property
+    def _gwn_name(self) -> str:
+        return self._name
 
     def gwn_unique_id(self) -> str:
         return self._attr_unique_id
