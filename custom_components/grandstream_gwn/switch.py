@@ -147,7 +147,8 @@ class GwnSSIDSwitch(GwnSwitchEntity):
                     if ssid is not None:
                         break
         if ssid is not None:
-            self._name: str = ssid[Constants.SSID_NAME]
+            self._model = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
+            self._name = ssid[Constants.SSID_NAME]
             self._network_id = ssid[Constants.NETWORK_ID]
             return ssid
         return None

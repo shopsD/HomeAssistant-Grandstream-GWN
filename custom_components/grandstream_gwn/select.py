@@ -73,7 +73,7 @@ class GwnSelectEntity(CoordinatorEntity[GwnDataUpdateCoordinator], SelectEntity)
 
     @property
     def _unique_option_map(self) -> dict[int, str]:
-        raw_options: dict[int, str] = self._option_map
+        raw_options: dict[int, str] = dict(self._option_map)
         found_options: set[str] = set()
         for option_key, option_name in raw_options.items():
             if option_name in found_options:

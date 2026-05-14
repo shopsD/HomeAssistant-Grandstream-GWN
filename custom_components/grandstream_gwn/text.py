@@ -100,7 +100,7 @@ class GwnNetworkText(GwnTextEntity):
         network: dict[str, Any] | None = networks.get(self._network_id)
         if network is not None:
             # update the stored data to the newer one
-            self._name: str = network[Constants.NETWORK_NAME]
+            self._name = network[Constants.NETWORK_NAME]
         return network
 
     async def async_set_value(self, value: str) -> None:
@@ -216,7 +216,8 @@ class GwnSSIDText(GwnTextEntity):
                     if ssid is not None:
                         break
         if ssid is not None:
-            self._name: str = ssid[Constants.SSID_NAME]
+            self._model = ssid.get(Constants.NETWORK_NAME, "GWN SSID")
+            self._name = ssid[Constants.SSID_NAME]
             self._network_id = ssid[Constants.NETWORK_ID]
             return ssid
         return None
