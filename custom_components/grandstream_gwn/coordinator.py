@@ -215,7 +215,7 @@ class GwnDataUpdateCoordinator(DataUpdateCoordinator):
             payload.ssidSsidHidden = bool(value)
         elif key == Constants.SSID_VLAN_ID:
             payload.ssidVlanid = None if value is None or len(str(value)) == 0 else int(str(value))
-            payload.ssidVlan = None if value is None else int(str(value)) > 0
+            payload.ssidVlan = None if payload.ssidVlanid is None else int(str(value)) > 0
         elif key == Constants.SSID_NAME:
             payload.ssidSsid = None if value is None else str(value)
         elif key == Constants.SSID_KEY:
