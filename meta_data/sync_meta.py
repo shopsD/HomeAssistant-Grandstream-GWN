@@ -19,7 +19,7 @@ def replace_or_fail(path: Path, pattern: str, repl: str) -> None:
     path.write_text(new_text, encoding="utf-8")
 
 def main() -> None:
-    APP_VERSION = _project_meta.APP_VERSION if _project_meta.APP_VERSION.starts_with("v") else f"v{_project_meta.APP_VERSION}"
+    APP_VERSION = _project_meta.APP_VERSION
     HOMEASSISTANT_MIN_VERSION = _project_meta.HOMEASSISTANT_MIN_VERSION
     PYTHON_REQUIRES = _project_meta.PYTHON_REQUIRES
     PYTHON_VERSION = _project_meta.PYTHON_VERSION
