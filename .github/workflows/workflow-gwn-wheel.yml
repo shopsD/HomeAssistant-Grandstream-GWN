@@ -40,9 +40,18 @@ jobs:
         APP_VERSION="$(python -c 'from meta_data.project_meta import APP_VERSION; print(APP_VERSION)')"
         PYTHON_VERSION="$(python -c 'from meta_data.project_meta import PYTHON_VERSION; print(PYTHON_VERSION)')"
         PYTHON_REQUIRES="$(python -c 'from meta_data.project_meta import PYTHON_REQUIRES; print(PYTHON_REQUIRES)')"
+        PACKAGE_VERSION="$(python - <<'PY'
+        import tomllib
+        from pathlib import Path
+
+        pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+        print(pyproject["project"]["version"])
+        PY
+        )"
         echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
         echo "python_version=${PYTHON_VERSION}" >> "$GITHUB_OUTPUT"
         echo "python_requires=${PYTHON_REQUIRES}" >> "$GITHUB_OUTPUT"
+        echo "package_version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
 
     - name: Set up Python ${{ steps.meta.outputs.python_version }}
       uses: actions/setup-python@v5
@@ -72,7 +81,7 @@ jobs:
         cat > build/gwn-wheel/pyproject.toml <<EOF
         [project]
         name = "gwn"
-        version = "${{ steps.meta.outputs.app_version }}"
+        version = "${{ steps.meta.outputs.package_version }}"
         description = "Standalone Grandstream GWN client library"
         readme = "README.md"
         requires-python = "${{ steps.meta.outputs.python_requires }}"

@@ -72,15 +72,14 @@ jobs:
           APP_VERSION="$(python -c 'from meta_data.project_meta import APP_VERSION; print(APP_VERSION)')"
 
           if [ -n "${{ inputs.tag }}" ]; then
-            VERSION="${{ inputs.tag }}"
-            VERSION="${VERSION#v}"
             TAG="${{ inputs.tag }}"
+            METADATA_VERSION="${TAG}"
           else
-            VERSION="${APP_VERSION}"
             TAG="${APP_VERSION}"
+            METADATA_VERSION="${APP_VERSION}"
           fi
 
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version=${METADATA_VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Validate release mode
@@ -88,6 +87,29 @@ jobs:
         run: |
           echo "A custom tag override requires at least one publish workflow so the workspace-only version override is reflected in a built artifact."
           exit 1
+
+      - name: Validate Python package version
+        if: ${{ inputs.publish_mqtt_wheel || inputs.publish_gwn_wheel }}
+        env:
+          APP_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+
+          try:
+              from packaging.version import InvalidVersion, Version
+          except ImportError:
+              from setuptools._vendor.packaging.version import InvalidVersion, Version
+
+          version = os.environ["APP_VERSION"]
+          try:
+              Version(version)
+          except InvalidVersion as exc:
+              raise SystemExit(
+                  f'Wheel publishing requires a valid Python package version. '
+                  f'APP_VERSION="{version}" is not valid for pyproject.toml packaging metadata.'
+              ) from exc
+          PY
 
       - name: Recreate tag if requested
         if: ${{ inputs.overwrite }}
