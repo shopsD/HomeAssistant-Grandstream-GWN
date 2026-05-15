@@ -56,7 +56,7 @@ def main() -> None:
     HACS_MANIFEST = args.repo_root / "custom_components/grandstream_gwn/manifest.json"
     PYTHON_VERSION_FILE = args.repo_root / ".python-version"
     README = args.repo_root / "README.md"
-    print (f"Syncing files:\n\t{PYPROJECT}\n\t{HACS}\n\t{PYTHON_VERSION_FILE}\n\t{README}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}")
+    print (f"Syncing files:\n\t{GWN_CONSTANTS}\n\t{VERSION_MANAGER}\n\t{PYPROJECT}\n\t{HACS}\n\t{HACS_MANIFEST}\n\t{PYTHON_VERSION_FILE}\n\t{README}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}\n\tRepo URL: {REPOSITORY_URL}\n\tUpdate URL: {UPDATE_URL}")
 
     replace_or_fail(
         PYPROJECT,

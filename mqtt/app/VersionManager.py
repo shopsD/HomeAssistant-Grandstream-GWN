@@ -19,7 +19,7 @@ class ReleaseInfo:
 class VersionManager:
     def __init__(self, config: AppConfig) -> None:
         self._config: AppConfig = config
-        self._update_url: str = "https://github.com/shopsD/homeassistant-grandstream-gwn"
+        self._update_url: str = "https://api.github.com/repos/shopsD/homeassistant-grandstream-gwn/releases"
         self._session: aiohttp.ClientSession = aiohttp.ClientSession()
         self._timeout = aiohttp.ClientTimeout(total=15)
 
