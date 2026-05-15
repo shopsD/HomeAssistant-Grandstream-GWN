@@ -1,0 +1,110 @@
+name: gwn-release-build
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to upload artifacts to"
+        required: true
+        type: string
+      version:
+        description: "Application version to write into workspace metadata before building"
+        required: true
+        type: string
+      create_wheel:
+        description: "Create a wheel for the gwn library"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    name: gwn-release-build
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Apply version override to workspace metadata
+      uses: ./.github/actions/apply-version
+      with:
+        version: ${{ inputs.version }}
+
+    - name: Load project metadata
+      id: meta
+      run: |
+        APP_VERSION="$(python -c 'from meta_data.project_meta import APP_VERSION; print(APP_VERSION)')"
+        PYTHON_VERSION="$(python -c 'from meta_data.project_meta import PYTHON_VERSION; print(PYTHON_VERSION)')"
+        PYTHON_REQUIRES="$(python -c 'from meta_data.project_meta import PYTHON_REQUIRES; print(PYTHON_REQUIRES)')"
+        echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
+        echo "python_version=${PYTHON_VERSION}" >> "$GITHUB_OUTPUT"
+        echo "python_requires=${PYTHON_REQUIRES}" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Python ${{ steps.meta.outputs.python_version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ steps.meta.outputs.python_version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install uv
+
+    - name: Check GitHub CLI
+      run: |
+        if ! command -v gh >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y gh
+        fi
+
+    - name: Prepare artifact directory
+      run: mkdir -p release-assets build/gwn-wheel
+
+    - name: Prepare gwn wheel build tree
+      run: |
+        cp -R gwn build/gwn-wheel/
+        cp -R meta_data build/gwn-wheel/
+        cp README.md build/gwn-wheel/
+        cp LICENSE-MPL.md build/gwn-wheel/
+        cat > build/gwn-wheel/pyproject.toml <<EOF
+        [project]
+        name = "gwn"
+        version = "${{ steps.meta.outputs.app_version }}"
+        description = "Standalone Grandstream GWN client library"
+        readme = "README.md"
+        requires-python = "${{ steps.meta.outputs.python_requires }}"
+        dependencies = [
+            "aiohttp",
+        ]
+        license = "MPL-2.0"
+
+        [tool.setuptools]
+        license-files = ["LICENSE-MPL.md"]
+
+        [tool.setuptools.packages.find]
+        include = ["gwn*", "meta_data*"]
+
+        [build-system]
+        requires = ["setuptools>=61", "wheel"]
+        build-backend = "setuptools.build_meta"
+        EOF
+
+    - name: Build wheel
+      if: ${{ inputs.create_wheel }}
+      run: |
+        cd build/gwn-wheel
+        uv build --wheel
+        cp dist/*.whl ../../release-assets/
+
+    - name: List generated artifacts
+      run: ls -lah release-assets
+
+    - name: Upload artifacts to GitHub release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release upload "${{ inputs.tag }}" release-assets/* --clobber

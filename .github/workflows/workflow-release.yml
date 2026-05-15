@@ -25,8 +25,13 @@ on:
         required: true
         type: boolean
         default: false
-      publish_wheel:
-        description: Publish wheel asset
+      publish_mqtt_wheel:
+        description: Publish mqtt wheel asset (with required imports)
+        required: true
+        type: boolean
+        default: false
+      publish_gwn_wheel:
+        description: Publish standalone gwn wheel asset
         required: true
         type: boolean
         default: false
@@ -79,7 +84,7 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Validate release mode
-        if: ${{ inputs.tag != '' && !inputs.publish_wheel && !inputs.publish_docker && !inputs.publish_hacs }}
+        if: ${{ inputs.tag != '' && !inputs.publish_mqtt_wheel && !inputs.publish_gwn_wheel && !inputs.publish_docker && !inputs.publish_hacs }}
         run: |
           echo "A custom tag override requires at least one publish workflow so the workspace-only version override is reflected in a built artifact."
           exit 1
@@ -116,10 +121,19 @@ jobs:
             --notes "${{ inputs.body }}" \
             ${PRERELEASE_FLAG}
 
-  wheel:
+  mqtt-wheel:
     needs: release
-    if: ${{ inputs.publish_wheel }}
-    uses: ./.github/workflows/workflow-wheel.yml
+    if: ${{ inputs.publish_mqtt_wheel }}
+    uses: ./.github/workflows/workflow-mqtt-wheel.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+      version: ${{ needs.release.outputs.version }}
+    secrets: inherit
+
+  gwn-wheel:
+    needs: release
+    if: ${{ inputs.publish_gwn_wheel }}
+    uses: ./.github/workflows/workflow-gwn-wheel.yml
     with:
       tag: ${{ needs.release.outputs.tag }}
       version: ${{ needs.release.outputs.version }}

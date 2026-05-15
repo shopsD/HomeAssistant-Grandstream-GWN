@@ -36,8 +36,10 @@ jobs:
           cp -R custom_components/grandstream_gwn dist/hacs/custom_components/
           mkdir -p dist/hacs/gwn
           cp -R gwn/* dist/hacs/gwn/
+          mkdir -p dist/hacs/meta_data
+          cp -R gwn/* dist/hacs/meta_data/
           cd dist/hacs
-          zip -r "../${{ steps.hacs.outputs.filename }}" custom_components gwn
+          zip -r "../${{ steps.hacs.outputs.filename }}" custom_components gwn meta_data
 
       - name: Upload asset to release
         env:
