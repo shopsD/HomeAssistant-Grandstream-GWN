@@ -114,8 +114,13 @@ jobs:
       - name: Recreate tag if requested
         if: ${{ inputs.overwrite }}
         run: |
-          git tag -d "${{ steps.meta.outputs.tag }}"
-          git push origin ":refs/tags/${{ steps.meta.outputs.tag }}"
+          if git rev-parse "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            git tag -d "${{ steps.meta.outputs.tag }}"
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            git push origin ":refs/tags/${{ steps.meta.outputs.tag }}"
+          fi
 
       - name: Create tag if missing
         run: |
@@ -127,7 +132,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete "${{ steps.meta.outputs.tag }}" --yes
+          if gh release view "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            gh release delete "${{ steps.meta.outputs.tag }}" --yes
+          fi
 
       - name: Create release
         env:
