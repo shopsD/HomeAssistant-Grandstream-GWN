@@ -49,6 +49,7 @@ def main() -> None:
         print ("Set up Pre-Commit Hook")
 
     GWN_CONSTANTS = args.repo_root / "gwn/constants/Constants.py"
+    VERSION_MANAGER = args.repo_root / "mqtt/app/VersionManager.py"
     PYPROJECT = args.repo_root / "pyproject.toml"
     HACS = args.repo_root / "hacs.json"
     HACS_MANIFEST = args.repo_root / "custom_components/grandstream_gwn/manifest.json"
@@ -100,6 +101,11 @@ def main() -> None:
         README,
         r'^(\s*-\s+)Python `[^`]+`(.*)$',
         rf'\1Python `{PYTHON_VERSION}`\2'
+    )
+    replace_or_fail(
+        VERSION_MANAGER,
+        r'^(\s*)self\._repo_url\: str \=  "[^"]+"(.*)$',
+        rf'\1self._repo_url: str = "{REPOSITORY_ROOT}"\2'
     )
     print ("Sync Complete")
 
