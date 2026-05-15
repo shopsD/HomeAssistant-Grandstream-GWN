@@ -82,12 +82,6 @@ jobs:
           echo "version=${METADATA_VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: Validate release mode
-        if: ${{ inputs.tag != '' && !inputs.publish_mqtt_wheel && !inputs.publish_gwn_wheel && !inputs.publish_docker && !inputs.publish_hacs }}
-        run: |
-          echo "A custom tag override requires at least one publish workflow so the workspace-only version override is reflected in a built artifact."
-          exit 1
-
       - name: Validate Python package version
         if: ${{ inputs.publish_mqtt_wheel || inputs.publish_gwn_wheel }}
         env:
