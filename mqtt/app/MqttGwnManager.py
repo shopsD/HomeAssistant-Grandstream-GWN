@@ -38,7 +38,7 @@ class MqttGwnManager:
                 networks = await self._gwn_client.get_gwn_data()
                 await self._publish_gwn_data(networks)
             except Exception as e:
-                _LOGGER.error(f"Error retreiving GWN Data: {e}")
+                _LOGGER.error(f"Error retrieving GWN Data: {e}")
             try:
                 _LOGGER.info("Checking manifest")
                 self._mqtt_client.write_manifest()
