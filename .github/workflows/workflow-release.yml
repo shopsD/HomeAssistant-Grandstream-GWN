@@ -163,7 +163,7 @@ jobs:
           if [ "${{ inputs.prerelease }}" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          RELEASE_BODY="${{ steps.release_notes.outputs.release_items_line }}<br/>${{ inputs.body }}"
+          RELEASE_BODY="${{ steps.release_notes.outputs.release_items_line }}\n${{ inputs.body }}"
           gh release create "${{ steps.meta.outputs.tag }}" \
             --title "${{ inputs.name }}" \
             --notes "${RELEASE_BODY}" \

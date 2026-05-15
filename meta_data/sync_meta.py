@@ -60,12 +60,12 @@ def main() -> None:
 
     replace_or_fail(
         PYPROJECT,
-        r'^version = "[^"]+"$',
+        r'^version\s*=\s*"[^"]+"$',
         f'version = "{APP_VERSION}"'
     )
     replace_or_fail(
         PYPROJECT,
-        r'^requires-python = "[^"]+"$',
+        r'^requires-python\s*=\s*"[^"]+"$',
         f'requires-python = "{PYTHON_REQUIRES}"'
     )
     replace_or_fail(
@@ -75,17 +75,17 @@ def main() -> None:
     )
     replace_or_fail(
         HACS,
-        r'^(\s*)"homeassistant": "[^"]+"(,?)$',
+        r'^(\s*)"homeassistant":\s*"[^"]+"(,?)$',
         rf'\1"homeassistant": "{HOMEASSISTANT_MIN_VERSION}"\2'
     )
     replace_or_fail(
         HACS_MANIFEST,
-        r'^(\s*)"version": "[^"]+"(,?)$',
+        r'^(\s*)"version":\s*"[^"]+"(,?)$',
         rf'\1"version": "{APP_VERSION}"\2'
     )
     replace_or_fail(
         HACS_MANIFEST,
-        r'^(\s*)"documentation": "[^"]+"(,?)$',
+        r'^(\s*)"documentation":\s*"[^"]+"(,?)$',
         rf'\1"documentation": "{REPOSITORY_URL}"\2'
     )
     replace_or_fail(
@@ -95,7 +95,7 @@ def main() -> None:
     )
     replace_or_fail(
         GWN_CONSTANTS,
-        r'^(\s*)APP_VERSION: ClassVar\[str\] = "[^"]+"$',
+        r'^(\s*)APP_VERSION:\s*ClassVar\[str\]\s*=\s*"[^"]+"$',
         rf'\1APP_VERSION: ClassVar[str] = "{APP_VERSION}"'
     )
     replace_or_fail(
@@ -105,7 +105,7 @@ def main() -> None:
     )
     replace_or_fail(
         VERSION_MANAGER,
-        r'^(\s*)self\._update_url\: str \=  "[^"]+"(.*)$',
+        r'^(\s*)self\._update_url\:\s*str\s*=\s*"[^"]+"(.*)$',
         rf'\1self._update_url: str = "{UPDATE_URL}"\2'
     )
     print ("Sync Complete")

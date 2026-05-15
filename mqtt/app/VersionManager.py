@@ -89,7 +89,9 @@ class VersionManager:
 
         return True
 
-    async def get_latest_version(self) -> str: 
+    async def get_latest_version(self) -> str:
         release: ReleaseInfo | None = await self._get_latest_release() if self._config.check_for_updates else None
         return release.tag if release is not None else Constants.APP_VERSION
-    
+
+    async def close(self) -> None:
+        await self._session.close()

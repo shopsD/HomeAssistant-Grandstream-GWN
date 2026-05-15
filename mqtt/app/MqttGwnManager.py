@@ -582,4 +582,5 @@ class MqttGwnManager:
         finally:
             await self._mqtt_client.disconnect()
             await self._gwn_client.close()
+            await self._version_manager.close()
         _LOGGER.info("Application shutting down")
