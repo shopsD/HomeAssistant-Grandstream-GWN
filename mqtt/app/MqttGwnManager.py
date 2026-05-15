@@ -3,6 +3,7 @@ import logging
 from enum import Enum
 from typing import Any
 
+from .VersionManager import VersionManager
 from gwn.api import GwnClient
 from gwn.constants import BandSteering, BandwidthType, BooleanEnum, Constants, IsolationMode, MacFiltering, MultiCastToUnicast, RadioPower, SecurityMode, SSID_11W, SSID_BMS, SSIDSecurityType, WpaKeyMode, Width2G, Width5G, Width6G, WpaEncryption
 from gwn.request_data import GwnDevicePayload, GwnNetworkPayload, GwnSSIDPayload
@@ -23,8 +24,10 @@ class MqttGwnManager:
         self._config: AppConfig = config
         self._mqtt_client: MqttClient = mqtt_client
         self._gwn_client: GwnClient = gwn_client
-        self._poll_trigger = asyncio.Event()
+        self._poll_trigger: asyncio.Event = asyncio.Event()
+        self._version_manager: VersionManager = VersionManager()
 
+        self._cached_application: dict[str, object] = {}
         self._cached_networks: dict[str, dict[str, object]] = {}
         self._cached_devices: dict[str, dict[str, dict[str, object]]] = {}
         self._cached_ssids: dict[str, dict[str, dict[str, object]]] = {}
@@ -40,6 +43,11 @@ class MqttGwnManager:
             except Exception as e:
                 _LOGGER.error(f"Error retrieving GWN Data: {e}")
             try:
+                latest_version: str = self._version_manager.get_latest_version()
+                await self._publish_application_data(latest_version)
+            except Exception as e:
+                _LOGGER.error(f"Error retrieving Application Data: {e}")
+            try:
                 _LOGGER.info("Checking manifest")
                 self._mqtt_client.write_manifest()
             except Exception as e:
@@ -54,11 +62,7 @@ class MqttGwnManager:
 
     async def _run_mqtt_interface(self) -> None:
         _LOGGER.info("Listening to MQTT")
-        payload: dict[str, object] = {
-            Constants.CURRENT_VERSION: Constants.APP_VERSION,
-            Constants.NEW_VERSION: Constants.APP_VERSION
-        }
-        await self._mqtt_client.publish_online(payload)
+        await self._mqtt_client.publish_online()
         await asyncio.Event().wait()
         _LOGGER.info("Stopped listening to MQTT")
 
@@ -310,6 +314,16 @@ class MqttGwnManager:
         await self._unpublish_ssids(cached_ssids, cached_devices)
         _LOGGER.info("Processed cache for unpublishing")
 
+    async def _publish_application_data(self, latest_version: str) -> None:
+        try:
+            application_payload: dict[str, object] = self._serialise_application(latest_version)
+            cached_payload = application_payload.copy()
+            if cached_payload != application_payload:
+                self._cached_application = cached_payload
+                self._mqtt_client.publish_application(application_payload)
+        except Exception as e:
+            _LOGGER.error(f"Failed to publish Application Data to MQTT: {e}")
+
     def _enum_value(self, value: Enum | None) -> str | None:
         if value is None:
             return None
@@ -389,6 +403,12 @@ class MqttGwnManager:
                 }
                 for ssid in sorted(ssids, key=lambda ssid: int(ssid.id))
             ]
+        }
+
+    def _serialise_application(self, latest_version: str) -> dict[str, object]:
+        return {
+            Constants.CURRENT_VERSION: Constants.APP_VERSION,
+            Constants.NEW_VERSION: latest_version
         }
 
     def _serialise_network(self, gwn_network: GwnNetwork) -> dict[str, object]:

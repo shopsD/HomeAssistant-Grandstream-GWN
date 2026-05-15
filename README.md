@@ -244,6 +244,7 @@ With only `app_id` and `secret_key`, the bridge can poll data available through 
 app:
   publish_every_poll: false
   unpublish_initial_data: false
+  check_for_updates: true
 
 mqtt:
   host: 127.0.0.1
@@ -310,6 +311,7 @@ logging:
 | --- | --- | --- | --- |
 | `publish_every_poll` | No | `false` | If `false`, MQTT state is published only when the received GWN payload differs from the previous poll. If `true`, state is published after every GWN poll. |
 | `unpublish_initial_data` | No | `false` | If `true`, the bridge fetches the current GWN data on startup, clears matching retained MQTT state/discovery, then republishes fresh state. This is normally not required when `mqtt.topic_manifest_path` is configured. |
+| `check_for_updates` | No | `true` | If `true`, the bridge checks if there is a newer version of the application on every poll cycle and publishes it over MQTT if a new version is found. |
 
 ## `mqtt` Config
 
