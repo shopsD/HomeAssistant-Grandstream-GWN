@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(Constants.LOG)
 class ReleaseInfo:
     tag: str
     items: frozenset[str]
-    prerelease: bool
+    is_prerelease: bool
     url: str
 
 class VersionManager:
@@ -53,6 +53,7 @@ class VersionManager:
 
     def _parse_release(self, release: dict[str, Any]) -> ReleaseInfo | None:
         try:
+            # if some of these are missing, it is invalid so let it throw and log
             _LOGGER.debug("Parsing release data")
             tag: str = release["tag_name"]
             is_prerelease: bool = bool(release.get("prerelease"))
@@ -64,7 +65,7 @@ class VersionManager:
 
             items = self._parse_release_items(body)
 
-            return ReleaseInfo( tag=tag, items=frozenset(items), prerelease=is_prerelease, url=url)
+            return ReleaseInfo(tag=tag, items=frozenset(items), is_prerelease=is_prerelease, url=url)
         except Exception as e:
             _LOGGER.warn(f"Failed to parse release info: {e}")
         return None
