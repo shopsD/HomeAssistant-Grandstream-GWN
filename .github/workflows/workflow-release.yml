@@ -136,10 +136,10 @@ jobs:
           RELEASE_ITEMS=()
 
           if [ "${{ inputs.publish_mqtt_wheel }}" = "true" ]; then
-            RELEASE_ITEMS+=("MQTT")
+            RELEASE_ITEMS+=("MQTT-Bridge")
           fi
           if [ "${{ inputs.publish_gwn_wheel }}" = "true" ]; then
-            RELEASE_ITEMS+=("GWN")
+            RELEASE_ITEMS+=("GWN-Library")
           fi
           if [ "${{ inputs.publish_docker }}" = "true" ]; then
             RELEASE_ITEMS+=("Docker")

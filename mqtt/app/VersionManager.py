@@ -81,7 +81,7 @@ class VersionManager:
         return set()
 
     def _is_relevant_release(self, release: ReleaseInfo) -> bool:
-        if "mqtt" not in release.items:
+        if not self._is_container and "mqtt-bridge" not in release.items:
             return False
 
         if self._is_container and "docker" not in release.items:
