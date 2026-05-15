@@ -24,8 +24,8 @@ class MqttGwnManager:
         self._config: AppConfig = config
         self._mqtt_client: MqttClient = mqtt_client
         self._gwn_client: GwnClient = gwn_client
+        self._version_manager: VersionManager = VersionManager(self._config)
         self._poll_trigger: asyncio.Event = asyncio.Event()
-        self._version_manager: VersionManager = VersionManager()
 
         self._cached_application: dict[str, object] = {}
         self._cached_networks: dict[str, dict[str, object]] = {}
@@ -43,7 +43,7 @@ class MqttGwnManager:
             except Exception as e:
                 _LOGGER.error(f"Error retrieving GWN Data: {e}")
             try:
-                latest_version: str = self._version_manager.get_latest_version()
+                latest_version: str = await self._version_manager.get_latest_version()
                 await self._publish_application_data(latest_version)
             except Exception as e:
                 _LOGGER.error(f"Error retrieving Application Data: {e}")
@@ -320,7 +320,7 @@ class MqttGwnManager:
             cached_payload = application_payload.copy()
             if cached_payload != application_payload:
                 self._cached_application = cached_payload
-                self._mqtt_client.publish_application(application_payload)
+                await self._mqtt_client.publish_application(application_payload)
         except Exception as e:
             _LOGGER.error(f"Failed to publish Application Data to MQTT: {e}")
 

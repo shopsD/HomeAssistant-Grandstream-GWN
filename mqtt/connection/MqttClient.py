@@ -155,7 +155,8 @@ class MqttClient:
         await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}", None if clear else {"status": "online"})
 
     async def _publish_application_payload(self, application_payload: dict[str,object], clear: bool, clear_autodiscovery: bool) -> None:
-        state_topic: str = f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATE}"
+        application_topic = f"{self._interface.topic}/{Constants.APPLICATION}"
+        state_topic: str = f"{application_topic}/{Constants.STATE}"
         await self._do_publish(state_topic, None if clear else application_payload)
         if clear and not clear_autodiscovery:
             return
@@ -290,7 +291,7 @@ class MqttClient:
             self._listen_task = None
         if self._interface.is_connected:
             try:
-                await self._publish_offline()
+                await self._publish_offline(False)
             except Exception as e:
                 _LOGGER.warn(f"Failed to publish offline message: {e}")
         return await self._interface.disconnect()
