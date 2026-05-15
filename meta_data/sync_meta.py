@@ -20,9 +20,11 @@ def replace_or_fail(path: Path, pattern: str, repl: str) -> None:
 
 def main() -> None:
     APP_VERSION = _project_meta.APP_VERSION
+    GWN_CONSTANTS = args.repo_root / "gwn/constants/Constants.py"
     HOMEASSISTANT_MIN_VERSION = _project_meta.HOMEASSISTANT_MIN_VERSION
     PYTHON_REQUIRES = _project_meta.PYTHON_REQUIRES
     PYTHON_VERSION = _project_meta.PYTHON_VERSION
+    REPOSITORY_ROOT = _project_meta.REPOSITORY_ROOT
 
     SCRIPT_PATH: Path = Path(__file__).resolve()
 
@@ -80,9 +82,19 @@ def main() -> None:
         rf'\1"version": "{APP_VERSION}"\2'
     )
     replace_or_fail(
+        HACS_MANIFEST,
+        r'^(\s*)"documentation": "[^"]+"(,?)$',
+        rf'\1"documentation": "{REPOSITORY_ROOT}"\2'
+    )
+    replace_or_fail(
         PYTHON_VERSION_FILE,
         r"^[^\n]+$",
         PYTHON_VERSION
+    )
+    replace_or_fail(
+        GWN_CONSTANTS,
+        r'^(\s*)APP_VERSION: ClassVar\[str\] = "[^"]+"$',
+        rf'\1APP_VERSION: ClassVar[str] = "{APP_VERSION}"'
     )
     replace_or_fail(
         README,

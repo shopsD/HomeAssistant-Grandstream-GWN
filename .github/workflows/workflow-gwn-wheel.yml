@@ -67,7 +67,6 @@ jobs:
     - name: Prepare gwn wheel build tree
       run: |
         cp -R gwn build/gwn-wheel/
-        cp -R meta_data build/gwn-wheel/
         cp README.md build/gwn-wheel/
         cp LICENSE-MPL.md build/gwn-wheel/
         cat > build/gwn-wheel/pyproject.toml <<EOF
@@ -86,7 +85,7 @@ jobs:
         license-files = ["LICENSE-MPL.md"]
 
         [tool.setuptools.packages.find]
-        include = ["gwn*", "meta_data*"]
+        include = ["gwn*"]
 
         [build-system]
         requires = ["setuptools>=61", "wheel"]
