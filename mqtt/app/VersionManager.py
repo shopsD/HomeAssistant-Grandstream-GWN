@@ -1,4 +1,5 @@
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,8 +23,7 @@ class VersionManager:
         self._update_url: str = "https://api.github.com/repos/shopsD/homeassistant-grandstream-gwn/releases"
         self._session: aiohttp.ClientSession = aiohttp.ClientSession()
         self._timeout = aiohttp.ClientTimeout(total=15)
-
-        self._is_container: bool = False ##CI-EDIT## This line is modified by the CI workflow
+        self._is_container: bool = os.getenv("GWN_MQTT_CONTAINER", "").lower() == "true"
 
     async def _fetch_releases(self) -> list[dict[str, Any]]:
         headers: dict[str, str] = {

@@ -5,6 +5,7 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"
 ENV UV_PYTHON_DOWNLOADS=never
+ENV GWN_MQTT_CONTAINER=true
 
 RUN apk add --no-cache ca-certificates \
     build-base \
