@@ -23,7 +23,8 @@ def main() -> None:
     HOMEASSISTANT_MIN_VERSION = _project_meta.HOMEASSISTANT_MIN_VERSION
     PYTHON_REQUIRES = _project_meta.PYTHON_REQUIRES
     PYTHON_VERSION = _project_meta.PYTHON_VERSION
-    REPOSITORY_ROOT = _project_meta.REPOSITORY_ROOT
+    REPOSITORY_URL = _project_meta.REPOSITORY_URL
+    UPDATE_URL = _project_meta.UPDATE_URL
 
     SCRIPT_PATH: Path = Path(__file__).resolve()
 
@@ -85,7 +86,7 @@ def main() -> None:
     replace_or_fail(
         HACS_MANIFEST,
         r'^(\s*)"documentation": "[^"]+"(,?)$',
-        rf'\1"documentation": "{REPOSITORY_ROOT}"\2'
+        rf'\1"documentation": "{REPOSITORY_URL}"\2'
     )
     replace_or_fail(
         PYTHON_VERSION_FILE,
@@ -105,7 +106,7 @@ def main() -> None:
     replace_or_fail(
         VERSION_MANAGER,
         r'^(\s*)self\._repo_url\: str \=  "[^"]+"(.*)$',
-        rf'\1self._repo_url: str = "{REPOSITORY_ROOT}"\2'
+        rf'\1self._repo_url: str = "{UPDATE_URL}"\2'
     )
     print ("Sync Complete")
 
