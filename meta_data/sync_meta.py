@@ -105,8 +105,8 @@ def main() -> None:
     )
     replace_or_fail(
         VERSION_MANAGER,
-        r'^(\s*)self\._repo_url\: str \=  "[^"]+"(.*)$',
-        rf'\1self._repo_url: str = "{UPDATE_URL}"\2'
+        r'^(\s*)self\._update_url\: str \=  "[^"]+"(.*)$',
+        rf'\1self._update_url: str = "{UPDATE_URL}"\2'
     )
     print ("Sync Complete")
 

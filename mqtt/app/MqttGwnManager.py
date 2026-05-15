@@ -317,9 +317,8 @@ class MqttGwnManager:
     async def _publish_application_data(self, latest_version: str) -> None:
         try:
             application_payload: dict[str, object] = self._serialise_application(latest_version)
-            cached_payload = application_payload.copy()
-            if cached_payload != application_payload:
-                self._cached_application = cached_payload
+            if self._cached_application != application_payload:
+                self._cached_application = application_payload.copy()
                 await self._mqtt_client.publish_application(application_payload)
         except Exception as e:
             _LOGGER.error(f"Failed to publish Application Data to MQTT: {e}")
