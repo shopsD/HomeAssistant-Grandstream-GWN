@@ -37,7 +37,7 @@ jobs:
           mkdir -p dist/hacs/gwn
           cp -R gwn/* dist/hacs/gwn/
           cd dist/hacs
-          zip -r "../${{ steps.hacs.outputs.filename }}" custom_components
+          zip -r "../${{ steps.hacs.outputs.filename }}" custom_components gwn
 
       - name: Upload asset to release
         env:
