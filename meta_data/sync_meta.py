@@ -20,7 +20,6 @@ def replace_or_fail(path: Path, pattern: str, repl: str) -> None:
 
 def main() -> None:
     APP_VERSION = _project_meta.APP_VERSION
-    GWN_CONSTANTS = args.repo_root / "gwn/constants/Constants.py"
     HOMEASSISTANT_MIN_VERSION = _project_meta.HOMEASSISTANT_MIN_VERSION
     PYTHON_REQUIRES = _project_meta.PYTHON_REQUIRES
     PYTHON_VERSION = _project_meta.PYTHON_VERSION
@@ -49,6 +48,7 @@ def main() -> None:
         GITHOOKS.chmod(0o755)
         print ("Set up Pre-Commit Hook")
 
+    GWN_CONSTANTS = args.repo_root / "gwn/constants/Constants.py"
     PYPROJECT = args.repo_root / "pyproject.toml"
     HACS = args.repo_root / "hacs.json"
     HACS_MANIFEST = args.repo_root / "custom_components/grandstream_gwn/manifest.json"
