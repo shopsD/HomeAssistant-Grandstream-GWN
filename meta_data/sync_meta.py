@@ -23,6 +23,7 @@ def main() -> None:
     HOMEASSISTANT_MIN_VERSION = _project_meta.HOMEASSISTANT_MIN_VERSION
     PYTHON_REQUIRES = _project_meta.PYTHON_REQUIRES
     PYTHON_VERSION = _project_meta.PYTHON_VERSION
+    REPOSITORY_ROOT = _project_meta.REPOSITORY_ROOT
 
     SCRIPT_PATH: Path = Path(__file__).resolve()
 
@@ -47,8 +48,10 @@ def main() -> None:
         GITHOOKS.chmod(0o755)
         print ("Set up Pre-Commit Hook")
 
+    GWN_CONSTANTS = args.repo_root / "gwn/constants/Constants.py"
     PYPROJECT = args.repo_root / "pyproject.toml"
     HACS = args.repo_root / "hacs.json"
+    HACS_MANIFEST = args.repo_root / "custom_components/grandstream_gwn/manifest.json"
     PYTHON_VERSION_FILE = args.repo_root / ".python-version"
     README = args.repo_root / "README.md"
     print (f"Syncing files:\n\t{PYPROJECT}\n\t{HACS}\n\t{PYTHON_VERSION_FILE}\n\t{README}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}")
@@ -74,9 +77,24 @@ def main() -> None:
         rf'\1"homeassistant": "{HOMEASSISTANT_MIN_VERSION}"\2'
     )
     replace_or_fail(
+        HACS_MANIFEST,
+        r'^(\s*)"version": "[^"]+"(,?)$',
+        rf'\1"version": "{APP_VERSION}"\2'
+    )
+    replace_or_fail(
+        HACS_MANIFEST,
+        r'^(\s*)"documentation": "[^"]+"(,?)$',
+        rf'\1"documentation": "{REPOSITORY_ROOT}"\2'
+    )
+    replace_or_fail(
         PYTHON_VERSION_FILE,
         r"^[^\n]+$",
         PYTHON_VERSION
+    )
+    replace_or_fail(
+        GWN_CONSTANTS,
+        r'^(\s*)APP_VERSION: ClassVar\[str\] = "[^"]+"$',
+        rf'\1APP_VERSION: ClassVar[str] = "{APP_VERSION}"'
     )
     replace_or_fail(
         README,

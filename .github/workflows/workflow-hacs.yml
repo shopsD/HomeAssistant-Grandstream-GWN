@@ -1,0 +1,46 @@
+name: HACS
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply version override to workspace metadata
+        uses: ./.github/actions/apply-version
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Load HACS archive filename
+        id: hacs
+        run: |
+          HACS_FILENAME="$(python -c 'import json; print(json.load(open("hacs.json", encoding="utf-8"))["filename"])')"
+          echo "filename=${HACS_FILENAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Build HACS zip
+        run: |
+          mkdir -p dist/hacs/custom_components
+          cp -R custom_components/grandstream_gwn dist/hacs/custom_components/
+          mkdir -p dist/hacs/gwn
+          cp -R gwn/* dist/hacs/gwn/
+          cd dist/hacs
+          zip -r "../${{ steps.hacs.outputs.filename }}" custom_components gwn
+
+      - name: Upload asset to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ inputs.tag }}" "dist/${{ steps.hacs.outputs.filename }}" --clobber

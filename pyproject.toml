@@ -10,6 +10,8 @@ dependencies = [
     "PyYAML",
 ]
 
+license-files = ["LICENSE-MPL.md", "LICENSE-BSD3.md"]
+
 [project.scripts]
 gwn_mqtt = "mqtt.__main__:main"
 
