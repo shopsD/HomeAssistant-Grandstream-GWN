@@ -42,15 +42,19 @@ class VersionManager:
         return [item for item in data if isinstance(item, dict)]
 
     async def _get_latest_release(self) -> ReleaseInfo | None:
+        _LOGGER.debug(f"Fetching releases from {self._update_url}")
         releases: list[dict[str, Any]] = await self._fetch_releases()
         for raw_release in releases:
             release = self._parse_release(raw_release)
             if release is not None and self._is_relevant_release(release):
+                _LOGGER.debug(f"Found latest release {release}")
                 return release
+        _LOGGER.debug("No releases were found")
         return None
 
     def _parse_release(self, release: dict[str, Any]) -> ReleaseInfo | None:
         try:
+            _LOGGER.debug("Parsing release data")
             tag: str = release["tag_name"]
             is_prerelease: bool = bool(release.get("prerelease"))
             url: str = release.get("html_url", "")
@@ -72,7 +76,7 @@ class VersionManager:
                 raw_items: str = line.split(":", 1)[1].strip()
                 if not raw_items:
                     return set()
-
+                _LOGGER.debug(f"Found release info {raw_items}")
                 return { item.strip().lower() for item in raw_items.split(",") if item.strip() }
 
         return set()
