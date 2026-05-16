@@ -54,12 +54,15 @@ class VersionManager:
             tag: str = release["tag_name"]
             is_prerelease: bool = bool(release["prerelease"])
             url: str = release.get("html_url", "")
-            _LOGGER.debug(f"Found release {name} with tag {tag}")
+            _LOGGER.debug(f"Found {"Pre-" if is_prerelease else ""}release {name} with tag {tag}")
             if is_prerelease and not self._config.allow_pre_release_update:
                 return None
             tags: list[str] = tag.lower().split("-")
-            version: str = "-".join(tags[:-1]) # ignore the last part since it is the targets
-            targets: str = tags[len(tags)-1].lower() if len(tags) > 1 else ""
+            version: str = tag
+            targets: str = ""
+            if len(tags) > 1:
+                version = "-".join(tags[:-1]) # ignore the last part since it is the targets
+                targets = tags[len(tags)-1].lower()
             return ReleaseInfo(
                 version=version,
                 is_prerelease=is_prerelease,
@@ -89,7 +92,10 @@ class VersionManager:
             return Constants.APP_VERSION
         _LOGGER.info(f"Checking for new releases. Current Version: {Constants.APP_VERSION}")
         release: ReleaseInfo | None = await self._get_latest_release()
-        return release.version if release is not None else Constants.APP_VERSION
+        if release is not None and release.version != Constants.APP_VERSION:
+            _LOGGER.info(f"An update is available: {Constants.APP_VERSION} -> {release.version}")
+            return release.version
+        return Constants.APP_VERSION
 
     async def close(self) -> None:
         await self._session.close()
