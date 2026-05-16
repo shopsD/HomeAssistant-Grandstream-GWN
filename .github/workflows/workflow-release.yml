@@ -25,16 +25,26 @@ on:
         required: true
         type: boolean
         default: false
+      publish_mqtt:
+        description: Publish mqtt asset
+        required: true
+        type: boolean
+        default: false
       publish_mqtt_wheel:
-        description: Publish mqtt wheel asset (with required imports)
+        description: Publishes creates and publishes a wheel alongside the mqtt package
+        required: true
+        type: boolean
+        default: true
+      publish_gwn:
+        description: Publish standalone gwn asset
         required: true
         type: boolean
         default: false
       publish_gwn_wheel:
-        description: Publish standalone gwn wheel asset
+        description: Publishes creates and publishes a wheel alongside the gwn package
         required: true
         type: boolean
-        default: false
+        default: true
       publish_docker:
         description: Publish docker image
         required: true
@@ -76,13 +86,13 @@ jobs:
           if [ "${{ inputs.publish_docker }}" = "true" ]; then
             RELEASE_TARGETS="${RELEASE_TARGETS}D"
           fi
-          if [ "${{ inputs.publish_gwn_wheel }}" = "true" ]; then
+          if [ "${{ inputs.publish_gwn }}" = "true" ]; then
             RELEASE_TARGETS="${RELEASE_TARGETS}L"
           fi
           if [ "${{ inputs.publish_hacs }}" = "true" ]; then
             RELEASE_TARGETS="${RELEASE_TARGETS}H"
           fi
-          if [ "${{ inputs.publish_mqtt_wheel }}" = "true" ]; then
+          if [ "${{ inputs.publish_mqtt }}" = "true" ]; then
             RELEASE_TARGETS="${RELEASE_TARGETS}A"
           fi
 
@@ -103,12 +113,12 @@ jobs:
           echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
       - name: Validate Source only Settings
         run: |
-          if [ -n "${{ inputs.tag }}" ] && [ "${{ inputs.publish_docker }}" != "true" ] && [ "${{ inputs.publish_mqtt_wheel }}" != "true" ] && [ "${{ inputs.publish_gwn_wheel }}" != "true" ] && [ "${{ inputs.publish_hacs }}" != "true" ]; then
+          if [ -n "${{ inputs.tag }}" ] && [ "${{ inputs.publish_docker }}" != "true" ] && [ "${{ inputs.publish_mqtt }}" != "true" ] && [ "${{ inputs.publish_gwn }}" != "true" ] && [ "${{ inputs.publish_hacs }}" != "true" ]; then
             echo "Custom Tags not supported on source only releases"
             exit 1
           fi
       - name: Validate Python package version
-        if: ${{ inputs.publish_docker || inputs.publish_mqtt_wheel || inputs.publish_gwn_wheel }}
+        if: ${{ inputs.publish_docker || inputs.publish_mqtt || inputs.publish_gwn }}
         env:
           APP_VERSION: ${{ steps.meta.outputs.version }}
         run: |
@@ -160,10 +170,10 @@ jobs:
         run: |
           RELEASE_ITEMS=()
 
-          if [ "${{ inputs.publish_mqtt_wheel }}" = "true" ]; then
+          if [ "${{ inputs.publish_mqtt }}" = "true" ]; then
             RELEASE_ITEMS+=("MQTT-Bridge")
           fi
-          if [ "${{ inputs.publish_gwn_wheel }}" = "true" ]; then
+          if [ "${{ inputs.publish_gwn }}" = "true" ]; then
             RELEASE_ITEMS+=("GWN-Library")
           fi
           if [ "${{ inputs.publish_docker }}" = "true" ]; then
@@ -195,24 +205,26 @@ jobs:
             --notes "${RELEASE_BODY}" \
             ${PRERELEASE_FLAG}
 
-  mqtt-wheel:
+  mqtt-artifact:
     needs: release
-    if: ${{ inputs.publish_mqtt_wheel }}
-    uses: ./.github/workflows/workflow-mqtt-wheel.yml
+    if: ${{ inputs.publish_mqtt }}
+    uses: ./.github/workflows/workflow-mqtt.yml
     with:
       tag: ${{ needs.release.outputs.tag }}
       release_tag: ${{ needs.release.outputs.release_tag }}
       version: ${{ needs.release.outputs.version }}
+      create_wheel: ${{ inputs.publish_mqtt_wheel }}
     secrets: inherit
 
-  gwn-wheel:
+  gwn-artifact:
     needs: release
-    if: ${{ inputs.publish_gwn_wheel }}
-    uses: ./.github/workflows/workflow-gwn-wheel.yml
+    if: ${{ inputs.publish_gwn }}
+    uses: ./.github/workflows/workflow-gwn.yml
     with:
       tag: ${{ needs.release.outputs.tag }}
       release_tag: ${{ needs.release.outputs.release_tag }}
       version: ${{ needs.release.outputs.version }}
+      create_wheel: ${{ inputs.publish_gwn_wheel }}
     secrets: inherit
 
   docker:
