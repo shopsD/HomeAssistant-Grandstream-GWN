@@ -83,7 +83,7 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Validate Python package version
-        if: ${{ inputs.publish_mqtt_wheel || inputs.publish_gwn_wheel }}
+        if: ${{ inputs.publish_docker || inputs.publish_mqtt_wheel ||inputs.publish_gwn_wheel }}
         env:
           APP_VERSION: ${{ steps.meta.outputs.version }}
         run: |
