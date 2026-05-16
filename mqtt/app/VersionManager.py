@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -28,6 +29,8 @@ class VersionManager:
         self._timeout = aiohttp.ClientTimeout(total=15)
         self._is_container: bool = os.getenv("GWN_MQTT_CONTAINER", "").lower() == "true"
         self._pre_release_list: set[str] = set(["alpha","beta","pre-release","release-candidate","a","b","pr","rc"])
+        self._latest_version: str = Constants.APP_VERSION
+        self._version_lock: asyncio.Lock = asyncio.Lock()
 
     async def _fetch_release_data(self, url: str) -> list[dict[str, Any]]:
         headers: dict[str, str] = {
@@ -87,15 +90,17 @@ class VersionManager:
         _LOGGER.debug("No releases were found")
         return None
 
-    async def get_latest_version(self) -> str:
-        if not self._config.check_for_updates:
-            return Constants.APP_VERSION
+    async def request_latest_version(self) -> None:
         _LOGGER.info(f"Checking for new releases. Current Version: {Constants.APP_VERSION}")
         release: ReleaseInfo | None = await self._get_latest_release()
         if release is not None and release.version != Constants.APP_VERSION:
             _LOGGER.info(f"An update is available: {Constants.APP_VERSION} -> {release.version}")
-            return release.version
-        return Constants.APP_VERSION
+            async with self._version_lock:
+                self._latest_version = release.version
+
+    async def get_latest_version(self) -> str:
+        async with self._version_lock:
+            return self._latest_version
 
     async def close(self) -> None:
         await self._session.close()

@@ -32,6 +32,17 @@ class MqttGwnManager:
         self._cached_devices: dict[str, dict[str, dict[str, object]]] = {}
         self._cached_ssids: dict[str, dict[str, dict[str, object]]] = {}
 
+    async def _run_application_tasks(self) -> None:
+        while True:
+            try:
+                await self._version_manager.request_latest_version()
+            except Exception as e:
+                _LOGGER.error(f"Error retrieving Application Data: {e}")
+            try:
+                await asyncio.sleep(float(self._config.update_check_period_s))
+            except asyncio.TimeoutError:
+                pass
+
     async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
         if self._config.unpublish_initial_data:
@@ -41,7 +52,7 @@ class MqttGwnManager:
                 latest_version: str = await self._version_manager.get_latest_version()
                 await self._publish_application_data(latest_version)
             except Exception as e:
-                _LOGGER.error(f"Error retrieving Application Data: {e}")
+                _LOGGER.error(f"Error Updating Application Data: {e}")
             try:
                 networks = await self._gwn_client.get_gwn_data()
                 await self._publish_gwn_data(networks)
@@ -576,10 +587,11 @@ class MqttGwnManager:
     async def run(self) -> None:
         _LOGGER.info("Starting Poll of GWN Manager and MQTT")
         await self._mqtt_client.unpublish_manifest()
+        app_task = asyncio.create_task(self._run_application_tasks())
         gwn_task = asyncio.create_task(self._run_gwn_interface())
         mqtt_task = asyncio.create_task(self._run_mqtt_interface())
         try:
-            await asyncio.gather(gwn_task, mqtt_task)
+            await asyncio.gather(app_task, gwn_task, mqtt_task)
         finally:
             await self._mqtt_client.disconnect()
             await self._gwn_client.close()

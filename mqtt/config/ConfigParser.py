@@ -352,7 +352,14 @@ class ConfigParser:
             allow_pre_release_update = app_section.get("allow_pre_release_update")
             if allow_pre_release_update is not None:
                 app_config.allow_pre_release_update = bool(allow_pre_release_update)
-        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'|Unpublish Initial Data: '{app_config.unpublish_initial_data}'|Check for Updates: '{app_config.check_for_updates}'|Allow Pre-release Updates: '{app_config.allow_pre_release_update}'")
+            # app update check period s
+            update_check_period_s = app_section.get("update_check_period_s")
+            if update_check_period_s is not None:
+                update_check_period_s = int(update_check_period_s)
+                if update_check_period_s < 0:
+                    raise ConfigParserError("app.update_check_period_s must be >= 0")
+                app_config.update_check_period_s = update_check_period_s
+        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'|Unpublish Initial Data: '{app_config.unpublish_initial_data}'|Check for Updates: '{app_config.check_for_updates}'|Allow Pre-release Updates: '{app_config.allow_pre_release_update}'|Update Check Period: '{app_config.update_check_period_s}s'")
         return app_config
 
     @staticmethod

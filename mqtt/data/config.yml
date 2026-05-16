@@ -3,6 +3,7 @@ app:
   unpublish_initial_data: False # default False. If set to True then MQTT will unpublish all the data it first reads from GWN Manager on startup then re-publish the data after. This is usually not required if a 'topic_manifest_path' is provided
   check_for_updates: False # default True. If set to True then each poll the application will check for updates on each poll cycle
   allow_pre_release_update: False # default False. If set to True then when checking for updates if a beta release is available, the application will notify of an update available
+  update_check_period_s: 86400 # default 21600 (6 hours). The number of seconds between each check for an update
 mqtt:
   port: 1883 # default 1883
   host: HOST_OR_IP # default 127.0.0.1
