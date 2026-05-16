@@ -33,15 +33,17 @@ class MqttGwnManager:
         self._cached_ssids: dict[str, dict[str, dict[str, object]]] = {}
 
     async def _run_application_tasks(self) -> None:
-        while True:
-            try:
-                await self._version_manager.request_latest_version()
-            except Exception as e:
-                _LOGGER.error(f"Error retrieving Application Data: {e}")
-            try:
-                await asyncio.sleep(float(self._config.update_check_period_s))
-            except asyncio.TimeoutError:
-                pass
+        # if other tasks are added, this check can be reduced in scope
+        if self._config.check_for_updates:
+            while True:
+                try:
+                    await self._version_manager.request_latest_version()
+                except Exception as e:
+                    _LOGGER.error(f"Error retrieving Application Data: {e}")
+                try:
+                    await asyncio.sleep(float(self._config.update_check_period_s))
+                except asyncio.TimeoutError:
+                    pass
 
     async def _run_gwn_interface(self) -> None:
         _LOGGER.debug("Polling GWN")
