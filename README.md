@@ -494,8 +494,8 @@ When an object is removed, the retained state payload is cleared by publishing a
 Application status cause changes based on what has occurred
 - `status: online`: `cause: connected` - Published immediately after connecting to the broker either following a disconnect or on startup
 - `status: online`: `cause: startup` - Published when the MQTT bridge is ready to start receiving and publishing commands
-- `status: offline`: `cause: disconnected` - Published for the MQTT last will and testament. May be published during a temporary disconnect
-- `status: offline`: `cause: shutdown` - Published when the MQTT bridge is shutting down gracefully. No messages will be sent or can be processed after this has been sent until `cause: startup` is published again. This will be published before the final last will and testament
+- `status: offline`: `cause: disconnected` - Published for the MQTT last will and testament. May be published during a temporary disconnect or unexpected shutdown
+- `status: offline`: `cause: shutdown` - Published when the MQTT bridge is shutting down gracefully. No messages will be sent or can be processed after this has been sent until `cause: startup` is published again
 
 ### Subscribed Command Topics
 
