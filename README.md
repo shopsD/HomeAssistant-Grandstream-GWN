@@ -3,7 +3,7 @@
 > [!Important]
 > This repository will be moving to 
 > `https://github.com/shopsD/Grandstream-GWN-MQTT-HomeAssistant`
-> in the next release
+> in release v0.0.2
 
 <img src="./assets/logo.png" alt="GWN to MQTT Bridge" width="300px"/>
 
