@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(Constants.LOG)
 @dataclass(slots=True, frozen=True)
 class ReleaseInfo:
     version: str
-    created_at: str
+    is_prerelease: bool
     url: str
     is_docker: bool
     is_app: bool
@@ -57,16 +57,16 @@ class VersionManager:
 
             if is_prerelease and not self._config.allow_pre_release_update:
                 return None
-            tags: list[str] = tags.lower().split("-")
+            tags: list[str] = tag.lower().split("-")
             targets: str = tags[len(tags)-1] if len(tags) > 1 else ""
             return ReleaseInfo(
-                version=tags[0], 
+                version=name, 
                 is_prerelease=is_prerelease, 
                 url=url,
-                is_docker=targets.contains("d"),
-                is_app=targets.contains("a"),
-                is_library=targets.contains("l"),
-                is_hacs=targets.contains("h")
+                is_docker="d" in targets,
+                is_app="a" in targets,
+                is_library="l" in targets,
+                is_hacs="h" in targets
             )
         except Exception as e:
             _LOGGER.warn(f"Failed to parse release info: {e}")
