@@ -139,8 +139,8 @@ class MqttClient:
             elif self._network_callback is not None:
                 await self._network_callback(network_id, formatted_data)
 
-    async def _publish_offline(self) -> None:
-        await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}", {"status": "offline"})
+    async def _publish_offline(self, clear: bool) -> None:
+        await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}",  None if clear else {"status": "offline"})
 
     def _get_network_topic(self, network_id: str) -> str:
         return f"{self._interface.topic}/{Constants.NETWORKS}/{network_id}"
@@ -151,9 +151,11 @@ class MqttClient:
     def _get_ssid_topic(self, network_id: str, ssid_id: str) -> str:
         return f"{self._get_network_topic(network_id)}/{Constants.SSIDS}/{ssid_id}"
 
-    async def _publish_online_payload(self, application_payload: dict[str,object], clear: bool, clear_autodiscovery: bool) -> None:
+    async def _publish_online(self, clear: bool) -> None:
+        await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}", None if clear else {"status": "online"})
+
+    async def _publish_application_payload(self, application_payload: dict[str,object], clear: bool, clear_autodiscovery: bool) -> None:
         application_topic = f"{self._interface.topic}/{Constants.APPLICATION}"
-        await self._do_publish(f"{application_topic}/{Constants.STATUS}", None if clear else {"status": "online"})
         state_topic: str = f"{application_topic}/{Constants.STATE}"
         await self._do_publish(state_topic, None if clear else application_payload)
         if clear and not clear_autodiscovery:
@@ -289,13 +291,16 @@ class MqttClient:
             self._listen_task = None
         if self._interface.is_connected:
             try:
-                await self._publish_offline()
+                await self._publish_offline(False)
             except Exception as e:
                 _LOGGER.warn(f"Failed to publish offline message: {e}")
         return await self._interface.disconnect()
 
-    async def publish_online(self, application_payload: dict[str,object]) -> None:
-        await self._publish_online_payload(application_payload, False, False)
+    async def publish_online(self) -> None:
+        await self._publish_online(False)
+
+    async def publish_application(self, application_payload: dict[str,object]) -> None:
+        await self._publish_application_payload(application_payload, False, False)
 
     async def publish_network(self, network_payload: dict[str, object]) -> None:
         await self._publish_network_payload(network_payload, False, False)
@@ -306,8 +311,11 @@ class MqttClient:
     async def publish_ssid(self, ssid_payload: dict[str, object], devices: dict[str, str], is_readonly: bool) -> None:
         await self._publish_ssid_payload(ssid_payload, devices, False, is_readonly, False)
 
-    async def unpublish_online(self, application_payload: dict[str,object], propagate: bool) -> None:
-        await self._publish_online_payload(application_payload, True, propagate) # Maybe if uninstalling?
+    async def unpublish_online(self) -> None:
+        await self._publish_online(True) # Maybe if uninstalling?
+
+    async def unpublish_application(self, application_payload: dict[str,object], propagate: bool) -> None:
+        await self._publish_application_payload(application_payload, True, propagate) # Maybe if uninstalling?
 
     async def unpublish_network(self, network_payload: dict[str, object], propagate: bool) -> None:
         await self._publish_network_payload(network_payload, True, propagate)

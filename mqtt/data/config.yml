@@ -1,6 +1,8 @@
 app:
   publish_every_poll: False # default False. If set to True then MQTT will publish a message every time a GWN poll is performed. If set to False, then MQTT message are only published when data changes in GWN
   unpublish_initial_data: False # default False. If set to True then MQTT will unpublish all the data it first reads from GWN Manager on startup then re-publish the data after. This is usually not required if a 'topic_manifest_path' is provided
+  check_for_updates: False # default True. If set to True then each poll the application will check for updates on each poll cycle
+  allow_pre_release_update: False # default False. If set to True then when checking for updates if a beta release is available, the application will notify of an update available
 mqtt:
   port: 1883 # default 1883
   host: HOST_OR_IP # default 127.0.0.1

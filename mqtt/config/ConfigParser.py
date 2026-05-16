@@ -344,7 +344,15 @@ class ConfigParser:
             unpublish_initial_data = app_section.get("unpublish_initial_data")
             if unpublish_initial_data is not None:
                 app_config.unpublish_initial_data = bool(unpublish_initial_data)
-        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'|Unpublish Initial Data: '{app_config.unpublish_initial_data}'")
+            # app check for updates
+            check_for_updates = app_section.get("check_for_updates")
+            if check_for_updates is not None:
+                app_config.check_for_updates = bool(check_for_updates)
+            # app check for pre release updates
+            allow_pre_release_update = app_section.get("allow_pre_release_update")
+            if allow_pre_release_update is not None:
+                app_config.allow_pre_release_update = bool(allow_pre_release_update)
+        _LOGGER.debug(f"App Config|Publish on Poll: '{app_config.publish_every_poll}'|Unpublish Initial Data: '{app_config.unpublish_initial_data}'|Check for Updates: '{app_config.check_for_updates}'|Allow Pre-release Updates: '{app_config.allow_pre_release_update}'")
         return app_config
 
     @staticmethod

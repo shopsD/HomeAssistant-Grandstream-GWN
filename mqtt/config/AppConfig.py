@@ -4,3 +4,5 @@ from dataclasses import dataclass
 class AppConfig:
     publish_every_poll: bool = False
     unpublish_initial_data: bool = False
+    check_for_updates: bool = True
+    allow_pre_release_update: bool = False

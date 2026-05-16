@@ -17,6 +17,7 @@ class GwnInterface:
         self._config: GwnConfig = config
         self._session: aiohttp.ClientSession = aiohttp.ClientSession()
         self._token: GwnToken | None = None
+        self._timeout = aiohttp.ClientTimeout(total=15)
 
     async def __aenter__(self) -> "GwnInterface":
         return self
@@ -87,7 +88,7 @@ class GwnInterface:
 
     async def _do_post(self, path: str, params: dict[str, str], body: str, headers: dict[str,str], do_log: bool = True) -> dict[str,Any] | None:
         url = f"{self._config.base_url.rstrip('/')}/{path.lstrip('/')}"
-        async with self._session.post(url, params=params, data=body,headers=headers ) as response:
+        async with self._session.post(url, params=params, data=body,headers=headers, timeout=self._timeout) as response:
             data = await response.json(content_type=None)
 
             if response.status != 200:

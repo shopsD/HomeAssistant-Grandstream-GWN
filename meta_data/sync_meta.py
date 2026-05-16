@@ -23,7 +23,9 @@ def main() -> None:
     HOMEASSISTANT_MIN_VERSION = _project_meta.HOMEASSISTANT_MIN_VERSION
     PYTHON_REQUIRES = _project_meta.PYTHON_REQUIRES
     PYTHON_VERSION = _project_meta.PYTHON_VERSION
-    REPOSITORY_ROOT = _project_meta.REPOSITORY_ROOT
+    REPOSITORY_URL = _project_meta.REPOSITORY_URL
+    CONTAINER_URL = _project_meta.CONTAINER_URL
+    UPDATE_URL = _project_meta.UPDATE_URL
 
     SCRIPT_PATH: Path = Path(__file__).resolve()
 
@@ -49,21 +51,23 @@ def main() -> None:
         print ("Set up Pre-Commit Hook")
 
     GWN_CONSTANTS = args.repo_root / "gwn/constants/Constants.py"
+    VERSION_MANAGER = args.repo_root / "mqtt/app/VersionManager.py"
     PYPROJECT = args.repo_root / "pyproject.toml"
     HACS = args.repo_root / "hacs.json"
     HACS_MANIFEST = args.repo_root / "custom_components/grandstream_gwn/manifest.json"
     PYTHON_VERSION_FILE = args.repo_root / ".python-version"
     README = args.repo_root / "README.md"
-    print (f"Syncing files:\n\t{PYPROJECT}\n\t{HACS}\n\t{PYTHON_VERSION_FILE}\n\t{README}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}")
+    COMPOSE_FILE = args.repo_root / "docker-compose.yml"
+    print (f"Syncing files:\n\t{GWN_CONSTANTS}\n\t{VERSION_MANAGER}\n\t{PYPROJECT}\n\t{HACS}\n\t{HACS_MANIFEST}\n\t{PYTHON_VERSION_FILE}\n\t{README}\n\t{COMPOSE_FILE}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}\n\tRepo URL: {REPOSITORY_URL}\n\tContainer URL: {CONTAINER_URL}\n\tUpdate URL: {UPDATE_URL}")
 
     replace_or_fail(
         PYPROJECT,
-        r'^version = "[^"]+"$',
+        r'^version\s*=\s*"[^"]+"$',
         f'version = "{APP_VERSION}"'
     )
     replace_or_fail(
         PYPROJECT,
-        r'^requires-python = "[^"]+"$',
+        r'^requires-python\s*=\s*"[^"]+"$',
         f'requires-python = "{PYTHON_REQUIRES}"'
     )
     replace_or_fail(
@@ -73,18 +77,18 @@ def main() -> None:
     )
     replace_or_fail(
         HACS,
-        r'^(\s*)"homeassistant": "[^"]+"(,?)$',
+        r'^(\s*)"homeassistant":\s*"[^"]+"(,?)$',
         rf'\1"homeassistant": "{HOMEASSISTANT_MIN_VERSION}"\2'
     )
     replace_or_fail(
         HACS_MANIFEST,
-        r'^(\s*)"version": "[^"]+"(,?)$',
+        r'^(\s*)"version":\s*"[^"]+"(,?)$',
         rf'\1"version": "{APP_VERSION}"\2'
     )
     replace_or_fail(
         HACS_MANIFEST,
-        r'^(\s*)"documentation": "[^"]+"(,?)$',
-        rf'\1"documentation": "{REPOSITORY_ROOT}"\2'
+        r'^(\s*)"documentation":\s*"[^"]+"(,?)$',
+        rf'\1"documentation": "{REPOSITORY_URL}"\2'
     )
     replace_or_fail(
         PYTHON_VERSION_FILE,
@@ -93,13 +97,23 @@ def main() -> None:
     )
     replace_or_fail(
         GWN_CONSTANTS,
-        r'^(\s*)APP_VERSION: ClassVar\[str\] = "[^"]+"$',
+        r'^(\s*)APP_VERSION:\s*ClassVar\[str\]\s*=\s*"[^"]+"$',
         rf'\1APP_VERSION: ClassVar[str] = "{APP_VERSION}"'
     )
     replace_or_fail(
         README,
-        r'^(\s*-\s+)Python `[^`]+`(.*)$',
+        r'^(\s*-\s+)Python\s+`[^`]+`(.*)$',
         rf'\1Python `{PYTHON_VERSION}`\2'
+    )
+    replace_or_fail(
+        VERSION_MANAGER,
+        r'^(\s*)self\._update_url:\s*str\s*=\s*"[^"]+"(.*)$',
+        rf'\1self._update_url: str = "{UPDATE_URL}"\2'
+    )
+    replace_or_fail(
+        COMPOSE_FILE,
+        r'^(\s*)image:\s*[^:\r\n]+(:?[^\r\n]*)$',
+        rf'\1image: {CONTAINER_URL}\2'
     )
     print ("Sync Complete")
 

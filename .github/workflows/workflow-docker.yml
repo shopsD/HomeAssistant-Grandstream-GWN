@@ -7,6 +7,10 @@ on:
         description: "Release tag to associate with this build"
         required: true
         type: string
+      release_tag:
+        description: "GitHub release tag to associate artifacts with"
+        required: true
+        type: string
       version:
         description: "Application version to write into workspace metadata before building"
         required: true

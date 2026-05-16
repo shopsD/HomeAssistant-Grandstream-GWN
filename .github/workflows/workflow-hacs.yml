@@ -6,6 +6,9 @@ on:
       tag:
         required: true
         type: string
+      release_tag:
+        required: true
+        type: string
       version:
         required: true
         type: string
@@ -43,4 +46,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ inputs.tag }}" "dist/${{ steps.hacs.outputs.filename }}" --clobber
+          gh release upload "${{ inputs.release_tag }}" "dist/${{ steps.hacs.outputs.filename }}" --clobber
