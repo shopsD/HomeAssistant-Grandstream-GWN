@@ -7,6 +7,10 @@ on:
         description: "Release tag to upload artifacts to"
         required: true
         type: string
+      release_tag:
+        description: "GitHub release tag to upload artifacts to"
+        required: true
+        type: string
       version:
         description: "Application version to write into workspace metadata before building"
         required: true
@@ -85,4 +89,4 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release upload "${{ inputs.tag }}" release-assets/* --clobber
+        gh release upload "${{ inputs.release_tag }}" release-assets/* --clobber
