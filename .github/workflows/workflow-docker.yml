@@ -61,8 +61,9 @@ jobs:
       - name: Set Tags
         id: vars
         run: |
-
-          TAGS="${{ steps.image.outputs.name }}:${steps.meta.outputs.version_tag}"
+          IMAGE_NAME="${{ steps.image.outputs.name }}"
+          VERSION_TAG="${{ steps.meta.outputs.version_tag }}"
+          TAGS="${IMAGE_NAME}:${VERSION_TAG}"
           if [ "${{ inputs.publish_latest }}" = "true" ]; then
             TAGS="${TAGS},${{ steps.image.outputs.name }}:latest"
           fi

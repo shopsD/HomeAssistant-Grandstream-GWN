@@ -198,11 +198,10 @@ jobs:
           if [ "${{ inputs.prerelease }}" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          RELEASE_BODY="$(printf '%s\n%s' "${{ steps.release_notes.outputs.release_items_line }}" "${{ inputs.body }}")"
 
           gh release create "${{ steps.meta.outputs.release_tag }}" \
             --title "${{ inputs.name }}" \
-            --notes "${RELEASE_BODY}" \
+            --notes "${{ inputs.body }}" \
             ${PRERELEASE_FLAG}
 
   mqtt-artifact:
