@@ -81,9 +81,13 @@ jobs:
 
           echo "version=${METADATA_VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-
+      - name: Validate Source only Settings
+        run: |
+          if ${{ !(inputs.publish_docker || inputs.publish_mqtt_wheel || inputs.publish_gwn_wheel) && inputs.tag != "" }}
+          echo "Custom Tags not supported on source only releases"
+          exit 1
       - name: Validate Python package version
-        if: ${{ inputs.publish_docker || inputs.publish_mqtt_wheel ||inputs.publish_gwn_wheel }}
+        if: ${{ inputs.publish_docker || inputs.publish_mqtt_wheel || inputs.publish_gwn_wheel }}
         env:
           APP_VERSION: ${{ steps.meta.outputs.version }}
         run: |

@@ -242,10 +242,10 @@ With only `app_id` and `secret_key`, the bridge can poll data available through 
 
 ```yaml
 app:
-  publish_every_poll: false
-  unpublish_initial_data: false
-  check_for_updates: true
-
+  publish_every_poll: False
+  unpublish_initial_data: False
+  check_for_updates: True
+  allow_pre_release_update: False
 mqtt:
   host: 127.0.0.1
   port: 1883
@@ -254,24 +254,24 @@ mqtt:
   client_id: gwn-mqtt
   keepalive: 60
   topic: gwn
-  tls: false
-  verify_tls: true
+  tls: False
+  verify_tls: True
   topic_manifest_path: ./manifest/
-  no_publish: false
+  no_publish: False
   homeassistant:
     discovery_topic: homeassistant
-    always_publish_autodiscovery: false
-    application_autodiscovery: true
-    default_network_autodiscovery: true
-    default_device_autodiscovery: true
-    default_ssid_autodiscovery: true
+    always_publish_autodiscovery: False
+    application_autodiscovery: True
+    default_network_autodiscovery: True
+    default_device_autodiscovery: True
+    default_ssid_autodiscovery: True
     network_autodiscovery:
       - 1
-      - 2: false
+      - 2: False
     device_autodiscovery:
-      - "AA:BB:CC:DD:EE:FF": true
+      - "AA:BB:CC:DD:EE:FF": True
     ssid_autodiscovery:
-      - 3: true
+      - 3: True
     network_name_override:
       - 1: "Office"
     device_name_override:
@@ -296,9 +296,9 @@ gwn:
     - "AA:BB:CC:DD:EE:00"
   exclude_network:
     - 999
-  ignore_failed_fetch_before_update: false
-  ssid_name_to_device_binding: true
-  no_publish: false
+  ignore_failed_fetch_before_update: False
+  ssid_name_to_device_binding: True
+  no_publish: False
 
 logging:
   level: INFO
@@ -312,7 +312,7 @@ logging:
 | `publish_every_poll` | No | `false` | If `false`, MQTT state is published only when the received GWN payload differs from the previous poll. If `true`, state is published after every GWN poll. |
 | `unpublish_initial_data` | No | `false` | If `true`, the bridge fetches the current GWN data on startup, clears matching retained MQTT state/discovery, then republishes fresh state. This is normally not required when `mqtt.topic_manifest_path` is configured. |
 | `check_for_updates` | No | `true` | If `true`, the bridge checks if there is a newer version of the application on every poll cycle and publishes it over MQTT if a new version is found. |
-
+| `allow_pre_release_update` | No | `false` | If `true`, the bridge will notify of a new version even if it is classed as a pre-release version (such as beta). |
 ## `mqtt` Config
 
 | Field | Required | Default | Behaviour |

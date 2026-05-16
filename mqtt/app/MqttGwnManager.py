@@ -38,15 +38,15 @@ class MqttGwnManager:
             await self._unpublish_all_data()
         while True:
             try:
-                networks = await self._gwn_client.get_gwn_data()
-                await self._publish_gwn_data(networks)
-            except Exception as e:
-                _LOGGER.error(f"Error retrieving GWN Data: {e}")
-            try:
                 latest_version: str = await self._version_manager.get_latest_version()
                 await self._publish_application_data(latest_version)
             except Exception as e:
                 _LOGGER.error(f"Error retrieving Application Data: {e}")
+            try:
+                networks = await self._gwn_client.get_gwn_data()
+                await self._publish_gwn_data(networks)
+            except Exception as e:
+                _LOGGER.error(f"Error retrieving GWN Data: {e}")
             try:
                 _LOGGER.info("Checking manifest")
                 self._mqtt_client.write_manifest()

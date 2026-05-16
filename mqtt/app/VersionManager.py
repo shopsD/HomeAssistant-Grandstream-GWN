@@ -51,7 +51,6 @@ class VersionManager:
     def _parse_release(self, release: dict[str, Any]) -> ReleaseInfo | None:
         try:
             # if some of these are missing, it is invalid so let it throw and log
-            _LOGGER.debug("Parsing release data")
             tag: str = release["tag_name"]
             is_prerelease: bool = any(substring in tag for substring in self._pre_release_list)
             url: str = release.get("html_url", "")
@@ -70,7 +69,7 @@ class VersionManager:
         for raw_release in releases: # need to confirm this shows in order
             release = self._parse_release(raw_release)
             if release is not None:
-                _LOGGER.debug(f"Found latest release {release}")
+                _LOGGER.debug(f"Found latest release {release.version}")
                 return release
         _LOGGER.debug("No releases were found")
         return None
@@ -103,7 +102,7 @@ class VersionManager:
                 return None
 
             return ReleaseInfo(
-                version=version, # this needs to be corrected
+                version=version,
                 created_at=created_at,
                 is_prerelease=is_prerelease,
                 url=html_url
@@ -113,11 +112,14 @@ class VersionManager:
             return None
 
     async def _get_latest_container_release(self) -> ReleaseInfo | None:
+        _LOGGER.debug(f"Fetching releases from {self._container_update_url}")
         raw_versions = await self._fetch_container_releases()
         parsed = [item for raw in raw_versions if (item := self._parse_container_release(raw)) is not None]
+        if len(parsed) == 0:
+            return None
+        _LOGGER.debug("Fetched new releases")
         parsed.sort(key=lambda item: item.created_at, reverse=True)
-        return parsed[0] if parsed else None
-
+        return parsed[0]
 
     async def get_latest_version(self) -> str:
         if not self._config.check_for_updates:
