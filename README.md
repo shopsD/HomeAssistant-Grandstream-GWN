@@ -1,4 +1,10 @@
 # HomeAssistant-Grandstream-GWN
+
+> [!Important]
+> This repository will be moving to 
+> `https://github.com/shopsD/Grandstream-GWN-MQTT-HomeAssistant`
+> in the next release
+
 <img src="./assets/logo.png" alt="GWN to MQTT Bridge" width="300px"/>
 
 Grandstream GWN Manager tooling for publishing GWN network, access point, and SSID data over MQTT, with optional Home Assistant MQTT discovery. This tool is not endorsed, affiliated nor supported by Grandstream.
