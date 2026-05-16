@@ -23,7 +23,7 @@ class ReleaseInfo:
 class VersionManager:
     def __init__(self, config: AppConfig) -> None:
         self._config: AppConfig = config
-        self._update_url: str = "https://api.github.com/repos/shopsD/homeassistant-grandstream-gwn/releases"        
+        self._update_url: str = "https://api.github.com/repos/shopsD/homeassistant-grandstream-gwn/releases"
         self._session: aiohttp.ClientSession = aiohttp.ClientSession()
         self._timeout = aiohttp.ClientTimeout(total=15)
         self._is_container: bool = os.getenv("GWN_MQTT_CONTAINER", "").lower() == "true"
@@ -60,8 +60,8 @@ class VersionManager:
             tags: list[str] = tag.lower().split("-")
             targets: str = tags[len(tags)-1] if len(tags) > 1 else ""
             return ReleaseInfo(
-                version=tags[0], 
-                is_prerelease=is_prerelease, 
+                version=tags[0],
+                is_prerelease=is_prerelease,
                 url=url,
                 is_docker="d" in targets,
                 is_app="a" in targets,
@@ -77,7 +77,7 @@ class VersionManager:
         releases: list[dict[str, Any]] = await self._fetch_releases()
         for raw_release in releases: # need to confirm this shows in order
             release = self._parse_release(raw_release)
-            if release is not None and ((not self._is_container and release.is_app) or (self._is_container and release.is_docker)):                    
+            if release is not None and ((not self._is_container and release.is_app) or (self._is_container and release.is_docker)):
                 _LOGGER.debug(f"Found latest release {release.version}")
                 return release
         _LOGGER.debug("No releases were found")
