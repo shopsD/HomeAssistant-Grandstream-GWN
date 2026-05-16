@@ -21,7 +21,7 @@ class VersionManager:
     def __init__(self, config: AppConfig) -> None:
         self._config: AppConfig = config
         self._update_url: str = "https://api.github.com/repos/shopsD/homeassistant-grandstream-gwn/releases"
-        self._update_container_url: str = "https://api.github.com/users/shopsD/packages/container/homeassistant-grandstream-gwn/versions"
+        self._container_update_url: str = "https://api.github.com/users/shopsD/packages/container/homeassistant-grandstream-gwn/versions"
         self._session: aiohttp.ClientSession = aiohttp.ClientSession()
         self._timeout = aiohttp.ClientTimeout(total=15)
         self._is_container: bool = os.getenv("GWN_MQTT_CONTAINER", "").lower() == "true"
@@ -46,7 +46,7 @@ class VersionManager:
         return await self._fetch_release_data(self._update_url)
 
     async def _fetch_container_releases(self) -> list[dict[str, Any]]:
-        return await self._fetch_release_data(self._update_container_url)
+        return await self._fetch_release_data(self._container_update_url)
 
     def _parse_release(self, release: dict[str, Any]) -> ReleaseInfo | None:
         try:

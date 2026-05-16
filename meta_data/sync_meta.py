@@ -25,6 +25,7 @@ def main() -> None:
     PYTHON_VERSION = _project_meta.PYTHON_VERSION
     REPOSITORY_URL = _project_meta.REPOSITORY_URL
     UPDATE_URL = _project_meta.UPDATE_URL
+    CONTAINER_UPDATE_URL = _project_meta.CONTAINER_UPDATE_URL
 
     SCRIPT_PATH: Path = Path(__file__).resolve()
 
@@ -56,7 +57,7 @@ def main() -> None:
     HACS_MANIFEST = args.repo_root / "custom_components/grandstream_gwn/manifest.json"
     PYTHON_VERSION_FILE = args.repo_root / ".python-version"
     README = args.repo_root / "README.md"
-    print (f"Syncing files:\n\t{GWN_CONSTANTS}\n\t{VERSION_MANAGER}\n\t{PYPROJECT}\n\t{HACS}\n\t{HACS_MANIFEST}\n\t{PYTHON_VERSION_FILE}\n\t{README}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}\n\tRepo URL: {REPOSITORY_URL}\n\tUpdate URL: {UPDATE_URL}")
+    print (f"Syncing files:\n\t{GWN_CONSTANTS}\n\t{VERSION_MANAGER}\n\t{PYPROJECT}\n\t{HACS}\n\t{HACS_MANIFEST}\n\t{PYTHON_VERSION_FILE}\n\t{README}\nVersions:\n\tApp Version: {APP_VERSION}\n\tPython Version: {PYTHON_VERSION}\n\tPython Requires: {PYTHON_REQUIRES}\n\tHome Assistant Min Version: {HOMEASSISTANT_MIN_VERSION}\n\tRepo URL: {REPOSITORY_URL}\n\tUpdate URL: {UPDATE_URL}\n\tContainer Update URL: {CONTAINER_UPDATE_URL}")
 
     replace_or_fail(
         PYPROJECT,
@@ -107,6 +108,11 @@ def main() -> None:
         VERSION_MANAGER,
         r'^(\s*)self\._update_url\:\s*str\s*=\s*"[^"]+"(.*)$',
         rf'\1self._update_url: str = "{UPDATE_URL}"\2'
+    )
+    replace_or_fail(
+        VERSION_MANAGER,
+        r'^(\s*)self\._container_update_url\:\s*str\s*=\s*"[^"]+"(.*)$',
+        rf'\1self._container_update_url: str = "{CONTAINER_UPDATE_URL}"\2'
     )
     print ("Sync Complete")
 
