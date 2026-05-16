@@ -41,7 +41,7 @@ on:
         type: boolean
         default: false
       publish_gwn_wheel:
-        description: Publishes creates and publishes a wheel alongside the gwn package. Ignored if publish_mqtt is unchecked
+        description: Publishes creates and publishes a wheel alongside the gwn package. Ignored if publish_gwn is unchecked
         required: true
         type: boolean
         default: true
