@@ -58,9 +58,10 @@ class VersionManager:
             if is_prerelease and not self._config.allow_pre_release_update:
                 return None
             tags: list[str] = tag.lower().split("-")
-            targets: str = tags[len(tags)-1] if len(tags) > 1 else ""
+            version: str = "-".join(tags[:-1]) # ignore the last part since it is the targets
+            targets: str = tags[len(tags)-1].lower() if len(tags) > 1 else ""
             return ReleaseInfo(
-                version=tags[0],
+                version=version,
                 is_prerelease=is_prerelease,
                 url=url,
                 is_docker="d" in targets,
@@ -86,7 +87,7 @@ class VersionManager:
     async def get_latest_version(self) -> str:
         if not self._config.check_for_updates:
             return Constants.APP_VERSION
-
+        _LOGGER.info(f"Checking for new releases. Current Version: {Constants.APP_VERSION}")
         release: ReleaseInfo | None = await self._get_latest_release()
         return release.version if release is not None else Constants.APP_VERSION
 
