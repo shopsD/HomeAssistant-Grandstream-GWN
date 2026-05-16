@@ -6,4 +6,4 @@ services:
     restart: unless-stopped
 
     volumes:
-      - ./config:/config
+      - ./
