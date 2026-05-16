@@ -14,7 +14,8 @@ _LOGGER = logging.getLogger(Constants.LOG)
 class MqttClient:
     def __init__(self, config: MqttConfig) -> None:
         self._config: MqttConfig = config
-        self._interface: MqttInterface = MqttInterface(config)
+        self._status_topic: str = f"{self._config.topic}/{Constants.APPLICATION}/{Constants.STATUS}"
+        self._interface: MqttInterface = MqttInterface(config, self._status_topic, '{"status": "online", "cause": "connected"}','{"status": "offline", "cause": "disconnected"}')
         self._manifest: Manifest = Manifest(config)
         self._application_callback: Callable[[dict[str, Any]], None] | None = None
         self._network_callback: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None
@@ -140,7 +141,7 @@ class MqttClient:
                 await self._network_callback(network_id, formatted_data)
 
     async def _publish_offline(self, clear: bool) -> None:
-        await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}",  None if clear else {"status": "offline"})
+        await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}",  None if clear else {"status": "offline", "cause":"shutdown"})
 
     def _get_network_topic(self, network_id: str) -> str:
         return f"{self._interface.topic}/{Constants.NETWORKS}/{network_id}"
@@ -152,7 +153,7 @@ class MqttClient:
         return f"{self._get_network_topic(network_id)}/{Constants.SSIDS}/{ssid_id}"
 
     async def _publish_online(self, clear: bool) -> None:
-        await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}", None if clear else {"status": "online"})
+        await self._do_publish(f"{self._interface.topic}/{Constants.APPLICATION}/{Constants.STATUS}", None if clear else {"status": "online", "cause": "startup"})
 
     async def _publish_application_payload(self, application_payload: dict[str,object], clear: bool, clear_autodiscovery: bool) -> None:
         application_topic = f"{self._interface.topic}/{Constants.APPLICATION}"

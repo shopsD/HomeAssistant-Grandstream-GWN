@@ -2,7 +2,7 @@ import asyncio
 import logging
 import ssl
 
-from aiomqtt import Client
+from aiomqtt import Client, Will
 
 from gwn.constants import Constants
 from mqtt.config import MqttConfig
@@ -10,8 +10,11 @@ from mqtt.config import MqttConfig
 _LOGGER = logging.getLogger(Constants.LOG)
 
 class MqttInterface:
-    def __init__(self, config: MqttConfig) -> None:
+    def __init__(self, config: MqttConfig, status_topic: str, birth_payload: str, death_payload: str) -> None:
         self._config: MqttConfig = config
+        self._status_topic = status_topic
+        self._birth_payload: str = birth_payload
+        self._death_payload: str = death_payload
         self._client: Client | None = None
         self._connected: bool = False
         self._mqtt_lock: asyncio.Lock = asyncio.Lock()
@@ -56,13 +59,22 @@ class MqttInterface:
                 keepalive=self._config.keepalive,
                 tls_context = tls_context,
                 tls_insecure=not self._config.verify_tls,
-                logger = _LOGGER
+                logger = _LOGGER,
+                will = Will(
+                    topic=self._status_topic,
+                    payload=self._death_payload,
+                    qos=0,
+                    retain=True
+                )
             )
 
             await client.__aenter__()
             self._client = client
             self._connected = True
-            _LOGGER.info(f"Connected to MQTT broker at {self._config.host}:{self._config.port}")
+
+        await self.publish(self._status_topic, self._birth_payload, True)
+        _LOGGER.info(f"Connected to MQTT broker at {self._config.host}:{self._config.port}")
+
         return self._connected
 
     async def disconnect(self) -> None:

@@ -483,13 +483,19 @@ Assume `mqtt.topic: gwn`. If you change `mqtt.topic`, replace `gwn` in the examp
 
 | Object | Topic | Payload |
 | --- | --- | --- |
-| Application status | `gwn/application/status` | `{"status": "online"}` or `{"status": "offline"}`. Retained. |
+| Application status | `gwn/application/status` | `{"status": "online", "cause": "connected"}` or `{"status": "offline", "cause": "disconnected"}`. Retained. |
 | Application state | `gwn/application/state` | Application state JSON. Retained. |
 | Network state | `gwn/networks/{network_id}/state` | Network state JSON. Retained. |
 | Device state | `gwn/networks/{network_id}/devices/{mac}/state` | Device state JSON. Retained. MAC is stripped of ":" and "-" and converted to lower-case in the topic. |
 | SSID state | `gwn/networks/{network_id}/ssids/{ssid_id}/state` | SSID state JSON. Retained. |
 
 When an object is removed, the retained state payload is cleared by publishing an empty retained payload to the previous state topic. Home Assistant discovery payloads are also cleared when the discovery cache is reset or an object is unpublished.
+
+Application status cause changes based on what has occurred
+- `status: online`: `cause: connected` - Published immediately after connecting to the broker either following a disconnect or on startup
+- `status: online`: `cause: startup` - Published when the MQTT bridge is ready to start receiving and publishing commands
+- `status: offline`: `cause: disconnected` - Published for the MQTT last will and testament. May be published during a temporary disconnect or unexpected shutdown
+- `status: offline`: `cause: shutdown` - Published when the MQTT bridge is shutting down gracefully. No messages will be sent or can be processed after this has been sent until `cause: startup` is published again
 
 ### Subscribed Command Topics
 
@@ -879,6 +885,15 @@ If you want to run tools directly from the virtual environment:
 .venv/bin/python -m mypy custom_components/grandstream_gwn gwn mqtt
 .venv/bin/python -m compileall -q custom_components/grandstream_gwn gwn mqtt
 ```
+
+### Release Tagging
+
+- Release tags are used to determine what is packaged in a release by appending a suffix
+- `A` -> An archive containing the MQTT App and GWN Library was published in this release. (A Python Wheel may also have been created)
+- `H` -> An archive for the Home Assistant `HACs` integration was published in this release
+- `D` -> A Docker Image of the MQTT app was published in this release
+- `L` -> An archive containing the GWN Library alone was published in this release. (A Python Wheel may also have been created)
+
 
 ## Security Notes
 
