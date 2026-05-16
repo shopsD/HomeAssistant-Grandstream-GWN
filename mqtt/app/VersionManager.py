@@ -54,13 +54,13 @@ class VersionManager:
             tag: str = release["tag_name"]
             is_prerelease: bool = bool(release["prerelease"])
             url: str = release.get("html_url", "")
-
+            _LOGGER.debug(f"Found release {name} with tag {tag}")
             if is_prerelease and not self._config.allow_pre_release_update:
                 return None
             tags: list[str] = tag.lower().split("-")
             targets: str = tags[len(tags)-1] if len(tags) > 1 else ""
             return ReleaseInfo(
-                version=name, 
+                version=tags[0], 
                 is_prerelease=is_prerelease, 
                 url=url,
                 is_docker="d" in targets,
