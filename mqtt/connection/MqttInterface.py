@@ -71,8 +71,10 @@ class MqttInterface:
             await client.__aenter__()
             self._client = client
             self._connected = True
-            await self.publish(self._status_topic, self._birth_payload, True)
-            _LOGGER.info(f"Connected to MQTT broker at {self._config.host}:{self._config.port}")
+
+        await self.publish(self._status_topic, self._birth_payload, True)
+        _LOGGER.info(f"Connected to MQTT broker at {self._config.host}:{self._config.port}")
+
         return self._connected
 
     async def disconnect(self) -> None:
