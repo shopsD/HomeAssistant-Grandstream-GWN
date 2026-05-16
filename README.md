@@ -320,7 +320,7 @@ logging:
 | --- | --- | --- | --- |
 | `publish_every_poll` | No | `false` | If `false`, MQTT state is published only when the received GWN payload differs from the previous poll. If `true`, state is published after every GWN poll. |
 | `unpublish_initial_data` | No | `false` | If `true`, the bridge fetches the current GWN data on startup, clears matching retained MQTT state/discovery, then republishes fresh state. This is normally not required when `mqtt.topic_manifest_path` is configured. |
-| `check_for_updates` | No | `true` | If `true`, the bridge checks if there is a newer version of the bridge on every poll cycle and publishes it over MQTT if a new version is found. The current version will always be published at least once regardless of this setting|
+| `check_for_updates` | No | `true` | If `true`, the bridge checks if there is a newer version of the bridge and publishes it over MQTT if a new version is found. The current version will always be published at least once regardless of this setting|
 | `allow_pre_release_update` | No | `false` | If `true`, the bridge will notify of a new version even if it is classed as a pre-release version (such as beta). |
 | `update_check_period_s` | No | `21600` | This is the number of seconds between each attempt to check for an updated version. Default is `6 hours`. Setting this too low may cause you to exceed Github query limits. Minimum is `60 seconds`|
 ## `mqtt` Config
