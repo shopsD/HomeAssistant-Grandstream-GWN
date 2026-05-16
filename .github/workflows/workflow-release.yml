@@ -165,31 +165,6 @@ jobs:
             gh release delete "${{ steps.meta.outputs.release_tag }}" --yes
           fi
 
-      - name: Setup Release Notes
-        id: release_notes
-        run: |
-          RELEASE_ITEMS=()
-
-          if [ "${{ inputs.publish_mqtt }}" = "true" ]; then
-            RELEASE_ITEMS+=("MQTT-Bridge")
-          fi
-          if [ "${{ inputs.publish_gwn }}" = "true" ]; then
-            RELEASE_ITEMS+=("GWN-Library")
-          fi
-          if [ "${{ inputs.publish_docker }}" = "true" ]; then
-            RELEASE_ITEMS+=("Docker")
-          fi
-          if [ "${{ inputs.publish_hacs }}" = "true" ]; then
-            RELEASE_ITEMS+=("HA-Integration")
-          fi
-
-          if [ ${#RELEASE_ITEMS[@]} -eq 0 ]; then
-            RELEASE_ITEMS_LINE="Release Items: Source-Only"
-          else
-            RELEASE_ITEMS_LINE="Release Items: $(IFS=', '; echo "${RELEASE_ITEMS[*]}")"
-          fi
-          echo "release_items_line=${RELEASE_ITEMS_LINE}" >> "$GITHUB_OUTPUT"
-
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -198,11 +173,10 @@ jobs:
           if [ "${{ inputs.prerelease }}" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          RELEASE_BODY="$(printf '%s\n%s' "${{ steps.release_notes.outputs.release_items_line }}" "${{ inputs.body }}")"
 
           gh release create "${{ steps.meta.outputs.release_tag }}" \
             --title "${{ inputs.name }}" \
-            --notes "${RELEASE_BODY}" \
+            --notes "${{ inputs.body }}" \
             ${PRERELEASE_FLAG}
 
   mqtt-artifact:
