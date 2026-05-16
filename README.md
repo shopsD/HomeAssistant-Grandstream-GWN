@@ -41,7 +41,7 @@ The MQTT bridge does five jobs:
 
 ## Requirements
 
-- Python `3.14.2` or newer, matching `pyproject.toml`.
+- Python `3.14.4` or newer, matching `pyproject.toml`.
 - `uv` for dependency management and running the console script.
 - A reachable MQTT broker.
 - A reachable Grandstream GWN Manager instance.
