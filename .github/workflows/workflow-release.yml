@@ -31,7 +31,7 @@ on:
         type: boolean
         default: false
       publish_mqtt_wheel:
-        description: Publishes creates and publishes a wheel alongside the mqtt package
+        description: Publishes creates and publishes a wheel alongside the mqtt package. Ignored if publish_mqtt is unchecked
         required: true
         type: boolean
         default: true
@@ -41,7 +41,7 @@ on:
         type: boolean
         default: false
       publish_gwn_wheel:
-        description: Publishes creates and publishes a wheel alongside the gwn package
+        description: Publishes creates and publishes a wheel alongside the gwn package. Ignored if publish_mqtt is unchecked
         required: true
         type: boolean
         default: true
@@ -236,6 +236,7 @@ jobs:
       release_tag: ${{ needs.release.outputs.release_tag }}
       version: ${{ needs.release.outputs.version }}
       publish_latest: ${{ inputs.publish_latest }}
+      push_image: True
     secrets: inherit
 
   hacs:
